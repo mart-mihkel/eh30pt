@@ -1,0 +1,83 @@
+[project]
+name = "eh30pt"
+version = "0.1.0"
+description = "Prompt tuning on Est-Health 30"
+readme = "README.md"
+authors = [
+    { name = "mart-mihkel", email = "mart.mihkel.aun@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "transformers>=5.16.1",
+    "bitsandbytes>=0.50.2",
+    "accelerate>=1.14.0",
+    "tiktoken>=0.14.0",
+    "datasets>=5.0.1",
+    "mlflow>=3.16.0",
+    "polars>=1.44.1",
+    "torch>=2.14.0",
+    "typer>=0.27.2",
+    "rich>=15.0.0",
+    "peft>=0.20.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "ty",
+    { include-group = "notebooks" },
+]
+notebooks = [
+    "ipykernel",
+    "plotnine",
+    "ipython",
+    "marimo",
+]
+
+[project.scripts]
+cli = "eh30pt.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.12.9,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # raise warnings as errors
+    "error::DeprecationWarning",
+    "error::FutureWarning",
+    "error::RuntimeWarning",
+    "error::UserWarning",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",   # Trailing comma missing
+    "CPY001",   # Missing copyright notice at top of file
+    "D203",     # 1 blank line required before class docstring
+    "D212",     # Multi-line docstring summary should start at the first line
+    "PLC0415",  # import should be at the top-level of a file 
+    "PLR0913",  # Too many arguments in function definition
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{test}/**" = [
+    "D103",     # Missing docstring in public function
+    "FBT003",   # Boolean positional value in function call
+    "S101",     # Use of assert detected
+    "SLF001",   # Private member access in white-box tests
+]
+
+"{notebooks}/**" = [
+    "ANN001",   # Missing type annotation for function argument
+    "ANN202",   # Missing return type annotation for private function
+    "B018",     # Found useless expression.
+    "D100",     # Missing docstring in public module
+    "D103",     # Missing docstring in public function
+    "ERA001",   # Found commented-out code
+    "INP001",   # File is part of an implicit namespace package
+    "PLR1711",  # Useless `return` statement at end of function
+    "PLR0917",  # Too many positional arguments
+]
