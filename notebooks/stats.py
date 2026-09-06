@@ -13,7 +13,7 @@ with app.setup:
 
     from eh30pt.constants import LOGDIR
     from eh30pt.logging import setup_logging
-    from eh30pt.scripts.tracking import collect_runs
+    from eh30pt.tracking import collect_runs
 
     if TYPE_CHECKING:
         from collections.abc import Sequence

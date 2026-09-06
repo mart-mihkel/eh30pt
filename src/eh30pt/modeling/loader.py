@@ -21,15 +21,13 @@ if TYPE_CHECKING:
 def load_model(
     tokenizer: PreTrainedTokenizerFast,
     model_path: str,
-    data_info: DatasetProtocol,
+    data: DatasetProtocol,
     arch: Architecture,
     *,
     head_only: bool,
 ) -> PreTrainedModel:
     """Load a pretrained model for the architecture, optionally freezing the base."""
     have_cuda = torch.cuda.is_available()
-    # deserializing bf16 weights directly onto MPS crashes, so load in fp32
-    # on MPS and convert below
     have_mps = not have_cuda and torch.mps.is_available()
     if have_cuda:
         dtype = torch.bfloat16
@@ -45,9 +43,9 @@ def load_model(
             model_path,
             output_loading_info=True,
             ignore_mismatched_sizes=True,
-            num_labels=len(data_info.id2label),
-            id2label=data_info.id2label,
-            label2id=data_info.label2id,
+            num_labels=len(data.id2label),
+            id2label=data.id2label,
+            label2id=data.label2id,
             device_map="auto",
             dtype=dtype,
         )

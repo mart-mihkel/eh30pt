@@ -157,7 +157,7 @@ def _compute_classification_metrics(
     labels: np.ndarray | list,
     preds: np.ndarray | list,
 ) -> dict[str, float]:
-    logger.debug("compute classification metrics")
+    logger.debug("computing classification metrics")
 
     accuracy = accuracy_score(labels, preds)
     precision = precision_score(labels, preds, average="macro", zero_division=0)

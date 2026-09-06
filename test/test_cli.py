@@ -59,7 +59,7 @@ def test_set_seed_is_deterministic_on_mps() -> None:
 
 
 def test_fine_tune_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _stub_script(monkeypatch, "finetune", "fine_tune")
+    fake = _stub_script(monkeypatch, "finetune", "main")
     epochs = 2
 
     result = runner.invoke(
@@ -89,7 +89,7 @@ def test_fine_tune_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_fine_tune_command_resumes_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _stub_script(monkeypatch, "finetune", "fine_tune")
+    fake = _stub_script(monkeypatch, "finetune", "main")
 
     result = runner.invoke(
         app,
@@ -101,7 +101,7 @@ def test_fine_tune_command_resumes_by_default(
 
 
 def test_fine_tune_command_forwards_no_resume(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _stub_script(monkeypatch, "finetune", "fine_tune")
+    fake = _stub_script(monkeypatch, "finetune", "main")
 
     result = runner.invoke(
         app,
@@ -115,7 +115,7 @@ def test_fine_tune_command_forwards_no_resume(monkeypatch: pytest.MonkeyPatch) -
 def test_prompt_tune_command_forwards_no_resume(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _stub_script(monkeypatch, "ptune", "prompt_tune")
+    fake = _stub_script(monkeypatch, "ptune", "main")
 
     result = runner.invoke(
         app,
@@ -138,7 +138,7 @@ def test_prompt_tune_command_forwards_no_resume(
 def test_fine_tune_command_sets_seed_when_provided(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _stub_script(monkeypatch, "finetune", "fine_tune")
+    _stub_script(monkeypatch, "finetune", "main")
     fake_set_seed = MagicMock()
     monkeypatch.setattr("eh30pt.cli._set_seed", fake_set_seed)
 
@@ -151,8 +151,29 @@ def test_fine_tune_command_sets_seed_when_provided(
     fake_set_seed.assert_called_once_with(7)
 
 
+def test_fine_tune_command_forwards_seed(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _stub_script(monkeypatch, "finetune", "main")
+    seed = 7
+
+    result = runner.invoke(
+        app,
+        [
+            "fine-tune",
+            "--model",
+            "my-model",
+            "--dataset",
+            "multinerd",
+            "--seed",
+            str(seed),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert fake.call_args.kwargs["seed"] == seed
+
+
 def test_prompt_tune_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _stub_script(monkeypatch, "ptune", "prompt_tune")
+    fake = _stub_script(monkeypatch, "ptune", "main")
 
     result = runner.invoke(
         app,
@@ -177,7 +198,7 @@ def test_prompt_tune_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_few_shot_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _stub_script(monkeypatch, "fewshot", "few_shot")
+    fake = _stub_script(monkeypatch, "fewshot", "main")
     n_shot = 3
 
     result = runner.invoke(
@@ -204,7 +225,7 @@ def test_few_shot_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> None
 def test_collect_metrics_command_forwards_args(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     fake = MagicMock()
-    monkeypatch.setattr("eh30pt.scripts.tracking.collect_runs", fake)
+    monkeypatch.setattr("eh30pt.tracking.collect_runs", fake)
 
     result = runner.invoke(
         app,
@@ -222,7 +243,7 @@ def test_collect_metrics_command_forwards_args(monkeypatch: pytest.MonkeyPatch) 
 
 def test_collect_command_forwards_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = MagicMock()
-    monkeypatch.setattr("eh30pt.scripts.tracking.collect_runs", fake)
+    monkeypatch.setattr("eh30pt.tracking.collect_runs", fake)
 
     result = runner.invoke(
         app,
@@ -271,7 +292,7 @@ def test_prompt_tune_requires_prefix_init() -> None:
 def test_fine_tune_forwards_patience(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _stub_script(monkeypatch, "finetune", "fine_tune")
+    fake = _stub_script(monkeypatch, "finetune", "main")
     patience = 3
     tolerance = 0.02
 
@@ -299,7 +320,7 @@ def test_fine_tune_forwards_patience(
 def test_fine_tune_disables_early_stopping_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _stub_script(monkeypatch, "finetune", "fine_tune")
+    fake = _stub_script(monkeypatch, "finetune", "main")
 
     result = runner.invoke(
         app,

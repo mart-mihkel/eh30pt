@@ -21,11 +21,8 @@ def get_dataset(
     """Instantiate the pipeline class for `dataset` without loading data."""
     if dataset == "multinerd":
         return Multinerd(tokenizer, arch)
-    if dataset == "oblique":
-        return Oblique(tokenizer, arch)
 
-    msg = f"dataset '{dataset}' is not implemented"
-    raise ValueError(msg)
+    return Oblique(tokenizer, arch)
 
 
 def get_sys_prompt(

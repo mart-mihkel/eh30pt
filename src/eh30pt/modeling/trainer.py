@@ -11,14 +11,13 @@ from transformers import (
     TrainerCallback,
 )
 from transformers.trainer import Trainer
-from transformers.trainer_utils import get_last_checkpoint
 from transformers.training_args import TrainingArguments
 
-from eh30pt.constants import LOGDIR
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from datasets.dataset_dict import DatasetDict
     from torch.nn import Module
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
 
 def get_args(
     arch: Architecture,
+    output_dir: Path | str,
     *,
     do_eval: bool,
     epochs: int = 0,
@@ -38,21 +38,51 @@ def get_args(
     report_to: str = "none",
     checkpoints: bool = False,
 ) -> TrainingArguments:
-    """Build Trainer arguments, using seq2seq args for encoder-decoder models."""
+    """
+    Build Trainer arguments, using seq2seq args for encoder-decoder models.
+
+    Parameters
+    ----------
+    arch:
+        Model architecture, selecting regular or seq2seq arguments.
+    output_dir:
+        Directory for checkpoints and trainer state.
+    do_eval:
+        Run evaluation during training.
+    epochs:
+        Number of training epochs.
+    learning_rate:
+        Optimizer learning rate.
+    batch_size:
+        Training and evaluation batch size.
+    run_name:
+        Display name reported to trackers.
+    report_to:
+        Tracker integrations enabled on the Trainer.
+    checkpoints:
+        Save epoch checkpoints (also required to restore the best model).
+
+    Returns
+    -------
+    TrainingArguments
+        Arguments for the matching Trainer flavor.
+
+    """
     have_cuda = torch.cuda.is_available()
     have_mps = torch.mps.is_available()
     have_accel = have_cuda or have_mps
     optim = "adamw_8bit" if have_cuda else "adamw_torch_fused"
     eval_strategy = "epoch" if do_eval else "no"
     save_strategy = "epoch" if checkpoints else "no"
-    out_dir = LOGDIR / run_name
+    # Restoring the best checkpoint requires periodic saves to compare.
+    load_best = do_eval and checkpoints
 
     if arch == "encoder-decoder":
         logger.debug("using seq2seq training args")
         args = Seq2SeqTrainingArguments(
             run_name=run_name,
             report_to=report_to,
-            output_dir=str(out_dir),
+            output_dir=str(output_dir),
             save_strategy=save_strategy,
             save_total_limit=1,
             eval_strategy=eval_strategy,
@@ -60,6 +90,7 @@ def get_args(
             batch_eval_metrics=True,
             remove_unused_columns=False,
             logging_steps=100,
+            load_best_model_at_end=load_best,
             metric_for_best_model="f1",
             learning_rate=learning_rate,
             optim=optim,
@@ -77,7 +108,7 @@ def get_args(
         args = TrainingArguments(
             run_name=run_name,
             report_to=report_to,
-            output_dir=str(out_dir),
+            output_dir=str(output_dir),
             save_strategy=save_strategy,
             save_total_limit=1,
             eval_strategy=eval_strategy,
@@ -85,6 +116,7 @@ def get_args(
             batch_eval_metrics=True,
             remove_unused_columns=False,
             logging_steps=100,
+            load_best_model_at_end=load_best,
             metric_for_best_model="f1",
             learning_rate=learning_rate,
             optim=optim,
@@ -101,11 +133,12 @@ def get_args(
 
 def get_trainer(
     model: Module,
+    *,
     data: DatasetDict,
     arch: Architecture,
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
-    *,
+    output_dir: Path | str,
     do_eval: bool,
     patience: int = 0,
     tolerance: float = 0.01,
@@ -117,9 +150,53 @@ def get_trainer(
     checkpoints: bool = False,
     callbacks: tuple[TrainerCallback, ...] = (),
 ) -> Trainer:
-    """Build a Trainer for the architecture, adding early stopping if requested."""
+    """
+    Build a Trainer for the architecture, adding early stopping if requested.
+
+    Parameters
+    ----------
+    model:
+        Model to train or evaluate.
+    data:
+        Tokenized dataset splits (`train`, `validation`).
+    arch:
+        Model architecture, selecting regular or seq2seq Trainer.
+    collate_fn:
+        Data collator batching tokenized examples.
+    metrics_fn:
+        Metric function scoring evaluation predictions.
+    output_dir:
+        Directory for checkpoints and trainer state.
+    do_eval:
+        Run evaluation during training.
+    patience:
+        Eval epochs without improvement before stopping, 0 disables.
+    tolerance:
+        Minimum eval improvement resetting the patience counter.
+    epochs:
+        Number of training epochs.
+    learning_rate:
+        Optimizer learning rate.
+    batch_size:
+        Training and evaluation batch size.
+    run_name:
+        Display name reported to trackers.
+    report_to:
+        Tracker integrations enabled on the Trainer.
+    checkpoints:
+        Save epoch checkpoints (also required to restore the best model).
+    callbacks:
+        Extra Trainer callbacks.
+
+    Returns
+    -------
+    Trainer
+        Configured Trainer for the architecture.
+
+    """
     args = get_args(
         arch,
+        output_dir,
         do_eval=do_eval,
         epochs=epochs,
         learning_rate=learning_rate,
@@ -167,19 +244,3 @@ def get_trainer(
         )
 
     return trainer
-
-
-def find_checkpoint(run_name: str) -> str | None:
-    """Find the latest checkpoint of a previous run of `run_name`, if any exists."""
-    out_dir = LOGDIR / run_name
-    if not out_dir.is_dir():
-        logger.warning("no output dir '%s', training from scratch", out_dir)
-        return None
-
-    checkpoint = get_last_checkpoint(str(out_dir))
-    if checkpoint is None:
-        logger.warning("no checkpoint in '%s', training from scratch", out_dir)
-        return None
-
-    logger.info("resuming from checkpoint '%s'", checkpoint)
-    return checkpoint

@@ -62,13 +62,13 @@ def prepare_pt_model(
     tokenizer: PreTrainedTokenizerFast,
     model_path: str,
     arch: Architecture,
-    data_info: DatasetProtocol,
+    data: DatasetProtocol,
 ) -> PeftModel:
     """Load a pretrained model wrapped for prompt tuning."""
     logger.debug("preparing peft model for '%s'", model_path)
-    sys_prompt = data_info.system_prompt
+    sys_prompt = data.system_prompt
     n_virtual = get_n_virtual(tokenizer, sys_prompt)
-    base = load_model(tokenizer, model_path, data_info, arch, head_only=False)
+    base = load_model(tokenizer, model_path, data, arch, head_only=False)
     task_type = get_task_type(arch)
 
     if prefix_init == "pretrained":

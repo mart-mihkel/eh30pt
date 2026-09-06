@@ -80,7 +80,7 @@ ResumeOption = Annotated[
     bool,
     Option(
         "--resume/--no-resume",
-        help="Continue from the last checkpoint of a run with the same name",
+        help="Reattach to the latest unfinished run with identical config",
     ),
 ]
 
@@ -196,14 +196,13 @@ def fine_tune(
 ) -> None:
     """Fine-tune and run test evaluation."""
     from eh30pt.logging import logger
-    from eh30pt.scripts.finetune import fine_tune as run_fine_tune
+    from eh30pt.scripts.finetune import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()
     _set_seed(seed)
 
-    logger.debug("finished preamble")
-    run_fine_tune(
+    main(
         model_path=model,
         dataset=dataset,
         arch=arch,
@@ -221,6 +220,7 @@ def fine_tune(
         mlflow_experiment=mlflow_experiment,
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
+        seed=seed,
     )
 
 
@@ -255,14 +255,13 @@ def prompt_tune(
 ) -> None:
     """Prompt-tune and run test evaluation."""
     from eh30pt.logging import logger
-    from eh30pt.scripts.ptune import prompt_tune as run_prompt_tune
+    from eh30pt.scripts.ptune import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()
     _set_seed(seed)
 
-    logger.debug("finished preamble")
-    run_prompt_tune(
+    main(
         model_path=model,
         dataset=dataset,
         prefix_init=prefix_init,
@@ -280,6 +279,7 @@ def prompt_tune(
         mlflow_experiment=mlflow_experiment,
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
+        seed=seed,
     )
 
 
@@ -299,14 +299,13 @@ def few_shot(
 ) -> None:
     """Run test evaluation with few-shot learning."""
     from eh30pt.logging import logger
-    from eh30pt.scripts.fewshot import few_shot as run_few_shot
+    from eh30pt.scripts.fewshot import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()
     _set_seed(seed)
 
-    logger.debug("finished preamble")
-    run_few_shot(
+    main(
         model_path=model,
         arch=arch,
         dataset=dataset,
@@ -315,6 +314,7 @@ def few_shot(
         mlflow_experiment=mlflow_experiment,
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
+        seed=seed,
     )
 
 
@@ -331,7 +331,7 @@ def collect(
 ) -> None:
     """Export MLflow experiments to csv."""
     from eh30pt.logging import logger
-    from eh30pt.scripts.tracking import collect_runs
+    from eh30pt.tracking import collect_runs
 
     logger.setLevel(log_level.upper())
     collect_runs(
