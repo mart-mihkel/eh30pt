@@ -25,6 +25,21 @@ rsync commit='false' host=env('REMOTE'):
         --exclude .git \
         . {{ host }}
 
+[doc('build docker services')]
+[group('docker')]
+@build *args:
+    docker compose build {{ args }}
+
+[doc('start docker services')]
+[group('docker')]
+@up *args:
+    docker compose up {{ args }}
+
+[doc('stop compose services')]
+[group('docker')]
+@down *args:
+    docker compose down {{ args }}
+
 [doc('run pre-commit checks')]
 [arg('staged', long, short, pattern='true|false', value='true', help='only check staged files')]
 [group('test')]

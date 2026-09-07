@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eh30pt}
+      POSTGRES_USER: ${POSTGRES_USER:-eh30pt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eh30pt}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-eh30pt} -d ${POSTGRES_DB:-eh30pt}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:
