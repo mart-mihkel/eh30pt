@@ -1,21 +1,52 @@
 """Test configuration."""
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Final, NamedTuple, cast
 
-import datasets
+import datasets as ds
 import pytest
 import torch
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
+    from datasets.splits import Split
     from transformers import PreTrainedConfig, PreTrainedModel, PreTrainedTokenizerFast
 
     from eh30pt.datasets.multinerd import Multinerd
     from eh30pt.datasets.oblique import Oblique
     from eh30pt.types import DatasetName, DatasetProtocol
 
-datasets.disable_caching()
+ds.disable_caching()
+
+models: Final[Mapping[str, str]] = {
+    "bert": "hf-internal-testing/tiny-random-bert",
+    "gpt2": "hf-internal-testing/tiny-random-gpt2",
+    "t5": "hf-internal-testing/tiny-random-t5",
+}
+
+datasets: tuple[DatasetName, ...] = ("multinerd", "oblique")
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--run-slow",
+        default=False,
+        action="store_true",
+        help="run tests marked as slow",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config,
+    items: list[pytest.Item],
+) -> None:
+    if config.getoption("--run-slow"):
+        return
+
+    skip_slow = pytest.mark.skip(reason="pass --run-slow to run")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow)
 
 
 class ModelSetup(NamedTuple):
@@ -25,15 +56,6 @@ class ModelSetup(NamedTuple):
     tokenizer: PreTrainedTokenizerFast
     dataset: Multinerd | Oblique
     model: PreTrainedModel
-
-
-models: Mapping[str, str] = {
-    "bert": "hf-internal-testing/tiny-random-bert",
-    "gpt2": "hf-internal-testing/tiny-random-gpt2",
-    "t5": "hf-internal-testing/tiny-random-t5",
-}
-
-datasets: tuple[DatasetName, ...] = ("multinerd", "oblique")
 
 
 @pytest.fixture(scope="session")
@@ -75,6 +97,14 @@ def _make_dataset_fixture(
     dataset: DatasetName,
     model: str,
 ) -> Callable[[pytest.FixtureRequest], DatasetProtocol]:
+    split = {
+        "train": "train[:64]",
+        "validation": "validation[:64]",
+        "test": "test[:64]",
+    }
+
+    split = cast("Split", split)
+
     @pytest.fixture(scope="session")
     def fixture(request: pytest.FixtureRequest) -> DatasetProtocol:
         from eh30pt.datasets.registry import get_dataset
@@ -87,7 +117,11 @@ def _make_dataset_fixture(
 
         arch = infer_architecture(config)
         ds = get_dataset(dataset, tokenizer, arch)
-        ds.load()
+
+        if dataset == "multinerd":
+            cast("Multinerd", ds).load(split=split, filter_en=False)
+        else:
+            ds.load(split=split)
 
         return ds
 

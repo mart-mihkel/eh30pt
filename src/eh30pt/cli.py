@@ -28,6 +28,11 @@ ArchOption = Annotated[
     Option("--arch", "-a", help="Override auto-detected model architecture"),
 ]
 
+PrefixInitOption = Annotated[
+    PrefixInit.__value__,
+    Option("--prefix-init", "-p", help="Prefix initialization method"),
+]
+
 NShotOption = Annotated[
     int,
     Option("--n-shot", "-n", min=0, help="Number of examples in system prompt"),
@@ -82,6 +87,11 @@ ResumeOption = Annotated[
         "--resume/--no-resume",
         help="Reattach to the latest unfinished run with identical config",
     ),
+]
+
+LearningRateOption = Annotated[
+    float,
+    Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
 ]
 
 EpochsOption = Annotated[
@@ -184,10 +194,7 @@ def fine_tune(
     resume: ResumeOption = True,
     epochs: EpochsOption = 5,
     batch_size: BatchSizeOption = 8,
-    learning_rate: Annotated[
-        float,
-        Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
-    ] = 5e-5,
+    learning_rate: LearningRateOption = 5e-5,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
@@ -229,10 +236,7 @@ def prompt_tune(
     model: ModelOption,
     dataset: DatasetOption,
     *,
-    prefix_init: Annotated[
-        PrefixInit.__value__,
-        Option("--prefix-init", "-p", help="Prefix initialization method"),
-    ] = "pretrained",
+    prefix_init: PrefixInitOption = "pretrained",
     arch: ArchOption = None,
     n_shot: NShotOption = 0,
     train_samples: TrainSamplesOption = None,
@@ -243,10 +247,7 @@ def prompt_tune(
     resume: ResumeOption = True,
     epochs: EpochsOption = 5,
     batch_size: BatchSizeOption = 8,
-    learning_rate: Annotated[
-        float,
-        Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
-    ] = 1e-3,
+    learning_rate: LearningRateOption = 1e-3,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",

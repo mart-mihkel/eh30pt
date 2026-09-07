@@ -44,6 +44,9 @@ requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
+markers = [
+    "slow: slow tests, skipped unless --run-slow is passed",
+]
 filterwarnings = [
     # raise warnings as errors
     "error::DeprecationWarning",
