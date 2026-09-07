@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, NamedTuple
 
+import datasets
 import pytest
 import torch
 
@@ -11,15 +12,18 @@ if TYPE_CHECKING:
     from transformers import PreTrainedConfig, PreTrainedModel, PreTrainedTokenizerFast
 
     from eh30pt.datasets.multinerd import Multinerd
-    from eh30pt.types import DatasetProtocol
+    from eh30pt.datasets.oblique import Oblique
+    from eh30pt.types import DatasetName, DatasetProtocol
+
+datasets.disable_caching()
 
 
 class ModelSetup(NamedTuple):
-    """Model and it's contemporaries."""
+    """One model under test with its config, tokenizer, dataset, and weights."""
 
     config: PreTrainedConfig
     tokenizer: PreTrainedTokenizerFast
-    dataset: Multinerd
+    dataset: Multinerd | Oblique
     model: PreTrainedModel
 
 
@@ -28,6 +32,8 @@ models: Mapping[str, str] = {
     "gpt2": "hf-internal-testing/tiny-random-gpt2",
     "t5": "hf-internal-testing/tiny-random-t5",
 }
+
+datasets: tuple[DatasetName, ...] = ("multinerd", "oblique")
 
 
 @pytest.fixture(scope="session")
@@ -66,20 +72,21 @@ def _make_tokenizer_fixture(
 
 
 def _make_dataset_fixture(
-    name: str,
+    dataset: DatasetName,
+    model: str,
 ) -> Callable[[pytest.FixtureRequest], DatasetProtocol]:
     @pytest.fixture(scope="session")
     def fixture(request: pytest.FixtureRequest) -> DatasetProtocol:
         from eh30pt.datasets.registry import get_dataset
         from eh30pt.modeling.arch import infer_architecture
 
-        config: PreTrainedConfig = request.getfixturevalue(f"{name}_config")
+        config: PreTrainedConfig = request.getfixturevalue(f"{model}_config")
         tokenizer: PreTrainedTokenizerFast = request.getfixturevalue(
-            f"{name}_tokenizer"
+            f"{model}_tokenizer"
         )
 
         arch = infer_architecture(config)
-        ds = get_dataset("multinerd", tokenizer, arch)
+        ds = get_dataset(dataset, tokenizer, arch)
         ds.load()
 
         return ds
@@ -88,7 +95,8 @@ def _make_dataset_fixture(
 
 
 def _make_model_fixture(
-    name: str,
+    dataset: DatasetName,
+    model: str,
     path: str,
 ) -> Callable[[pytest.FixtureRequest], PreTrainedModel]:
     @pytest.fixture(scope="session")
@@ -96,12 +104,12 @@ def _make_model_fixture(
         from eh30pt.modeling.arch import infer_architecture
         from eh30pt.modeling.loader import load_model
 
-        config: PreTrainedConfig = request.getfixturevalue(f"{name}_config")
+        config: PreTrainedConfig = request.getfixturevalue(f"{model}_config")
         tokenizer: PreTrainedTokenizerFast = request.getfixturevalue(
-            f"{name}_tokenizer"
+            f"{model}_tokenizer"
         )
 
-        data: DatasetProtocol = request.getfixturevalue(f"{name}_dataset")
+        data: DatasetProtocol = request.getfixturevalue(f"{dataset}_{model}_dataset")
         arch = infer_architecture(config)
 
         return load_model(tokenizer, path, data, arch, head_only=False)
@@ -109,24 +117,32 @@ def _make_model_fixture(
     return fixture
 
 
-for _name, _path in models.items():
-    config_name = f"{_name}_config"
-    tokenizer_name = f"{_name}_tokenizer"
-    dataset_name = f"{_name}_dataset"
-    model_name = f"{_name}_model"
+for _model, _path in models.items():
+    globals()[f"{_model}_config"] = _make_config_fixture(_path)
+    globals()[f"{_model}_tokenizer"] = _make_tokenizer_fixture(_path)
 
-    globals()[config_name] = _make_config_fixture(_path)
-    globals()[tokenizer_name] = _make_tokenizer_fixture(_path)
-    globals()[dataset_name] = _make_dataset_fixture(_name)
-    globals()[model_name] = _make_model_fixture(_name, _path)
+    for _dataset in datasets:
+        globals()[f"{_dataset}_{_model}_dataset"] = _make_dataset_fixture(
+            _dataset,
+            _model,
+        )
+
+        globals()[f"{_dataset}_{_model}_model"] = _make_model_fixture(
+            _dataset,
+            _model,
+            _path,
+        )
+
+_matrix = [(dataset, model) for dataset in datasets for model in models]
+_matrix_ids = [f"{dataset}-{model}" for dataset, model in _matrix]
 
 
-@pytest.fixture(params=list(models), scope="session", ids=list(models))
+@pytest.fixture(params=_matrix, scope="session", ids=_matrix_ids)
 def model_setup(request: pytest.FixtureRequest) -> ModelSetup:
-    name = request.param
+    dataset, model = request.param
     return ModelSetup(
-        request.getfixturevalue(f"{name}_config"),
-        request.getfixturevalue(f"{name}_tokenizer"),
-        request.getfixturevalue(f"{name}_dataset"),
-        request.getfixturevalue(f"{name}_model"),
+        request.getfixturevalue(f"{model}_config"),
+        request.getfixturevalue(f"{model}_tokenizer"),
+        request.getfixturevalue(f"{dataset}_{model}_dataset"),
+        request.getfixturevalue(f"{dataset}_{model}_model"),
     )

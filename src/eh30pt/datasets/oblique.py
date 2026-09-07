@@ -321,7 +321,7 @@ class Oblique(DatasetProtocol):
         truncated = max_length is not None and prompt_len >= max_length
 
         if self._arch == "encoder":
-            prompt_enc["label"] = self.label2id[label]
+            prompt_enc["labels"] = self.label2id[label]
             prompt_enc["truncated"] = truncated
             return prompt_enc
 
