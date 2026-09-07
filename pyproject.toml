@@ -85,3 +85,9 @@ ignore = [
     "PLR1711",  # Useless `return` statement at end of function
     "PLR0917",  # Too many positional arguments
 ]
+
+[tool.ruff]
+exclude = ["vendor/"]
+
+[tool.ty.src]
+exclude = ["vendor/"]
