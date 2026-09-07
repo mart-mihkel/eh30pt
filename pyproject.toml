@@ -24,6 +24,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
+    "prek",
     "ruff",
     "ty",
     { include-group = "notebooks" },

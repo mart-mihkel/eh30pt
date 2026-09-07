@@ -10,6 +10,7 @@ set dotenv-load
 [group('build')]
 @sync:
     uv sync --compile-bytecode
+    uv run --no-sync prek install
 
 [arg('host', long, short, help='remote host and target dir')]
 [arg('commit', long, short, pattern='true|false', value='true', help='no dry run')]
@@ -25,13 +26,12 @@ rsync commit='false' host=env('REMOTE'):
         . {{ host }}
 
 [doc('run pre-commit checks')]
+[arg('staged', long, short, pattern='true|false', value='true', help='only check staged files')]
 [group('lint')]
-@check:
-    uv run --no-sync ruff format
-    uv run --no-sync ruff check --fix
-    uv run --no-sync ty check --fix
+@check staged='false':
+    prek run {{ if staged == 'true' { '' } else { '--all-files' } }} 
 
 [doc('run test suite')]
 [group('test')]
-@test:
-    uv run --no-sync pytest --quiet 
+@test +flags='--quiet':
+    uv run --no-sync pytest {{ flags }}

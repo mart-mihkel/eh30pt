@@ -1,0 +1,33 @@
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "ruff-format"
+name = "ruff format"
+description = "format"
+language = "system"
+entry = "uv run --no-sync ruff format"
+args = ["--force-exclude"]
+types_or = ["python", "pyi", "jupyter"]
+
+[[repos.hooks]]
+id = "ruff-check"
+name = "ruff check"
+description = "lint"
+language = "system"
+entry = "uv run --no-sync ruff check --fix"
+args = ["--force-exclude"]
+types_or = ["python", "pyi", "jupyter"]
+
+[[repos.hooks]]
+id = "ty-check"
+name = "ty check"
+description = "typecheck"
+language = "system"
+entry = "uv run --no-sync ty check --fix"
+types_or = ["python", "pyi", "jupyter"]
+pass_filenames = false
+always_run = true
+require_serial = true
