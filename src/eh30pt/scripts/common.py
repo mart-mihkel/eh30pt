@@ -77,6 +77,7 @@ def train_and_evaluate(
     """
     trainer = get_trainer(
         model=model,
+        tokenizer=tokenizer,
         data=data,
         arch=arch,
         collate_fn=collate_fn,
@@ -99,6 +100,7 @@ def train_and_evaluate(
     logger.debug("starting test eval")
     test = cast("Dataset", data["test"])
     test_metrics = trainer.evaluate(test, metric_key_prefix="test")
+
     ctx.finish_training(
         registered_name,
         model=model,
@@ -106,13 +108,14 @@ def train_and_evaluate(
         test_metrics=dict(test_metrics),
     )
 
-    return dict(test_metrics)
+    return test_metrics
 
 
 def evaluate_and_log(
     ctx: RunContext,
     model: PreTrainedModel | PeftModel,
     *,
+    tokenizer: PreTrainedTokenizerFast,
     data: DatasetDict,
     arch: Architecture,
     collate_fn: DataCollator,
@@ -128,6 +131,8 @@ def evaluate_and_log(
         Open run tracking the evaluation.
     model:
         Model (or PEFT adapter) to evaluate.
+    tokenizer:
+        Tokenizer passed as the SFT processing class for decoders.
     data:
         Tokenized dataset splits, including `test`.
     arch:
@@ -147,6 +152,7 @@ def evaluate_and_log(
     """
     trainer = get_trainer(
         model=model,
+        tokenizer=tokenizer,
         data=data,
         arch=arch,
         collate_fn=collate_fn,
@@ -162,7 +168,7 @@ def evaluate_and_log(
     test = cast("Dataset", data["test"])
     test_metrics = trainer.evaluate(test, metric_key_prefix="test")
     ctx.log_metrics(dict(test_metrics))
-    return dict(test_metrics)
+    return test_metrics
 
 
 def log_prompt_version(

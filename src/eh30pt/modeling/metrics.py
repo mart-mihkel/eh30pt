@@ -1,6 +1,7 @@
 """Streaming metric computation for encoder, decoder, and encoder-decoder Trainers."""
 
 from collections import Counter
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from eh30pt.types import Architecture
 
 
-class MetricsAccumulator:
+class MetricsAccumulator(Callable):
     """
     Collect per-batch eval outputs and computes metrics on the final call.
 
@@ -118,7 +119,7 @@ class MetricsAccumulator:
 
         references = self._tokenizer.batch_decode(labels, skip_special_tokens=True)
         predictions = self._tokenizer.batch_decode(preds, skip_special_tokens=True)
-        predictions = _filter_gibberish(references, predictions)
+        predictions = _filter_other(references, predictions)
 
         _refs_count = Counter(references)
         _preds_count = Counter(predictions)
@@ -148,9 +149,9 @@ def _batch_to_numpy(eval_pred: EvalPrediction) -> tuple[np.ndarray, np.ndarray]:
     return batch_labels, batch_preds
 
 
-def _filter_gibberish(references: list[str], predictions: list[str]) -> list[str]:
+def _filter_other(references: list[str], predictions: list[str]) -> list[str]:
     refset = set(references)
-    return [pred if pred in refset else "<gibberish>" for pred in predictions]
+    return [pred if pred in refset else "other" for pred in predictions]
 
 
 def _compute_classification_metrics(

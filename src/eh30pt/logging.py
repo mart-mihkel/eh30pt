@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import warnings
 from functools import partialmethod
 from typing import TYPE_CHECKING, TextIO, cast
 
@@ -19,7 +20,7 @@ logger = logging.getLogger("eh30pt")
 
 def format_counts(counts: Counter[int] | Counter[str]) -> str:
     """Format label counts as a compact `key=value` string for debug logs."""
-    return ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
+    return " ".join(f"{key}={value}" for key, value in sorted(counts.items()))
 
 
 class _TqdmSafeStream:
@@ -50,6 +51,12 @@ class _TqdmSafeStream:
 
 def setup_logging() -> None:
     """Install the rich log handler, ascii tqdm bars, and rich tracebacks."""
+    warnings.filterwarnings(
+        "ignore",
+        message="'pin_memory' argument is set as true but not supported on MPS.*",
+        category=UserWarning,
+    )
+
     handler = RichHandler(
         console=Console(file=cast("TextIO", _TqdmSafeStream(sys.stderr))),
         show_path=False,

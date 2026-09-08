@@ -87,6 +87,7 @@ def main(
         evaluate_and_log(
             ctx,
             model,
+            tokenizer=tokenizer,
             data=tokenized,
             arch=arch,
             collate_fn=collate_fn,
