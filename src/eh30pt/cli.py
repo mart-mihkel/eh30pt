@@ -33,6 +33,11 @@ PrefixInitOption = Annotated[
     Option("--prefix-init", "-p", help="Prefix initialization method"),
 ]
 
+HeadOnlyOption = Annotated[
+    bool,
+    Option(help="Freeze all parameters except for classifier head"),
+]
+
 NShotOption = Annotated[
     int,
     Option("--n-shot", "-n", min=0, help="Number of examples in system prompt"),
@@ -122,6 +127,11 @@ RunNameOption = Annotated[
     Option(help="Run name for mlflow tracking, inferred from parameters by default"),
 ]
 
+MetricsOption = Annotated[
+    list[str] | None,
+    Option("--metric", help="Per-step metric to export the history of, repeatable"),
+]
+
 LogLevelOption = Annotated[
     LogLevel.__value__,
     Option("--log-level", "-l", help="Log level"),
@@ -181,10 +191,7 @@ def fine_tune(
     dataset: DatasetOption,
     *,
     arch: ArchOption = None,
-    head_only: Annotated[
-        bool,
-        Option(help="Freeze all parameters except for classifier head"),
-    ] = False,
+    head_only: HeadOnlyOption = False,
     n_shot: NShotOption = 0,
     train_samples: TrainSamplesOption = None,
     val_samples: ValSamplesOption = None,
@@ -324,10 +331,7 @@ def collect(
     *,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    metrics: Annotated[
-        list[str] | None,
-        Option("--metric", help="Per-step metric to export the history of, repeatable"),
-    ] = None,
+    metrics: MetricsOption = None,
     log_level: LogLevelOption = "info",
 ) -> None:
     """Export MLflow experiments to csv."""
