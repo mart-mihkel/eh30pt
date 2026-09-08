@@ -34,6 +34,7 @@ def main(
     epochs: int,
     batch_size: int,
     learning_rate: float,
+    warmup_ratio: float,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_tracking_uri: str,
@@ -90,6 +91,7 @@ def main(
         "epochs": epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
+        "warmup_ratio": warmup_ratio,
         "seed": seed,
         "system_prompt": ds.system_prompt,
         "train_samples": len(data["train"]),
@@ -122,4 +124,5 @@ def main(
             epochs=epochs,
             learning_rate=learning_rate,
             batch_size=batch_size,
+            warmup_ratio=warmup_ratio,
         )

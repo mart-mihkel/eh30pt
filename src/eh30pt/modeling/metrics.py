@@ -24,9 +24,9 @@ class MetricsAccumulator(Callable):
 
     Parameters
     ----------
-    tokenizer:
+    tokenizer : PreTrainedTokenizerFast
         Tokenizer used to decode generated ids (unused for encoders).
-    arch:
+    arch : Architecture
         Model architecture, selecting the accumulation format.
 
     """

@@ -44,6 +44,7 @@ class TrainingRunConfig(RunConfig):
     tolerance: float
     epochs: int
     learning_rate: float
+    warmup_ratio: float
 
 
 class FineTuneRunConfig(TrainingRunConfig):

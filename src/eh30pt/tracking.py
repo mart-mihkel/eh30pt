@@ -76,13 +76,13 @@ def build_run_name(
 
     Parameters
     ----------
-    dataset:
+    dataset : DatasetName
         Dataset the run trains or evaluates on.
-    model_path:
+    model_path : str
         HuggingFace model id or checkpoint path (only the last segment is used).
-    method:
+    method : str
         Training or evaluation method, e.g. `fine-tune` or `3-shot`.
-    train_samples:
+    train_samples : int | None
         Requested training subset size, shown as `all` when None.
 
     Returns
@@ -128,17 +128,17 @@ class RunContext:
 
     Attributes
     ----------
-    client:
+    client : MlflowClient
         MLflow client bound to the run's tracking URI.
-    experiment:
+    experiment : str
         Name of the experiment owning the run.
-    run_id:
+    run_id : str
         MLflow run id; also keys the local checkpoint directory.
-    run_name:
+    run_name : str | None
         Human-readable display name.
-    tracking_uri:
+    tracking_uri : str
         URI of the MLflow tracking server.
-    resumed:
+    resumed : bool
         Whether the run was reattached to a previous unfinished run.
 
     """
@@ -161,7 +161,7 @@ class RunContext:
 
         Parameters
         ----------
-        params:
+        params : Mapping[str, Any]
             Param names to values; values are stored via `str`.
 
         """
@@ -176,9 +176,9 @@ class RunContext:
 
         Parameters
         ----------
-        metrics:
+        metrics : Mapping[str, float]
             Metric names to values.
-        step:
+        step : int
             Training step the values belong to.
 
         """
@@ -207,11 +207,11 @@ class RunContext:
 
         Parameters
         ----------
-        model:
+        model : PreTrainedModel | PeftModel
             Trained model (or PEFT adapter) to save.
-        tokenizer:
+        tokenizer : PreTrainedTokenizerFast
             Tokenizer to save alongside the model.
-        artifact_path:
+        artifact_path : str
             Artifact directory inside the run.
 
         """
@@ -231,11 +231,11 @@ class RunContext:
 
         Parameters
         ----------
-        name:
+        name : str
             Prompt registry name.
-        template:
+        template : str
             Prompt template text to commit.
-        commit_message:
+        commit_message : str
             Message recorded with the new version.
 
         Returns
@@ -279,11 +279,11 @@ class RunContext:
 
         Parameters
         ----------
-        name:
+        name : str
             Registered model name.
-        test_metrics:
+        test_metrics : Mapping[str, float]
             Test metrics to tag the version with; must contain `metric`.
-        metric:
+        metric : str
             Metric deciding whether the run leads.
 
         Returns
@@ -360,15 +360,15 @@ class RunContext:
 
         Parameters
         ----------
-        registered_name:
+        registered_name : str
             Registered model name for the best-model comparison.
-        model:
+        model : PreTrainedModel | PeftModel
             Trained model (or PEFT adapter) to log.
-        tokenizer:
+        tokenizer : PreTrainedTokenizerFast
             Tokenizer to log alongside the model.
-        test_metrics:
+        test_metrics : Mapping[str, float]
             Test metrics to log and tag the version with.
-        metric:
+        metric : str
             Metric deciding whether the run leads.
 
         """
@@ -387,11 +387,11 @@ def _verify_config(
 
     Parameters
     ----------
-    client:
+    client : MlflowClient
         MLflow client bound to the run's tracking URI.
-    run_id:
+    run_id : str
         Id of the run whose stored params are compared.
-    config:
+    config : Mapping[str, Any]
         Requested configuration; every value must match its stored param.
 
     Raises
@@ -461,15 +461,15 @@ def open_run(
 
     Parameters
     ----------
-    experiment:
+    experiment : str
         Name of the experiment owning the run.
-    run_name:
+    run_name : str
         Human-readable display name for newly created runs.
-    tracking_uri:
+    tracking_uri : str
         URI of the MLflow tracking server.
-    resume:
+    resume : bool
         Reattach to the latest unfinished run with an identical config hash.
-    config:
+    config : RunConfig
         Full run configuration.
 
     Yields
@@ -652,13 +652,13 @@ def collect_runs(
 
     Parameters
     ----------
-    experiment:
+    experiment : str
         Name of the experiment to collect.
-    mlflow_tracking_uri:
+    mlflow_tracking_uri : str
         URI of the MLflow tracking server.
-    metrics:
+    metrics : tuple[str, ...]
         Per-step metrics to export the history of.
-    write_csv:
+    write_csv : bool
         Write the frames to `log/metrics/` as CSV files.
 
     Returns

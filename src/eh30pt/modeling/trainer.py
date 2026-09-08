@@ -47,6 +47,7 @@ class _Spec(NamedTuple):
     epochs: int
     learning_rate: float
     batch_size: int
+    warmup_ratio: float
     run_name: str
     report_to: str
     checkpoints: bool
@@ -59,61 +60,6 @@ class _Spec(NamedTuple):
     label_completions: tuple[tuple[int, ...], ...]
 
 
-def _label_completions(
-    data: DatasetDict,
-    *,
-    eos_token_id: int | None = None,
-) -> tuple[tuple[int, ...], ...]:
-    """Collect distinct completion token sequences from masked label columns."""
-    seen: list[tuple[int, ...]] = []
-    for split in ("train", "validation", "test"):
-        if split not in data:
-            continue
-
-        rows: list[list[int]] = data[split]["labels"]
-        for row in rows:
-            completion = tuple(token for token in row if token != SENTINEL_TOKEN)
-            if not completion or completion == (eos_token_id,):
-                continue
-
-            if completion not in seen:
-                seen.append(completion)
-
-    return tuple(seen)
-
-
-def _constrain_eval_logits(
-    logits: torch.Tensor,
-    labels: torch.Tensor,
-    completions: tuple[tuple[int, ...], ...],
-) -> torch.Tensor:
-    """Force each row's argmax to its most likely legal completion."""
-    if not completions:
-        return logits
-
-    masked = logits.clone()
-    for b in range(masked.shape[0]):
-        pos = torch.where(labels[b] != SENTINEL_TOKEN)[0]
-        if len(pos) == 0:
-            continue
-
-        force_at = pos - 1
-        if bool((force_at < 0).any()):
-            continue
-
-        cands = [c for c in completions if len(c) == len(pos)]
-        cand_ids = torch.tensor(cands, dtype=torch.long, device=masked.device)
-
-        scores = masked[b, force_at].gather(1, cand_ids).sum(1)
-        winner = cands[int(torch.argmax(scores))]
-        forced = torch.tensor(winner, dtype=torch.long, device=masked.device)
-
-        masked[b, force_at, :] = float("-inf")
-        masked[b, force_at, forced] = 0.0
-
-    return masked
-
-
 class ConstrainedSFTTrainer(SFTTrainer):
     """
     SFTTrainer constraining eval predictions to legal label token sequences.
@@ -123,23 +69,23 @@ class ConstrainedSFTTrainer(SFTTrainer):
 
     Parameters
     ----------
-    model:
+    model : PreTrainedModel | PeftModel
         Causal model to train or evaluate.
-    args:
+    args : SFTConfig
         SFT configuration.
-    data_collator:
+    data_collator : DataCollator
         Data collator batching tokenized examples.
-    train_dataset:
+    train_dataset : HFDataset | None
         Training split, if present.
-    eval_dataset:
+    eval_dataset : HFDataset | None
         Evaluation split, if present.
-    processing_class:
+    processing_class : PreTrainedTokenizerFast
         Tokenizer used for padding.
-    compute_metrics:
+    compute_metrics : Callable
         Metric function scoring evaluation predictions.
-    callbacks:
+    callbacks : list[TrainerCallback]
         Extra Trainer callbacks.
-    label_completions:
+    label_completions : tuple[tuple[int, ...], ...]
         Distinct legal completion token sequences observed in the data.
 
     """
@@ -192,20 +138,6 @@ class ConstrainedSFTTrainer(SFTTrainer):
         return loss, _constrain_eval_logits(logits, labels, self._completions), labels
 
 
-def _allowed_next(
-    completions: tuple[tuple[int, ...], ...],
-    fallback: int,
-    tail: tuple[int, ...],
-) -> list[int]:
-    """Return legal continuations of `tail`, falling back to `fallback`."""
-    out = {
-        completion[len(tail)]
-        for completion in completions
-        if len(completion) > len(tail) and completion[: len(tail)] == tail
-    }
-    return sorted(out) if out else [fallback]
-
-
 def _encoder_trainer(spec: _Spec) -> Trainer:
     """Build the classification Trainer."""
     logger.debug("using regular trainer")
@@ -223,6 +155,7 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         load_best_model_at_end=spec.load_best,
         metric_for_best_model="f1",
         learning_rate=spec.learning_rate,
+        warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
         num_train_epochs=spec.epochs,
         per_device_train_batch_size=spec.batch_size,
@@ -260,6 +193,7 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         load_best_model_at_end=spec.load_best,
         metric_for_best_model="f1",
         learning_rate=spec.learning_rate,
+        warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
         num_train_epochs=spec.epochs,
         per_device_train_batch_size=spec.batch_size,
@@ -296,23 +230,23 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
 
     Parameters
     ----------
-    model:
+    model : Module
         Encoder-decoder model to train or evaluate.
-    args:
+    args : Seq2SeqTrainingArguments
         Seq2seq configuration.
-    data_collator:
+    data_collator : DataCollator
         Data collator batching tokenized examples.
-    train_dataset:
+    train_dataset : HFDataset | None
         Training split, if present.
-    eval_dataset:
+    eval_dataset : Dataset
         Evaluation split.
-    compute_metrics:
+    compute_metrics : Callable
         Metric function scoring evaluation predictions.
-    callbacks:
+    callbacks : list[TrainerCallback]
         Extra Trainer callbacks.
-    label_completions:
+    label_completions : tuple[tuple[int, ...], ...]
         Distinct legal completion token sequences observed in the data.
-    pad_token_id:
+    pad_token_id : int
         Token generated once no completion continues the prefix.
 
     """
@@ -390,6 +324,7 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         load_best_model_at_end=spec.load_best,
         metric_for_best_model="f1",
         learning_rate=spec.learning_rate,
+        warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
         num_train_epochs=spec.epochs,
         per_device_train_batch_size=spec.batch_size,
@@ -410,9 +345,167 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,
         label_completions=spec.label_completions,
-        # Tokenizer loading guarantees a padding token.
         pad_token_id=cast("int", spec.tokenizer.pad_token_id),
     )
+
+
+def _build_spec(
+    model: Module,
+    *,
+    tokenizer: PreTrainedTokenizerFast,
+    data: DatasetDict,
+    arch: Architecture,
+    collate_fn: DataCollator,
+    metrics_fn: ComputeMetricsFn,
+    output_dir: Path | str,
+    do_eval: bool,
+    epochs: int = 0,
+    learning_rate: float = 5e-5,
+    batch_size: int = 8,
+    warmup_ratio: float = 0.06,
+    run_name: str = "default",
+    report_to: str = "none",
+    checkpoints: bool = False,
+    callbacks: tuple[TrainerCallback, ...] = (),
+) -> _Spec:
+    """Resolve datasets, hyperparameters, and derived loop settings."""
+    have_cuda = torch.cuda.is_available()
+    have_mps = torch.mps.is_available()
+    have_accel = have_cuda or have_mps
+    do_checkpoints = do_eval and checkpoints
+
+    return _Spec(
+        model=model,
+        tokenizer=tokenizer,
+        train_dataset=data.get("train"),
+        eval_dataset=cast("Dataset", data.get("validation")),
+        collate_fn=collate_fn,
+        metrics_fn=cast("Callable", metrics_fn),
+        output_dir=str(output_dir),
+        do_eval=do_eval,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        warmup_ratio=warmup_ratio,
+        run_name=run_name,
+        report_to=report_to,
+        checkpoints=checkpoints,
+        callbacks=list(callbacks),
+        optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
+        eval_strategy="epoch" if do_eval else "no",
+        save_strategy="epoch" if checkpoints else "no",
+        load_best=do_checkpoints,
+        have_accel=have_accel,
+        label_completions=_label_completions(data, eos_token_id=tokenizer.eos_token_id)
+        if arch != "encoder"
+        else (),
+    )
+
+
+def get_trainer(
+    model: Module,
+    *,
+    tokenizer: PreTrainedTokenizerFast,
+    data: DatasetDict,
+    arch: Architecture,
+    collate_fn: DataCollator,
+    metrics_fn: ComputeMetricsFn,
+    output_dir: Path | str,
+    do_eval: bool,
+    patience: int = 0,
+    tolerance: float = 0.01,
+    epochs: int = 0,
+    learning_rate: float = 5e-5,
+    batch_size: int = 8,
+    warmup_ratio: float = 0.06,
+    run_name: str = "default",
+    report_to: str = "none",
+    checkpoints: bool = False,
+    callbacks: tuple[TrainerCallback, ...] = (),
+) -> Trainer:
+    """
+    Build a Trainer for the architecture, adding early stopping if requested.
+
+    Parameters
+    ----------
+    model : Module
+        Model to train or evaluate.
+    tokenizer : PreTrainedTokenizerFast
+        Tokenizer passed as the SFT processing class for decoders.
+    data : DatasetDict
+        Tokenized dataset splits (`train`, `validation`).
+    arch : Architecture
+        Model architecture, selecting regular, seq2seq, or SFT Trainer.
+    collate_fn : DataCollator
+        Data collator batching tokenized examples.
+    metrics_fn : ComputeMetricsFn
+        Metric function scoring evaluation predictions.
+    output_dir : Path | str
+        Directory for checkpoints and trainer state.
+    do_eval : bool
+        Run evaluation during training.
+    patience : int
+        Eval epochs without improvement before stopping, 0 disables.
+    tolerance : float
+        Minimum eval improvement resetting the patience counter.
+    epochs : int
+        Number of training epochs.
+    learning_rate : float
+        Optimizer learning rate.
+    batch_size : int
+        Training and evaluation batch size.
+    warmup_ratio : float
+        Fraction of training steps for learning rate warmup, forwarded as
+        `warmup_steps` (transformers 5 accepts ratios there).
+    run_name : str
+        Display name reported to trackers.
+    report_to : str
+        Tracker integrations enabled on the Trainer.
+    checkpoints : bool
+        Save epoch checkpoints (also required to restore the best model).
+    callbacks : tuple[TrainerCallback, ...]
+        Extra Trainer callbacks.
+
+    Returns
+    -------
+    Trainer
+        Configured Trainer for the architecture.
+
+    """
+    spec = _build_spec(
+        model,
+        tokenizer=tokenizer,
+        data=data,
+        arch=arch,
+        collate_fn=collate_fn,
+        metrics_fn=metrics_fn,
+        output_dir=output_dir,
+        do_eval=do_eval,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        warmup_ratio=warmup_ratio,
+        run_name=run_name,
+        report_to=report_to,
+        checkpoints=checkpoints,
+        callbacks=callbacks,
+    )
+
+    if arch == "encoder-decoder":
+        trainer = _seq2seq_trainer(spec)
+    elif arch == "decoder":
+        trainer = _decoder_trainer(spec)
+    else:
+        trainer = _encoder_trainer(spec)
+
+    _maybe_add_early_stopping(
+        trainer,
+        do_eval=do_eval,
+        patience=patience,
+        tolerance=tolerance,
+    )
+
+    return trainer
 
 
 def _maybe_add_early_stopping(
@@ -440,115 +533,71 @@ def _maybe_add_early_stopping(
         )
 
 
-def get_trainer(
-    model: Module,
-    *,
-    tokenizer: PreTrainedTokenizerFast,
+def _allowed_next(
+    completions: tuple[tuple[int, ...], ...],
+    fallback: int,
+    tail: tuple[int, ...],
+) -> list[int]:
+    """Return legal continuations of `tail`, falling back to `fallback`."""
+    out = {
+        completion[len(tail)]
+        for completion in completions
+        if len(completion) > len(tail) and completion[: len(tail)] == tail
+    }
+
+    return sorted(out) if out else [fallback]
+
+
+def _label_completions(
     data: DatasetDict,
-    arch: Architecture,
-    collate_fn: DataCollator,
-    metrics_fn: ComputeMetricsFn,
-    output_dir: Path | str,
-    do_eval: bool,
-    patience: int = 0,
-    tolerance: float = 0.01,
-    epochs: int = 0,
-    learning_rate: float = 5e-5,
-    batch_size: int = 8,
-    run_name: str = "default",
-    report_to: str = "none",
-    checkpoints: bool = False,
-    callbacks: tuple[TrainerCallback, ...] = (),
-) -> Trainer:
-    """
-    Build a Trainer for the architecture, adding early stopping if requested.
+    *,
+    eos_token_id: int | None = None,
+) -> tuple[tuple[int, ...], ...]:
+    """Collect distinct completion token sequences from masked label columns."""
+    seen: list[tuple[int, ...]] = []
+    for split in ("train", "validation", "test"):
+        if split not in data:
+            continue
 
-    Parameters
-    ----------
-    model:
-        Model to train or evaluate.
-    tokenizer:
-        Tokenizer passed as the SFT processing class for decoders.
-    data:
-        Tokenized dataset splits (`train`, `validation`).
-    arch:
-        Model architecture, selecting regular, seq2seq, or SFT Trainer.
-    collate_fn:
-        Data collator batching tokenized examples.
-    metrics_fn:
-        Metric function scoring evaluation predictions.
-    output_dir:
-        Directory for checkpoints and trainer state.
-    do_eval:
-        Run evaluation during training.
-    patience:
-        Eval epochs without improvement before stopping, 0 disables.
-    tolerance:
-        Minimum eval improvement resetting the patience counter.
-    epochs:
-        Number of training epochs.
-    learning_rate:
-        Optimizer learning rate.
-    batch_size:
-        Training and evaluation batch size.
-    run_name:
-        Display name reported to trackers.
-    report_to:
-        Tracker integrations enabled on the Trainer.
-    checkpoints:
-        Save epoch checkpoints (also required to restore the best model).
-    callbacks:
-        Extra Trainer callbacks.
+        rows: list[list[int]] = data[split]["labels"]
+        for row in rows:
+            completion = tuple(token for token in row if token != SENTINEL_TOKEN)
+            if not completion or completion == (eos_token_id,):
+                continue
 
-    Returns
-    -------
-    Trainer
-        Configured Trainer for the architecture.
+            if completion not in seen:
+                seen.append(completion)
 
-    """
-    have_cuda = torch.cuda.is_available()
-    have_mps = torch.mps.is_available()
-    have_accel = have_cuda or have_mps
-    do_checkpoints = do_eval and checkpoints
+    return tuple(seen)
 
-    spec = _Spec(
-        model=model,
-        tokenizer=tokenizer,
-        train_dataset=data.get("train"),
-        eval_dataset=cast("Dataset", data.get("validation")),
-        collate_fn=collate_fn,
-        metrics_fn=cast("Callable", metrics_fn),
-        output_dir=str(output_dir),
-        do_eval=do_eval,
-        epochs=epochs,
-        learning_rate=learning_rate,
-        batch_size=batch_size,
-        run_name=run_name,
-        report_to=report_to,
-        checkpoints=checkpoints,
-        callbacks=list(callbacks),
-        optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
-        eval_strategy="epoch" if do_eval else "no",
-        save_strategy="epoch" if checkpoints else "no",
-        load_best=do_checkpoints,
-        have_accel=have_accel,
-        label_completions=_label_completions(data, eos_token_id=tokenizer.eos_token_id)
-        if arch != "encoder"
-        else (),
-    )
 
-    if arch == "encoder-decoder":
-        trainer = _seq2seq_trainer(spec)
-    elif arch == "decoder":
-        trainer = _decoder_trainer(spec)
-    else:
-        trainer = _encoder_trainer(spec)
+def _constrain_eval_logits(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    completions: tuple[tuple[int, ...], ...],
+) -> torch.Tensor:
+    """Force each row's argmax to its most likely legal completion."""
+    if not completions:
+        return logits
 
-    _maybe_add_early_stopping(
-        trainer,
-        do_eval=do_eval,
-        patience=patience,
-        tolerance=tolerance,
-    )
+    masked = logits.clone()
+    for b in range(masked.shape[0]):
+        pos = torch.where(labels[b] != SENTINEL_TOKEN)[0]
+        if len(pos) == 0:
+            continue
 
-    return trainer
+        force_at = pos - 1
+        if bool((force_at < 0).any()):
+            continue
+
+        cands = [c for c in completions if len(c) == len(pos)]
+        cand_ids = torch.tensor(cands, dtype=torch.long, device=masked.device)
+
+        scores = masked[b, force_at].gather(1, cand_ids).sum(1)
+        winner = cands[int(torch.argmax(scores))]
+        forced = torch.tensor(winner, dtype=torch.long, device=masked.device)
+
+        masked[b, force_at, :] = float("-inf")
+        masked[b, force_at, forced] = 0.0
+
+    return masked

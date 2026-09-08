@@ -99,6 +99,11 @@ LearningRateOption = Annotated[
     Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
 ]
 
+WarmupRatioOption = Annotated[
+    float,
+    Option("--warmup-ratio", min=0, help="Fraction of steps for lr warmup"),
+]
+
 EpochsOption = Annotated[
     int,
     Option("--epochs", "-e", min=0, help="Number of training epochs"),
@@ -202,6 +207,7 @@ def fine_tune(
     epochs: EpochsOption = 5,
     batch_size: BatchSizeOption = 8,
     learning_rate: LearningRateOption = 5e-5,
+    warmup_ratio: WarmupRatioOption = 0.06,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
@@ -231,6 +237,7 @@ def fine_tune(
         epochs=epochs,
         batch_size=batch_size,
         learning_rate=learning_rate,
+        warmup_ratio=warmup_ratio,
         mlflow_experiment=mlflow_experiment,
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
@@ -255,6 +262,7 @@ def prompt_tune(
     epochs: EpochsOption = 5,
     batch_size: BatchSizeOption = 8,
     learning_rate: LearningRateOption = 1e-3,
+    warmup_ratio: WarmupRatioOption = 0.06,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
@@ -284,6 +292,7 @@ def prompt_tune(
         epochs=epochs,
         batch_size=batch_size,
         learning_rate=learning_rate,
+        warmup_ratio=warmup_ratio,
         mlflow_experiment=mlflow_experiment,
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,

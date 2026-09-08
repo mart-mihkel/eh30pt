@@ -48,9 +48,9 @@ class Oblique(DatasetProtocol):
 
     Parameters
     ----------
-    tokenizer:
+    tokenizer : PreTrainedTokenizerFast
         Tokenizer used for prompting and tokenization.
-    arch:
+    arch : Architecture
         Model architecture, selecting the prompt format.
 
     """
@@ -162,11 +162,11 @@ class Oblique(DatasetProtocol):
 
         Parameters
         ----------
-        n_shot:
+        n_shot : int
             Number of few-shot examples prepended to each prompt.
-        n_virtual:
+        n_virtual : int
             Number of virtual tokens reserved in the truncation budget.
-        split:
+        split : Split | None
             Ignored, the full dataset is always loaded.
 
         """
