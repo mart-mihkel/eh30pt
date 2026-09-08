@@ -1,11 +1,13 @@
 """Per-architecture Trainer construction."""
 
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 import torch
 from transformers import (
     DataCollator,
     EarlyStoppingCallback,
+    LogitsProcessorList,
+    PrefixConstrainedLogitsProcessor,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
     TrainerCallback,
@@ -14,6 +16,7 @@ from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 from trl import SFTConfig, SFTTrainer
 
+from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
@@ -53,6 +56,154 @@ class _Spec(NamedTuple):
     save_strategy: str
     load_best: bool
     have_accel: bool
+    label_completions: tuple[tuple[int, ...], ...]
+
+
+def _label_completions(
+    data: DatasetDict,
+    *,
+    eos_token_id: int | None = None,
+) -> tuple[tuple[int, ...], ...]:
+    """Collect distinct completion token sequences from masked label columns."""
+    seen: list[tuple[int, ...]] = []
+    for split in ("train", "validation", "test"):
+        if split not in data:
+            continue
+
+        rows: list[list[int]] = data[split]["labels"]
+        for row in rows:
+            completion = tuple(token for token in row if token != SENTINEL_TOKEN)
+            if not completion or completion == (eos_token_id,):
+                continue
+
+            if completion not in seen:
+                seen.append(completion)
+
+    return tuple(seen)
+
+
+def _constrain_eval_logits(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    completions: tuple[tuple[int, ...], ...],
+) -> torch.Tensor:
+    """Force each row's argmax to its most likely legal completion."""
+    if not completions:
+        return logits
+
+    masked = logits.clone()
+    for b in range(masked.shape[0]):
+        pos = torch.where(labels[b] != SENTINEL_TOKEN)[0]
+        if len(pos) == 0:
+            continue
+
+        force_at = pos - 1
+        if bool((force_at < 0).any()):
+            continue
+
+        cands = [c for c in completions if len(c) == len(pos)]
+        cand_ids = torch.tensor(cands, dtype=torch.long, device=masked.device)
+
+        scores = masked[b, force_at].gather(1, cand_ids).sum(1)
+        winner = cands[int(torch.argmax(scores))]
+        forced = torch.tensor(winner, dtype=torch.long, device=masked.device)
+
+        masked[b, force_at, :] = float("-inf")
+        masked[b, force_at, forced] = 0.0
+
+    return masked
+
+
+class ConstrainedSFTTrainer(SFTTrainer):
+    """
+    SFTTrainer constraining eval predictions to legal label token sequences.
+
+    Each row's argmax is forced to its most likely legal completion, scored
+    by teacher-forced likelihood over same-length candidates.
+
+    Parameters
+    ----------
+    model:
+        Causal model to train or evaluate.
+    args:
+        SFT configuration.
+    data_collator:
+        Data collator batching tokenized examples.
+    train_dataset:
+        Training split, if present.
+    eval_dataset:
+        Evaluation split, if present.
+    processing_class:
+        Tokenizer used for padding.
+    compute_metrics:
+        Metric function scoring evaluation predictions.
+    callbacks:
+        Extra Trainer callbacks.
+    label_completions:
+        Distinct legal completion token sequences observed in the data.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        model: PreTrainedModel | PeftModel,
+        args: SFTConfig,
+        data_collator: DataCollator,
+        train_dataset: HFDataset | None,
+        eval_dataset: HFDataset | None,
+        processing_class: PreTrainedTokenizerFast,
+        compute_metrics: Callable,
+        callbacks: list[TrainerCallback],
+        label_completions: tuple[tuple[int, ...], ...],
+    ) -> None:
+        """Store the legal completions and initialize the SFT trainer."""
+        super().__init__(
+            model=model,
+            args=args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            processing_class=processing_class,
+            compute_metrics=compute_metrics,
+            callbacks=callbacks,
+        )
+
+        self._completions = label_completions
+
+    def prediction_step(
+        self,
+        model: Module,
+        inputs: dict[str, torch.Tensor | Any],
+        prediction_loss_only: bool,  # noqa: FBT001 - mirrors Trainer.prediction_step
+        ignore_keys: list[str] | None = None,
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
+        """Constrain eval logits to legal label continuations."""
+        loss, logits, labels = super().prediction_step(
+            model,
+            inputs,
+            prediction_loss_only,
+            ignore_keys=ignore_keys,
+        )
+
+        if prediction_loss_only or logits is None or labels is None:
+            return loss, logits, labels
+
+        return loss, _constrain_eval_logits(logits, labels, self._completions), labels
+
+
+def _allowed_next(
+    completions: tuple[tuple[int, ...], ...],
+    fallback: int,
+    tail: tuple[int, ...],
+) -> list[int]:
+    """Return legal continuations of `tail`, falling back to `fallback`."""
+    out = {
+        completion[len(tail)]
+        for completion in completions
+        if len(completion) > len(tail) and completion[: len(tail)] == tail
+    }
+    return sorted(out) if out else [fallback]
 
 
 def _encoder_trainer(spec: _Spec) -> Trainer:
@@ -93,8 +244,8 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
 
 
 def _decoder_trainer(spec: _Spec) -> Trainer:
-    """Build the SFT Trainer for causal models."""
-    logger.debug("using SFT trainer")
+    """Build the label-constrained SFT Trainer for causal models."""
+    logger.debug("using constrained SFT trainer")
     args = SFTConfig(
         run_name=spec.run_name,
         report_to=spec.report_to,
@@ -116,16 +267,12 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         use_cpu=not spec.have_accel,
         bf16_full_eval=spec.have_accel,
         bf16=spec.have_accel,
-        # Datasets are already tokenized with -100-masked labels,
-        # skip TRL's text preparation and train on labels as is.
         dataset_kwargs={"skip_prepare_dataset": True},
         packing=False,
-        # Chunked loss skips full logits during eval,
-        # leaving logit-based metrics with empty predictions.
         loss_type="nll",
     )
 
-    trainer = SFTTrainer(
+    trainer = ConstrainedSFTTrainer(
         model=cast("PreTrainedModel | PeftModel", spec.model),
         args=args,
         data_collator=spec.collate_fn,
@@ -134,14 +281,101 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         processing_class=spec.tokenizer,
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,
+        label_completions=spec.label_completions,
     )
 
     return cast("Trainer", trainer)
 
 
+class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
+    """
+    Seq2SeqTrainer constraining generation to legal label token sequences.
+
+    Generation is masked through `PrefixConstrainedLogitsProcessor` to tokens
+    continuing the decoded prefix toward a legal label.
+
+    Parameters
+    ----------
+    model:
+        Encoder-decoder model to train or evaluate.
+    args:
+        Seq2seq configuration.
+    data_collator:
+        Data collator batching tokenized examples.
+    train_dataset:
+        Training split, if present.
+    eval_dataset:
+        Evaluation split.
+    compute_metrics:
+        Metric function scoring evaluation predictions.
+    callbacks:
+        Extra Trainer callbacks.
+    label_completions:
+        Distinct legal completion token sequences observed in the data.
+    pad_token_id:
+        Token generated once no completion continues the prefix.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        model: Module,
+        args: Seq2SeqTrainingArguments,
+        data_collator: DataCollator,
+        train_dataset: HFDataset | None,
+        eval_dataset: Dataset,
+        compute_metrics: Callable,
+        callbacks: list[TrainerCallback],
+        label_completions: tuple[tuple[int, ...], ...],
+        pad_token_id: int,
+    ) -> None:
+        """Build the prefix processor and initialize the seq2seq trainer."""
+        super().__init__(
+            model=model,
+            args=args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            compute_metrics=compute_metrics,
+            callbacks=callbacks,
+        )
+
+        def allowed(_batch_id: int, sent: torch.Tensor) -> list[int]:
+            """Return legal continuations past the decoder start token."""
+            tail: tuple[int, ...] = tuple(sent[1:].tolist())
+            return _allowed_next(label_completions, pad_token_id, tail)
+
+        self._gen_kwargs: dict[str, Any] = {}
+        self._logits_processor = LogitsProcessorList(
+            [PrefixConstrainedLogitsProcessor(allowed, num_beams=1)]
+        )
+
+    def prediction_step(
+        self,
+        model: Module,
+        inputs: dict[str, torch.Tensor | Any],
+        prediction_loss_only: bool,  # noqa: FBT001 - mirrors base signature
+        ignore_keys: list[str] | None = None,
+        **gen_kwargs: Any,  # noqa: ANN401 - mirrors base signature
+    ) -> tuple[float | None, torch.Tensor | None, torch.Tensor | None]:
+        """Generate with the label-constraining logits processor injected."""
+        inputs = {k: v for k, v in inputs.items() if k != "truncated"}
+        merged = {**self._gen_kwargs, **gen_kwargs}
+        merged.setdefault("logits_processor", self._logits_processor)
+
+        return super().prediction_step(
+            model,
+            inputs,
+            prediction_loss_only,
+            ignore_keys=ignore_keys,
+            **merged,
+        )
+
+
 def _seq2seq_trainer(spec: _Spec) -> Trainer:
-    """Build the seq2seq Trainer for encoder-decoder models."""
-    logger.debug("using seq2seq trainer")
+    """Build the label-constrained seq2seq Trainer for encoder-decoder models."""
+    logger.debug("using constrained seq2seq trainer")
     args = Seq2SeqTrainingArguments(
         run_name=spec.run_name,
         report_to=spec.report_to,
@@ -167,14 +401,17 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         generation_max_length=8,
     )
 
-    return Seq2SeqTrainer(
-        args=args,
+    return ConstrainedSeq2SeqTrainer(
         model=spec.model,
+        args=args,
         data_collator=spec.collate_fn,
-        eval_dataset=spec.eval_dataset,
         train_dataset=spec.train_dataset,
+        eval_dataset=spec.eval_dataset,
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,
+        label_completions=spec.label_completions,
+        # Tokenizer loading guarantees a padding token.
+        pad_token_id=cast("int", spec.tokenizer.pad_token_id),
     )
 
 
@@ -295,6 +532,9 @@ def get_trainer(
         save_strategy="epoch" if checkpoints else "no",
         load_best=do_checkpoints,
         have_accel=have_accel,
+        label_completions=_label_completions(data, eos_token_id=tokenizer.eos_token_id)
+        if arch != "encoder"
+        else (),
     )
 
     if arch == "encoder-decoder":
