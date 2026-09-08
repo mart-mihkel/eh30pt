@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Final
 
 import pytest
+import torch
 from mlflow.tracking import MlflowClient
 from typer.testing import CliRunner
 
@@ -10,33 +11,13 @@ from eh30pt.cli import app
 from test.conftest import models
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
     from pathlib import Path
 
     from mlflow.entities import Run
     from typer.testing import Result
 
-pytestmark: Final = pytest.mark.filterwarnings(
-    "ignore:'pin_memory' argument is set as true.*:UserWarning"
-)
 
-
-# TODO: resolve these problems  # noqa: FIX002, TD002, TD003
-_xfail_reasons: Final[Mapping[str, str]] = {
-    "gpt2": "oblique decoder prompts tokenize past tiny-random-gpt2's 512 positions",
-    "t5": "seq2seq generate rejects the 'truncated' batch column",
-}
-
-_model_params: Final = [
-    pytest.param(
-        name,
-        id=name,
-        marks=pytest.mark.xfail(reason=_xfail_reasons[name], strict=True)
-        if name in _xfail_reasons
-        else (),
-    )
-    for name in sorted(models)
-]
+_model_params: Final = [pytest.param(name, id=name) for name in sorted(models)]
 
 
 def _tracking_uri(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
@@ -182,6 +163,9 @@ def test_prompt_tune_oblique(
     monkeypatch: pytest.MonkeyPatch,
     model_name: str,
 ) -> None:
+    if model_name == "t5" and torch.mps.is_available():
+        pytest.xfail(reason="mps sdpa does not support dropout in training")
+
     uri = _tracking_uri(tmp_path, monkeypatch)
     experiment: Final = f"e2e-prompt-tune-{model_name}"
     result = _invoke(

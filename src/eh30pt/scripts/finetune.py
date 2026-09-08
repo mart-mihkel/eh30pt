@@ -10,7 +10,7 @@ from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
 from eh30pt.modeling.loader import load_model
 from eh30pt.modeling.metrics import MetricsAccumulator
-from eh30pt.modeling.tokenizer import load_tokenizer
+from eh30pt.modeling.tokenizer import cap_tokenizer_length, load_tokenizer
 from eh30pt.scripts.common import log_prompt_version, train_and_evaluate
 from eh30pt.tracking import build_run_name, open_run
 
@@ -46,6 +46,8 @@ def main(
     arch = infer_architecture(config, arch)
 
     tokenizer = load_tokenizer(model_path)
+    cap_tokenizer_length(tokenizer, config)
+
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
     ds = load_data(
