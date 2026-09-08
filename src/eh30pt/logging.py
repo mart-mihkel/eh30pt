@@ -20,7 +20,7 @@ logger = logging.getLogger("eh30pt")
 
 def format_counts(counts: Counter[int] | Counter[str]) -> str:
     """Format label counts as a compact `key=value` string for debug logs."""
-    return " ".join(f"{key}={value}" for key, value in sorted(counts.items()))
+    return " ".join(f"'{key}'={value}" for key, value in sorted(counts.items()))
 
 
 class _TqdmSafeStream:

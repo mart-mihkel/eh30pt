@@ -29,7 +29,8 @@ class _Inputs(NamedTuple):
     model: PreTrainedModel
     batch: _Batch
     n_labels: int
-    vocab_size: int
+    tokenizer_vocab_size: int
+    model_vocab_size: int
 
 
 def _model_device(model: PreTrainedModel) -> torch.device:
@@ -39,6 +40,18 @@ def _model_device(model: PreTrainedModel) -> torch.device:
 def _to_device(value: object, device: torch.device) -> torch.Tensor:
     assert isinstance(value, torch.Tensor)
     return value.to(device)
+
+
+def _model_vocab_size(model: PreTrainedModel) -> int:
+    output = model.get_output_embeddings()
+    if output is not None:
+        return int(output.weight.shape[0])
+
+    config = model.config
+    if "text_config" in config:
+        config = config.text_config
+
+    return int(config.vocab_size)
 
 
 def _collate(model_setup: ModelSetup) -> _Inputs:
@@ -60,7 +73,8 @@ def _collate(model_setup: ModelSetup) -> _Inputs:
         model=model_setup.model,
         batch=batch,
         n_labels=len(model_setup.dataset.id2label),
-        vocab_size=len(model_setup.tokenizer),
+        tokenizer_vocab_size=len(model_setup.tokenizer),
+        model_vocab_size=_model_vocab_size(model_setup.model),
     )
 
 
@@ -83,7 +97,7 @@ def test_collated_batch(model_setup: ModelSetup) -> None:
     assert labels.device == device
 
     assert set(attention_mask.unique().tolist()) <= {0, 1}
-    assert bool(((input_ids >= 0) & (input_ids < inputs.vocab_size)).all())
+    assert bool(((input_ids >= 0) & (input_ids < inputs.tokenizer_vocab_size)).all())
 
     if inputs.arch == "encoder":
         assert tuple(labels.shape) == (_batch_size,)
@@ -94,7 +108,9 @@ def test_collated_batch(model_setup: ModelSetup) -> None:
 
         valid = labels != SENTINEL_TOKEN
         assert bool(valid.any())
-        assert bool(((labels[valid] >= 0) & (labels[valid] < inputs.vocab_size)).all())
+        assert bool(
+            ((labels[valid] >= 0) & (labels[valid] < inputs.tokenizer_vocab_size)).all()
+        )
 
 
 def test_forward(model_setup: ModelSetup) -> None:
@@ -119,10 +135,10 @@ def test_forward(model_setup: ModelSetup) -> None:
     if inputs.arch == "encoder":
         assert tuple(logits.shape) == (batch_size, inputs.n_labels)
     elif inputs.arch == "decoder":
-        assert tuple(logits.shape) == (batch_size, seq_len, inputs.vocab_size)
+        assert tuple(logits.shape) == (batch_size, seq_len, inputs.model_vocab_size)
     elif inputs.arch == "encoder-decoder":
         assert tuple(logits.shape) == (
             batch_size,
             label_ids.shape[1],
-            inputs.vocab_size,
+            inputs.model_vocab_size,
         )

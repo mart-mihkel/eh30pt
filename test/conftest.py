@@ -20,8 +20,12 @@ ds.disable_caching()
 
 models: Final[Mapping[str, str]] = {
     "bert": "hf-internal-testing/tiny-random-bert",
+    "modernbert": "hf-internal-testing/tiny-random-ModernBertForSequenceClassification",
     "gpt2": "hf-internal-testing/tiny-random-gpt2",
     "t5": "hf-internal-testing/tiny-random-t5",
+    "llama": "hf-internal-testing/tiny-random-LlamaForCausalLM",
+    "qwen": "hf-internal-testing/tiny-random-Qwen3MoeForCausalLM",
+    "gemma": "hf-internal-testing/tiny-random-Gemma3ForCausalLM",
 }
 
 datasets: tuple[DatasetName, ...] = ("multinerd", "oblique")
