@@ -25,14 +25,6 @@ rsync commit='false' host=env('REMOTE'):
         --exclude .git \
         . {{ host }}
 
-[doc('package tarball')]
-[group('build')]
-pack:
-    mkdir -p dist
-    tar -czvf dist/eh30pt.tar.gz \
-        --exclude __pycache__ \
-        pyproject.toml uv.lock vendor src
-
 [doc('build wheel')]
 [group('build')]
 wheel:

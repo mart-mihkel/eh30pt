@@ -24,6 +24,7 @@ justfile              # project commands
 pyproject.toml        # project metadata, ruff and pytest config
 prek.toml             # ruff-format, ruff-check, ty-check hooks
 compose.yml           # postgres service for local development
+sql/                  # initdb seed scripts for the dev database
 ```
 
 ## Commands
