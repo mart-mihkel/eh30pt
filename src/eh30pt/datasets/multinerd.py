@@ -1,7 +1,7 @@
 """MultiNERD dataset loading, prompting, and tokenization."""
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple, TypedDict, cast
 
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
@@ -63,6 +63,11 @@ class _TokBatch(TypedDict):
     attention_mask: list[list[int]]
     labels: list[int | list[int]]
     truncated: list[bool]
+
+
+class _Example(NamedTuple):
+    user: str
+    assistant: str
 
 
 class Multinerd(DatasetProtocol):
@@ -221,10 +226,7 @@ class Multinerd(DatasetProtocol):
 
         """
         self._raw_data = self._load_raw(split=split, filter_en=filter_en)
-        self._data = self._tokenize(
-            self._sample_examples(n_shot),
-            n_virtual=n_virtual,
-        )
+        self._data = self._tokenize(n_shot, n_virtual)
 
     def _load_raw(self, split: Split | None, *, filter_en: bool) -> DatasetDict:
         logger.debug("loading raw multinerd dataset")
@@ -241,13 +243,10 @@ class Multinerd(DatasetProtocol):
 
         return data
 
-    def _tokenize(
-        self,
-        examples: list[str],
-        n_virtual: int = 0,
-        num_proc: int = 4,
-    ) -> DatasetDict:
+    def _tokenize(self, n_shot: int, n_virtual: int, num_proc: int = 4) -> DatasetDict:
         logger.debug("tokenizing multinerd")
+
+        examples = self._sample_examples(n_shot)
         data = self.raw_data.map(
             self._tokenize_batch,
             batched=True,
@@ -261,83 +260,111 @@ class Multinerd(DatasetProtocol):
 
         return data
 
-    def _build_prompt(self, sentence: str, entity: str, examples: list[str]) -> str:
+    def _build_user_prompt(self, sentence: str, entity: str) -> str:
         if self._arch == "encoder":
-            prompt = f"{sentence}{self._tokenizer.sep_token}{entity}"
-        else:
-            prompt = dedent(f"""
-                Sentence: {sentence}
-                Entity: {entity}
-                Tag:
-            """).strip()
+            return f"{sentence}{self._tokenizer.sep_token}{entity}"
 
-        if examples:
-            prompt_examples = "\n".join(examples)
-            prompt = f"{prompt_examples}\n{prompt}"
+        return dedent(f"""
+            Sentence: {sentence}
+            Entity: {entity}
+            Tag:
+        """).strip()
 
-        return prompt
+    def _format_examples_legacy(self, examples: list[_Example]) -> str:
+        if not examples:
+            return ""
+
+        return "\n".join(
+            f"{example.user} {example.assistant}\n" for example in examples
+        )
+
+    def _format_examples_template(
+        self,
+        examples: list[_Example],
+    ) -> list[dict[str, str]]:
+        if self._tokenizer.chat_template is None:
+            msg = "attempt to format with no chat template, use _format_examples_legacy"
+            raise RuntimeError(msg)
+
+        conversation: list[dict[str, str]] = []
+        for example in examples:
+            conversation.append({"role": "user", "content": example.user})
+            conversation.append({"role": "assistant", "content": example.assistant})
+
+        return conversation
 
     def _encode_prompt(
         self,
-        sys: str,
-        prompt: str,
+        system_prompt: str,
+        user_prompt: str,
         max_length: int | None,
+        examples: list[_Example],
     ) -> BatchEncoding[list[int]]:
         if self._tokenizer.chat_template is None:
-            prompt_enc = self._tokenizer(
-                f"{sys}\n{prompt}",
+            examples_prompt = self._format_examples_legacy(examples)
+            user_prompt = f"{examples_prompt}\n{user_prompt}"
+            encoded_prompt = self._tokenizer(
+                f"{system_prompt}\n{user_prompt}",
                 truncation=True,
                 max_length=max_length,
             )
         else:
-            conv = [
-                {"role": "system", "content": sys},
-                {"role": "user", "content": prompt},
+            conversation: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt}
             ]
 
-            prompt_enc = self._tokenizer.apply_chat_template(
-                conv,
+            conversation.extend(self._format_examples_template(examples))
+            conversation.append({"role": "user", "content": user_prompt})
+
+            encoded_prompt = self._tokenizer.apply_chat_template(
+                conversation,
                 truncation=True,
-                max_length=max_length,
                 return_dict=True,
+                max_length=max_length,
                 add_generation_prompt=self._arch != "encoder",
             )
 
-        return cast("BatchEncoding[list[int]]", prompt_enc)
+        return cast("BatchEncoding[list[int]]", encoded_prompt)
 
     def _encode_answer(
         self,
-        sys: str,
-        prompt: str,
+        system_prompt: str,
+        user_prompt: str,
         tag_id: int,
         max_length: int | None,
+        examples: list[_Example],
     ) -> BatchEncoding[list[int]]:
+        """Encode the prompt together with the gold label."""
         if self._tokenizer.chat_template is None:
-            answer_enc = self._tokenizer(
-                f"{sys}\n{prompt} {self.id2label[tag_id]}",
+            examples_prompt = self._format_examples_legacy(examples)
+            user_prompt = f"{examples_prompt}\n{user_prompt}"
+            encoded_answer = self._tokenizer(
+                f"{system_prompt}\n{user_prompt} {self.id2label[tag_id]}",
                 truncation=True,
                 max_length=max_length,
             )
         else:
-            conv = [
-                {"role": "system", "content": sys},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": self.id2label[tag_id]},
+            conversation: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt}
             ]
 
-            answer_enc = self._tokenizer.apply_chat_template(
-                conv,
+            conversation.extend(self._format_examples_template(examples))
+            conversation.append({"role": "user", "content": user_prompt})
+            conversation.append({"role": "assistant", "content": self.id2label[tag_id]})
+
+            encoded_answer = self._tokenizer.apply_chat_template(
+                conversation,
                 truncation=True,
                 max_length=max_length,
                 return_dict=True,
             )
 
-        return cast("BatchEncoding[list[int]]", answer_enc)
+        return cast("BatchEncoding[list[int]]", encoded_answer)
 
     def _tokenize_batch(
         self,
         batch: _Batch,
-        examples: list[str],
+        examples: list[_Example],
         n_virtual: int = 0,
     ) -> _TokBatch:
         all_ids: list[list[int]] = []
@@ -346,7 +373,7 @@ class Multinerd(DatasetProtocol):
         all_truncated: list[bool] = []
         max_length = get_max_length(self._tokenizer, n_virtual)
 
-        sys = self.system_prompt
+        system_prompt = self.system_prompt
         token_tags = zip(batch["tokens"], batch["ner_tags"], strict=True)
         for tokens, raw_tag_ids in token_tags:
             sentence = " ".join(tokens)
@@ -356,40 +383,55 @@ class Multinerd(DatasetProtocol):
                 if tag_id == -1:
                     continue
 
-                prompt = self._build_prompt(sentence, entity, examples)
-                prompt_enc = self._encode_prompt(sys, prompt, max_length)
-                prompt_len = len(prompt_enc["input_ids"])
-                truncated = max_length is not None and prompt_len >= max_length
+                user_prompt = self._build_user_prompt(sentence, entity)
+                encoded_prompt = self._encode_prompt(
+                    system_prompt,
+                    user_prompt,
+                    max_length,
+                    examples,
+                )
+
+                prompt_len = len(encoded_prompt["input_ids"])
+                is_truncated = max_length is not None and prompt_len >= max_length
 
                 if self._arch == "encoder":
-                    all_ids.append(prompt_enc["input_ids"])
-                    all_attn.append(prompt_enc["attention_mask"])
+                    all_ids.append(encoded_prompt["input_ids"])
+                    all_attn.append(encoded_prompt["attention_mask"])
                     all_labels.append(tag_id)
-                    all_truncated.append(truncated)
+                    all_truncated.append(is_truncated)
                     continue
 
-                answer_enc = self._encode_answer(sys, prompt, tag_id, max_length)
-                labels_enc = answer_enc["input_ids"].copy()
-                truncated = truncated or (
-                    max_length is not None and len(labels_enc) >= max_length
+                encoded_answer = self._encode_answer(
+                    system_prompt,
+                    user_prompt,
+                    tag_id,
+                    max_length,
+                    examples,
+                )
+
+                encoded_labels = encoded_answer["input_ids"].copy()
+                is_truncated = is_truncated or (
+                    max_length is not None and len(encoded_labels) >= max_length
                 )
 
                 if self._arch == "decoder":
-                    all_ids.append(answer_enc["input_ids"])
-                    all_attn.append(answer_enc["attention_mask"])
-                    labels_enc[:prompt_len] = [SENTINEL_TOKEN] * prompt_len
-                    all_labels.append(labels_enc)
-                    all_truncated.append(truncated)
+                    encoded_labels[:prompt_len] = [SENTINEL_TOKEN] * prompt_len
+
+                    all_ids.append(encoded_answer["input_ids"])
+                    all_attn.append(encoded_answer["attention_mask"])
+                    all_labels.append(encoded_labels)
+                    all_truncated.append(is_truncated)
                     continue
 
                 if self._arch == "encoder-decoder":
-                    all_ids.append(prompt_enc["input_ids"])
-                    all_attn.append(prompt_enc["attention_mask"])
                     idx = prompt_len - int(
-                        labels_enc[-1] == self._tokenizer.eos_token_id
+                        encoded_labels[-1] == self._tokenizer.eos_token_id
                     )
-                    all_labels.append(labels_enc[idx:])
-                    all_truncated.append(truncated)
+
+                    all_ids.append(encoded_prompt["input_ids"])
+                    all_attn.append(encoded_prompt["attention_mask"])
+                    all_labels.append(encoded_labels[idx:])
+                    all_truncated.append(is_truncated)
                     continue
 
         return _TokBatch(
@@ -398,6 +440,35 @@ class Multinerd(DatasetProtocol):
             labels=all_labels,
             truncated=all_truncated,
         )
+
+    def _sample_examples(self, n_shot: int) -> list[_Example]:
+        if n_shot == 0:
+            return []
+
+        examples: list[_Example] = []
+        for sample in self.raw_data["train"]:
+            tokens = cast("list[str]", sample["tokens"])
+            raw_tag_ids = cast("list[int]", sample["ner_tags"])
+            sentence = " ".join(tokens)
+            entities, tag_ids = Multinerd._join_spans(tokens, raw_tag_ids)
+
+            for entity, tag_id in zip(entities, tag_ids, strict=True):
+                if tag_id == -1:
+                    continue
+
+                example = _Example(
+                    user=self._build_user_prompt(sentence, entity),
+                    assistant=Multinerd.id2label[tag_id],
+                )
+
+                examples.append(example)
+                break
+
+            if len(examples) == n_shot:
+                return examples
+
+        msg = f"requested more than {len(examples)} examples"
+        raise ValueError(msg)
 
     @staticmethod
     def _join_spans(
@@ -428,37 +499,3 @@ class Multinerd(DatasetProtocol):
     @staticmethod
     def _filter_english(batch: _Batch) -> list[bool]:
         return [lang == "en" for lang in batch["lang"]]
-
-    @staticmethod
-    def _format_example(sentence: str, entity: str, tag: str) -> str:
-        return f"Sentence: {sentence}\nEntity: {entity}\nTag: {tag}\n"
-
-    def _sample_examples(self, n_shot: int) -> list[str]:
-        if n_shot == 0:
-            return []
-
-        all_examples = []
-        for example in self.raw_data["train"]:
-            tokens = cast("list[str]", example["tokens"])
-            raw_tag_ids = cast("list[int]", example["ner_tags"])
-            sentence = " ".join(tokens)
-            entities, tag_ids = Multinerd._join_spans(tokens, raw_tag_ids)
-
-            for entity, tag_id in zip(entities, tag_ids, strict=True):
-                if tag_id == -1:
-                    continue
-
-                examples = self._format_example(
-                    sentence,
-                    entity,
-                    Multinerd.id2label[tag_id],
-                )
-
-                all_examples.append(examples)
-                break
-
-            if len(all_examples) == n_shot:
-                return all_examples
-
-        msg = f"requested more than {len(all_examples)} examples"
-        raise ValueError(msg)

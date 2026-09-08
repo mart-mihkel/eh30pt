@@ -1,7 +1,7 @@
 """OBL (oblique phrase removal) dataset loading, prompting, and tokenization."""
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple, TypedDict, cast
 
 from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
@@ -23,9 +23,7 @@ if TYPE_CHECKING:
 type _Label = Literal["seotud", "vaba", "ebaloomulik", "liigne koma", "kaheldav"]
 
 
-class _Example(TypedDict):
-    """A single raw OBL example."""
-
+class _Sample(TypedDict):
     id: int
     fpath: str
     sentence: str
@@ -37,6 +35,11 @@ class _Example(TypedDict):
     cons_score: float
     ual: float
     la: float
+
+
+class _Example(NamedTuple):
+    user: str
+    assistant: str
 
 
 class Oblique(DatasetProtocol):
@@ -157,9 +160,6 @@ class Oblique(DatasetProtocol):
         """
         Load, tokenize, and prompt-format the OBL dataset into instance state.
 
-        OBL is always loaded in full from a fixed CSV, so `split` has no
-        effect; it exists only so this method matches the shared protocol.
-
         Parameters
         ----------
         n_shot:
@@ -173,8 +173,7 @@ class Oblique(DatasetProtocol):
         del split
 
         self._raw_data = self._load_raw()
-        examples = self._sample_examples(n_shot)
-        self._data = self._tokenize(examples, n_virtual=n_virtual)
+        self._data = self._tokenize(n_shot, n_virtual)
 
     def _load_raw(self) -> DatasetDict:
         logger.debug("loading obl csv from github permalink")
@@ -197,8 +196,10 @@ class Oblique(DatasetProtocol):
             }
         )
 
-    def _tokenize(self, examples: list[str], n_virtual: int = 0) -> DatasetDict:
+    def _tokenize(self, n_shot: int, n_virtual: int) -> DatasetDict:
         logger.debug("tokenizing oblique")
+
+        examples = self._sample_examples(n_shot)
         data = self.raw_data.map(
             self._tokenize_example,
             fn_kwargs={"examples": examples, "n_virtual": n_virtual},
@@ -222,148 +223,183 @@ class Oblique(DatasetProtocol):
 
         return data
 
-    def _build_prompt(self, example: _Example, examples: list[str]) -> str:
+    def _build_user_prompt(self, sample: _Sample) -> str:
         if self._arch == "encoder":
-            prompt = (
-                f"{example['removed']}{self._tokenizer.sep_token}{example['sentence']}"
-            )
-        elif self._arch == "decoder":
-            prompt = dedent(f"""
-                Lause: {example["sentence"]}
-                Fraas: {example["removed"]}
+            return f"{sample['removed']}{self._tokenizer.sep_token}{sample['sentence']}"
+
+        if self._arch == "decoder":
+            return dedent(f"""
+                Lause: {sample["sentence"]}
+                Fraas: {sample["removed"]}
                 Kategooria:
             """).strip()
-        else:
-            prompt = dedent(f"""
-                lause: {example["sentence"]}
-                fraas: {example["removed"]}
-                kategooria:
-            """).strip()
 
-        if examples:
-            prompt_examples = "\n".join(examples)
-            prompt = f"{prompt_examples}\n{prompt}"
+        return dedent(f"""
+            lause: {sample["sentence"]}
+            fraas: {sample["removed"]}
+            kategooria:
+        """).strip()
 
-        return prompt
+    def _format_examples_legacy(self, examples: list[_Example]) -> str:
+        if not examples:
+            return ""
+
+        return "\n".join(
+            f"{example.user} {example.assistant}\n" for example in examples
+        )
+
+    def _format_examples_template(
+        self,
+        examples: list[_Example],
+    ) -> list[dict[str, str]]:
+        if self._tokenizer.chat_template is None:
+            msg = "attempt to format with no chat template, use _format_examples_legacy"
+            raise RuntimeError(msg)
+
+        conversation: list[dict[str, str]] = []
+        for example in examples:
+            conversation.append({"role": "user", "content": example.user})
+            conversation.append({"role": "assistant", "content": example.assistant})
+
+        return conversation
 
     def _encode_prompt(
         self,
-        sys: str,
-        prompt: str,
+        system_prompt: str,
+        user_prompt: str,
         max_length: int | None,
+        examples: list[_Example],
     ) -> BatchEncoding[list[int]]:
-        """Encode the system prompt together with the sample prompt."""
         if self._tokenizer.chat_template is None:
-            prompt_enc = self._tokenizer(
-                f"{sys}\n{prompt}",
+            examples_prompt = self._format_examples_legacy(examples)
+            user_prompt = f"{examples_prompt}\n{user_prompt}"
+            encoded_prompt = self._tokenizer(
+                f"{system_prompt}\n{user_prompt}",
                 truncation=True,
                 max_length=max_length,
             )
         else:
-            conv = [
-                {"role": "system", "content": sys},
-                {"role": "user", "content": prompt},
+            conversation: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt}
             ]
 
-            prompt_enc = self._tokenizer.apply_chat_template(
-                conv,
+            conversation.extend(self._format_examples_template(examples))
+            conversation.append({"role": "user", "content": user_prompt})
+
+            encoded_prompt = self._tokenizer.apply_chat_template(
+                conversation,
                 truncation=True,
-                max_length=max_length,
                 return_dict=True,
+                max_length=max_length,
                 add_generation_prompt=self._arch != "encoder",
             )
 
-        return cast("BatchEncoding[list[int]]", prompt_enc)
+        return cast("BatchEncoding[list[int]]", encoded_prompt)
 
     def _encode_answer(
         self,
-        sys: str,
-        prompt: str,
+        system_prompt: str,
+        user_prompt: str,
         label: str,
         max_length: int | None,
+        examples: list[_Example],
     ) -> BatchEncoding[list[int]]:
         """Encode the prompt together with the gold label."""
         if self._tokenizer.chat_template is None:
-            answer_enc = self._tokenizer(
-                f"{sys}\n{prompt} {label}",
+            examples_prompt = self._format_examples_legacy(examples)
+            user_prompt = f"{examples_prompt}\n{user_prompt}"
+            encoded_answer = self._tokenizer(
+                f"{system_prompt}\n{user_prompt} {label}",
                 truncation=True,
                 max_length=max_length,
             )
         else:
-            conv = [
-                {"role": "system", "content": sys},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": label},
+            conversation: list[dict[str, str]] = [
+                {"role": "system", "content": system_prompt}
             ]
 
-            answer_enc = self._tokenizer.apply_chat_template(
-                conv,
+            conversation.extend(self._format_examples_template(examples))
+            conversation.append({"role": "user", "content": user_prompt})
+            conversation.append({"role": "assistant", "content": label})
+
+            encoded_answer = self._tokenizer.apply_chat_template(
+                conversation,
                 truncation=True,
-                max_length=max_length,
                 return_dict=True,
+                max_length=max_length,
             )
 
-        return cast("BatchEncoding[list[int]]", answer_enc)
+        return cast("BatchEncoding[list[int]]", encoded_answer)
 
     def _tokenize_example(
         self,
-        example: _Example,
-        examples: list[str],
+        sample: _Sample,
+        examples: list[_Example],
         n_virtual: int = 0,
     ) -> BatchEncoding:
         max_length = get_max_length(self._tokenizer, n_virtual)
-        prompt = self._build_prompt(example, examples)
-        sys = self.system_prompt
-        label = example["label"]
+        label = sample["label"]
 
-        prompt_enc: BatchEncoding = self._encode_prompt(sys, prompt, max_length)
-        prompt_len = len(prompt_enc["input_ids"])
-        truncated = max_length is not None and prompt_len >= max_length
+        user_prompt = self._build_user_prompt(sample)
+        system_prompt = self.system_prompt
+        encoded_prompt = self._encode_prompt(
+            system_prompt,
+            user_prompt,
+            max_length,
+            examples,
+        )
+
+        prompt_len = len(encoded_prompt["input_ids"])
+        is_truncated = max_length is not None and prompt_len >= max_length
 
         if self._arch == "encoder":
-            prompt_enc["labels"] = self.label2id[label]
-            prompt_enc["truncated"] = truncated
-            return prompt_enc
+            encoded_prompt["labels"] = self.label2id[label]
+            encoded_prompt["truncated"] = is_truncated
+            return encoded_prompt
 
-        answer_enc: BatchEncoding = self._encode_answer(sys, prompt, label, max_length)
-        labels_enc = answer_enc["input_ids"].copy()
-        truncated = truncated or (
-            max_length is not None and len(labels_enc) >= max_length
+        encoded_answer = self._encode_answer(
+            system_prompt,
+            user_prompt,
+            label,
+            max_length,
+            examples,
+        )
+
+        encoded_labels = encoded_answer["input_ids"].copy()
+        is_truncated = is_truncated or (
+            max_length is not None and len(encoded_labels) >= max_length
         )
 
         if self._arch == "decoder":
-            labels_enc[:prompt_len] = [SENTINEL_TOKEN] * prompt_len
-            answer_enc["labels"] = labels_enc
-            answer_enc["truncated"] = truncated
-            return answer_enc
+            encoded_labels[:prompt_len] = [SENTINEL_TOKEN] * prompt_len
+            encoded_answer["labels"] = encoded_labels
+            encoded_answer["truncated"] = is_truncated
+            return encoded_answer
 
-        idx = prompt_len - int(labels_enc[-1] == self._tokenizer.eos_token_id)
-        prompt_enc["labels"] = labels_enc[idx:]
-        prompt_enc["truncated"] = truncated
-        return prompt_enc
+        idx = prompt_len - int(encoded_labels[-1] == self._tokenizer.eos_token_id)
+        encoded_prompt["labels"] = encoded_labels[idx:]
+        encoded_prompt["truncated"] = is_truncated
+        return encoded_prompt
 
-    def _sample_examples(self, n_shot: int) -> list[str]:
+    def _sample_examples(self, n_shot: int) -> list[_Example]:
         train = self.raw_data["train"]
-        max_shots = len(train)
-        if n_shot > max_shots:
-            msg = f"requested more than {max_shots} examples"
+        max_examples = len(train)
+
+        if n_shot > max_examples:
+            msg = f"requested more than {max_examples} examples"
             raise ValueError(msg)
+
         if n_shot == 0:
             return []
 
-        sampled = train.select(range(n_shot))
-        return [self._format_example(example) for example in sampled]
+        examples = train.select(range(n_shot))
+        return [
+            _Example(user=self._build_user_prompt(example), assistant=example["label"])
+            for example in examples
+        ]
 
     @staticmethod
-    def _format_example(example: _Example) -> str:
-        return (
-            f"Lause: {example['sentence']}\n"
-            f"Fraas: {example['removed']}\n"
-            f"Kategooria: {example['label']}\n"
-        )
-
-    @staticmethod
-    def _translate_en_to_et(example: _Example) -> _Example:
+    def _translate_en_to_et(example: _Sample) -> _Sample:
         en_lbl = example["label"]
         example["label"] = Oblique._en_to_et[en_lbl]
         return example
