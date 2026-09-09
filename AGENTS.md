@@ -20,7 +20,6 @@ test/                 # tests, lint-relaxed
   unit/                 # fast pure-logic tests, no models or network
   integration/          # dataset loading and forward passes on tiny-random models
   e2e/                  # cli tests
-vendor/               # gguf conversion scripts from llama.cpp, lint-ignored
 notebooks/            # exploratory marimo notebook analysis, lint-relaxed
 justfile              # project commands
 pyproject.toml        # project metadata, ruff and pytest config
