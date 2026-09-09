@@ -9,34 +9,19 @@ from typer.testing import CliRunner
 
 from eh30pt.cli.cli import app
 from test.conftest import models
+from test.e2e.conftest import single_run
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from mlflow.entities import Run
     from typer.testing import Result
 
 
-_model_params: Final = [pytest.param(name, id=name) for name in sorted(models)]
-
-
-def _tracking_uri(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
-    monkeypatch.chdir(tmp_path)
-    return f"sqlite:///{tmp_path}/mlflow.db"
+_model_params: Final = [pytest.param(name, id=name) for name in models]
 
 
 def _invoke(args: list[str]) -> Result:
     return CliRunner().invoke(app, args)
-
-
-def _single_run(client: MlflowClient, experiment: str) -> Run:
-    tracked = client.get_experiment_by_name(experiment)
-    assert tracked is not None
-
-    runs = client.search_runs([tracked.experiment_id])
-    assert len(runs) == 1
-
-    return runs[0]
 
 
 def test_help_lists_commands() -> None:
@@ -65,11 +50,9 @@ def test_rejects_unknown_dataset() -> None:
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", _model_params)
 def test_few_shot_oblique(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    tracking_uri: str,
     model_name: str,
 ) -> None:
-    uri = _tracking_uri(tmp_path, monkeypatch)
     experiment: Final = f"e2e-few-shot-{model_name}"
     result = _invoke(
         [
@@ -85,13 +68,13 @@ def test_few_shot_oblique(
             "--mlflow-experiment",
             experiment,
             "--mlflow-tracking-uri",
-            uri,
+            tracking_uri,
         ],
     )
 
     assert result.exit_code == 0, result.output
 
-    run = _single_run(MlflowClient(uri), experiment)
+    run = single_run(MlflowClient(tracking_uri), experiment)
     assert run.data.params["method"] == "0-shot"
     assert "test_f1" in run.data.metrics
 
@@ -100,10 +83,9 @@ def test_few_shot_oblique(
 @pytest.mark.parametrize("model_name", _model_params)
 def test_fine_tune_oblique(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    tracking_uri: str,
     model_name: str,
 ) -> None:
-    uri = _tracking_uri(tmp_path, monkeypatch)
     experiment: Final = f"e2e-fine-tune-{model_name}"
     result = _invoke(
         [
@@ -121,13 +103,13 @@ def test_fine_tune_oblique(
             "--mlflow-experiment",
             experiment,
             "--mlflow-tracking-uri",
-            uri,
+            tracking_uri,
         ],
     )
 
     assert result.exit_code == 0, result.output
 
-    run = _single_run(MlflowClient(uri), experiment)
+    run = single_run(MlflowClient(tracking_uri), experiment)
     assert "test_f1" in run.data.metrics
 
     run_dir = tmp_path / "log" / run.info.run_id
@@ -143,7 +125,7 @@ def test_fine_tune_oblique(
             "--mlflow-experiment",
             experiment,
             "--mlflow-tracking-uri",
-            uri,
+            tracking_uri,
             "--metric",
             "test_f1",
         ],
@@ -157,14 +139,12 @@ def test_fine_tune_oblique(
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", _model_params)
 def test_prompt_tune_oblique(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    tracking_uri: str,
     model_name: str,
 ) -> None:
     if model_name == "t5" and torch.mps.is_available():
         pytest.xfail(reason="mps sdpa does not support dropout in training")
 
-    uri = _tracking_uri(tmp_path, monkeypatch)
     experiment: Final = f"e2e-prompt-tune-{model_name}"
     result = _invoke(
         [
@@ -182,12 +162,12 @@ def test_prompt_tune_oblique(
             "--mlflow-experiment",
             experiment,
             "--mlflow-tracking-uri",
-            uri,
+            tracking_uri,
         ],
     )
 
     assert result.exit_code == 0, result.output
 
-    run = _single_run(MlflowClient(uri), experiment)
+    run = single_run(MlflowClient(tracking_uri), experiment)
     assert run.data.params["method"] == "prompt-tune-pretrained"
     assert "test_f1" in run.data.metrics

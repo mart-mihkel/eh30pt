@@ -1,35 +1,103 @@
 interactions:
 - request:
-    body: '{"messages":[{"role":"system","content":"You are terse."},{"role":"user","content":"What
-      is 2+2? Answer in one word."}],"max_tokens":300}'
+    body: ''
     headers:
       accept:
-      - '*/*'
+      - application/json
       accept-encoding:
-      - gzip, deflate
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:8080/models
+  response:
+    body:
+      string: '{"models":[{"name":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","aliases":["/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"],"tags":[],"object":"model","created":1788962100,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":262144,"n_ctx_train":262144,"n_embd":3840,"n_params":11907350576,"size":6700531904,"ftype":"Q4_0"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '764'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"You are a terse calculator, answer
+      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
       connection:
       - keep-alive
       content-length:
-      - '137'
+      - '221'
       content-type:
       - application/json
       host:
       - localhost:8080
       user-agent:
-      - python-httpx/0.28.1
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
     method: POST
-    uri: http://localhost:8080/v1/chat/completions
+    uri: http://localhost:8080/chat/completions
   response:
     body:
-      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4","reasoning_content":"*   Question:
-        \"What is 2+2?\"\n    *   Constraint: \"Answer in one word.\"\n    *   System
-        instruction: \"You are terse.\"\n\n    *   The answer is 4.\n\n    *   One
-        word.\n    *   Terse.\n\n    *   \"4\" (one word/character).\n\n    *   4"}}],"created":1788948174,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":84,"prompt_tokens":32,"total_tokens":116,"prompt_tokens_details":{"cached_tokens":26}},"id":"chatcmpl-3ke87lvWn7CH1MAkXV1AzE3Uq0b7TGf8","timings":{"cache_n":26,"prompt_n":6,"prompt_ms":149.49,"prompt_per_token_ms":24.915000000000003,"prompt_per_second":40.136463977523576,"predicted_n":84,"predicted_ms":2655.959,"predicted_per_token_ms":31.999506024096384,"predicted_per_second":31.250482405790155,"draft_n":44,"draft_n_accepted":39}}'
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4","reasoning_content":"The
+        user is asking for the sum of 2 + 2.\nThe user wants the answer in one word.\nThe
+        system instruction says \"You are a terse calculator, answer with the number.\"\nThe
+        sum is 4.\n\nResponse: 4."}}],"created":1788962102,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":60,"prompt_tokens":39,"total_tokens":99,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-DT6lq3K6HYk3mIE7ceuy7nL1x8mp488k","timings":{"cache_n":0,"prompt_n":39,"prompt_ms":606.625,"prompt_per_token_ms":15.554487179487179,"prompt_per_second":64.29012981660829,"predicted_n":60,"predicted_ms":1902.541,"predicted_per_token_ms":32.246457627118644,"predicted_per_second":31.011158235223316,"draft_n":32,"draft_n_accepted":28}}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '972'
+      - '926'
       content-type:
       - application/json; charset=utf-8
       keep-alive:

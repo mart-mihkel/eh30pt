@@ -1,7 +1,7 @@
 """MultiNERD dataset loading, prompting, and tokenization."""
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
@@ -9,7 +9,7 @@ from datasets.utils.info_utils import VerificationMode
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.truncation import get_max_length
 from eh30pt.logging import logger
-from eh30pt.types import DatasetProtocol
+from eh30pt.types import DatasetProtocol, EvalExample
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -63,11 +63,6 @@ class _TokBatch(TypedDict):
     attention_mask: list[list[int]]
     labels: list[int | list[int]]
     truncated: list[bool]
-
-
-class _Example(NamedTuple):
-    user: str
-    assistant: str
 
 
 class Multinerd(DatasetProtocol):
@@ -225,10 +220,50 @@ class Multinerd(DatasetProtocol):
             Only use the english subset.
 
         """
-        self._raw_data = self._load_raw(split=split, filter_en=filter_en)
+        if self._raw_data is None:
+            self.load_raw(split=split, filter_en=filter_en)
+
         self._data = self._tokenize(n_shot, n_virtual)
 
-    def _load_raw(self, split: Split | None, *, filter_en: bool) -> DatasetDict:
+    def eval_samples(self) -> list[EvalExample]:
+        """Build prompt and label pairs for every test entity."""
+        samples: list[EvalExample] = []
+        for sample in self.raw_data["test"]:
+            tokens = cast("list[str]", sample["tokens"])
+            raw_tag_ids = cast("list[int]", sample["ner_tags"])
+            sentence = " ".join(tokens)
+            entities, tag_ids = Multinerd._join_spans(tokens, raw_tag_ids)
+
+            for entity, tag_id in zip(entities, tag_ids, strict=True):
+                if tag_id == -1:
+                    continue
+
+                example = EvalExample(
+                    user=self._build_user_prompt(sentence, entity),
+                    label=Multinerd.id2label[tag_id],
+                )
+
+                samples.append(example)
+
+        return samples
+
+    def load_raw(
+        self,
+        split: Split | None = None,
+        *,
+        filter_en: bool = True,
+    ) -> None:
+        """
+        Load raw MultiNERD splits without tokenizing.
+
+        Parameters
+        ----------
+        split : Split | None
+            Dataset split to load, or None for all splits.
+        filter_en : bool
+            Only use the english subset.
+
+        """
         logger.debug("loading raw multinerd dataset")
         data = load_dataset(
             "Babelscape/multinerd",
@@ -241,12 +276,12 @@ class Multinerd(DatasetProtocol):
             logger.warning("using english only subset")
             data = data.filter(self._filter_english, batched=True)
 
-        return data
+        self._raw_data = data
 
     def _tokenize(self, n_shot: int, n_virtual: int, num_proc: int = 4) -> DatasetDict:
         logger.debug("tokenizing multinerd")
 
-        examples = self._sample_examples(n_shot)
+        examples = self.few_shot_examples(n_shot)
         data = self.raw_data.map(
             self._tokenize_batch,
             batched=True,
@@ -270,17 +305,15 @@ class Multinerd(DatasetProtocol):
             Tag:
         """).strip()
 
-    def _format_examples_legacy(self, examples: list[_Example]) -> str:
+    def _format_examples_legacy(self, examples: list[EvalExample]) -> str:
         if not examples:
             return ""
 
-        return "\n".join(
-            f"{example.user} {example.assistant}\n" for example in examples
-        )
+        return "\n".join(f"{example.user} {example.label}\n" for example in examples)
 
     def _format_examples_template(
         self,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> list[dict[str, str]]:
         if self._tokenizer.chat_template is None:
             msg = "attempt to format with no chat template, use _format_examples_legacy"
@@ -289,7 +322,7 @@ class Multinerd(DatasetProtocol):
         conversation: list[dict[str, str]] = []
         for example in examples:
             conversation.append({"role": "user", "content": example.user})
-            conversation.append({"role": "assistant", "content": example.assistant})
+            conversation.append({"role": "assistant", "content": example.label})
 
         return conversation
 
@@ -298,7 +331,7 @@ class Multinerd(DatasetProtocol):
         system_prompt: str,
         user_prompt: str,
         max_length: int | None,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> BatchEncoding[list[int]]:
         if self._tokenizer.chat_template is None:
             examples_prompt = self._format_examples_legacy(examples)
@@ -332,7 +365,7 @@ class Multinerd(DatasetProtocol):
         user_prompt: str,
         tag_id: int,
         max_length: int | None,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> BatchEncoding[list[int]]:
         """Encode the prompt together with the gold label."""
         if self._tokenizer.chat_template is None:
@@ -364,7 +397,7 @@ class Multinerd(DatasetProtocol):
     def _tokenize_batch(
         self,
         batch: _Batch,
-        examples: list[_Example],
+        examples: list[EvalExample],
         n_virtual: int = 0,
     ) -> _TokBatch:
         all_ids: list[list[int]] = []
@@ -441,11 +474,12 @@ class Multinerd(DatasetProtocol):
             truncated=all_truncated,
         )
 
-    def _sample_examples(self, n_shot: int) -> list[_Example]:
+    def few_shot_examples(self, n_shot: int) -> list[EvalExample]:
+        """Sample prompt and label pairs from the train split."""
         if n_shot == 0:
             return []
 
-        examples: list[_Example] = []
+        examples: list[EvalExample] = []
         for sample in self.raw_data["train"]:
             tokens = cast("list[str]", sample["tokens"])
             raw_tag_ids = cast("list[int]", sample["ner_tags"])
@@ -456,9 +490,9 @@ class Multinerd(DatasetProtocol):
                 if tag_id == -1:
                     continue
 
-                example = _Example(
+                example = EvalExample(
                     user=self._build_user_prompt(sentence, entity),
-                    assistant=Multinerd.id2label[tag_id],
+                    label=Multinerd.id2label[tag_id],
                 )
 
                 examples.append(example)

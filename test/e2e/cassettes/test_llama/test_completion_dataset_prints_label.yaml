@@ -1,38 +1,106 @@
 interactions:
 - request:
-    body: '{"messages":[{"role":"system","content":"You are a NER tagger."},{"role":"user","content":"Sentence:
-      Barack Obama was president.\nEntity: Barack Obama\nTag:"}],"max_tokens":1024,"response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}}}'
+    body: ''
     headers:
       accept:
-      - '*/*'
+      - application/json
       accept-encoding:
-      - gzip, deflate
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:8080/models
+  response:
+    body:
+      string: '{"models":[{"name":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","aliases":["/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"],"tags":[],"object":"model","created":1788962102,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":262144,"n_ctx_train":262144,"n_embd":3840,"n_params":11907350576,"size":6700531904,"ftype":"Q4_0"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '764'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"You are a NER tagger."},{"role":"user","content":"Sentence:
+      Barack Obama was president.\nEntity: Barack Obama\nTag:"}],"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}}}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
       connection:
       - keep-alive
       content-length:
-      - '448'
+      - '494'
       content-type:
       - application/json
       host:
       - localhost:8080
       user-agent:
-      - python-httpx/0.28.1
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
     method: POST
-    uri: http://localhost:8080/v1/chat/completions
+    uri: http://localhost:8080/chat/completions
   response:
     body:
       string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"{\n  \"label\":
-        \"PER\"\n}","reasoning_content":"*   Sentence: \"Barack Obama was president.\"\n    *   Entity:
-        \"Barack Obama\"\n    *   Task: Provide the NER (Named Entity Recognition)
-        tag.\n\n    *   \"Barack Obama\" is the name of a person.\n    *   Standard
-        NER tags: PERSON, ORG (Organization), GPE (Geopolitical Entity), etc.\n\n    *   The
-        most common and accurate tag for a person''s name is `PERSON`.\n\n    *   Tag:
-        PERSON"}}],"created":1788948179,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":130,"prompt_tokens":38,"total_tokens":168,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-tDU68liNBeDHtO8EdFwg0qNINv8Cek85","timings":{"cache_n":0,"prompt_n":38,"prompt_ms":604.587,"prompt_per_token_ms":15.910184210526316,"prompt_per_second":62.852823497693464,"predicted_n":130,"predicted_ms":4651.066,"predicted_per_token_ms":36.05477519379845,"predicted_per_second":27.735577177361062,"draft_n":74,"draft_n_accepted":56}}'
+        \"PER\"\n}","reasoning_content":"*   Sentence: \"Barack Obama was president.\"\n    *   Input
+        Entity: \"Barack Obama\"\n    *   Goal: Provide the NER (Named Entity Recognition)
+        tag for the entity.\n\n    *   \"Barack Obama\" is the name of a specific
+        person.\n    *   Standard NER tags: PERSON, ORG (Organization), LOC (Location),
+        GPE (Geo-Political Entity), DATE, etc.\n\n    *   The tag for a person''s
+        name is \"PERSON\"."}}],"created":1788962107,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":129,"prompt_tokens":38,"total_tokens":167,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-loECxr27J4oUcUlb01B5fXk6hlz29jRZ","timings":{"cache_n":0,"prompt_n":38,"prompt_ms":597.024,"prompt_per_token_ms":15.711157894736843,"prompt_per_second":63.64903253470547,"predicted_n":129,"predicted_ms":4395.786,"predicted_per_token_ms":34.342078125,"predicted_per_second":29.118796956903726,"draft_n":72,"draft_n_accepted":56}}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '1141'
+      - '1142'
       content-type:
       - application/json; charset=utf-8
       keep-alive:

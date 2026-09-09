@@ -70,6 +70,7 @@ def main(
         "n_shot": n_shot,
         "batch_size": batch_size,
         "seed": seed,
+        "one_conv": False,
         "system_prompt": data.system_prompt,
         "train_samples": 0,
         "validation_samples": 0,

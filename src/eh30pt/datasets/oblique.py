@@ -1,7 +1,7 @@
 """OBL (oblique phrase removal) dataset loading, prompting, and tokenization."""
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
 from datasets.arrow_dataset import Dataset
 from datasets.dataset_dict import DatasetDict
@@ -9,7 +9,7 @@ from datasets.dataset_dict import DatasetDict
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.truncation import get_max_length
 from eh30pt.logging import logger
-from eh30pt.types import DatasetProtocol
+from eh30pt.types import DatasetProtocol, EvalExample
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -35,11 +35,6 @@ class _Sample(TypedDict):
     cons_score: float
     ual: float
     la: float
-
-
-class _Example(NamedTuple):
-    user: str
-    assistant: str
 
 
 class Oblique(DatasetProtocol):
@@ -172,10 +167,27 @@ class Oblique(DatasetProtocol):
         """
         del split
 
-        self._raw_data = self._load_raw()
+        if self._raw_data is None:
+            self.load_raw()
+
         self._data = self._tokenize(n_shot, n_virtual)
 
-    def _load_raw(self) -> DatasetDict:
+    def eval_samples(self) -> list[EvalExample]:
+        """Build prompt and label pairs for the test split."""
+        samples: list[EvalExample] = []
+        for row in self.raw_data["test"]:
+            sample = cast("_Sample", row)
+            example = EvalExample(
+                user=self._build_user_prompt(sample),
+                label=sample["label"],
+            )
+
+            samples.append(example)
+
+        return samples
+
+    def load_raw(self) -> None:
+        """Load raw splits without tokenizing."""
         logger.debug("loading obl csv from github permalink")
         raw = Dataset.from_csv(self._permalink, sep=";")
 
@@ -188,7 +200,7 @@ class Oblique(DatasetProtocol):
         s1 = raw.train_test_split(test_size=1000, seed=0)
         s2 = s1["train"].train_test_split(test_size=128, seed=0)
 
-        return DatasetDict(
+        self._raw_data = DatasetDict(
             {
                 "train": s2["train"],
                 "validation": s2["test"],
@@ -199,7 +211,7 @@ class Oblique(DatasetProtocol):
     def _tokenize(self, n_shot: int, n_virtual: int) -> DatasetDict:
         logger.debug("tokenizing oblique")
 
-        examples = self._sample_examples(n_shot)
+        examples = self.few_shot_examples(n_shot)
         data = self.raw_data.map(
             self._tokenize_example,
             fn_kwargs={"examples": examples, "n_virtual": n_virtual},
@@ -240,17 +252,15 @@ class Oblique(DatasetProtocol):
             kategooria:
         """).strip()
 
-    def _format_examples_legacy(self, examples: list[_Example]) -> str:
+    def _format_examples_legacy(self, examples: list[EvalExample]) -> str:
         if not examples:
             return ""
 
-        return "\n".join(
-            f"{example.user} {example.assistant}\n" for example in examples
-        )
+        return "\n".join(f"{example.user} {example.label}\n" for example in examples)
 
     def _format_examples_template(
         self,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> list[dict[str, str]]:
         if self._tokenizer.chat_template is None:
             msg = "attempt to format with no chat template, use _format_examples_legacy"
@@ -259,7 +269,7 @@ class Oblique(DatasetProtocol):
         conversation: list[dict[str, str]] = []
         for example in examples:
             conversation.append({"role": "user", "content": example.user})
-            conversation.append({"role": "assistant", "content": example.assistant})
+            conversation.append({"role": "assistant", "content": example.label})
 
         return conversation
 
@@ -268,7 +278,7 @@ class Oblique(DatasetProtocol):
         system_prompt: str,
         user_prompt: str,
         max_length: int | None,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> BatchEncoding[list[int]]:
         if self._tokenizer.chat_template is None:
             examples_prompt = self._format_examples_legacy(examples)
@@ -302,7 +312,7 @@ class Oblique(DatasetProtocol):
         user_prompt: str,
         label: str,
         max_length: int | None,
-        examples: list[_Example],
+        examples: list[EvalExample],
     ) -> BatchEncoding[list[int]]:
         """Encode the prompt together with the gold label."""
         if self._tokenizer.chat_template is None:
@@ -334,7 +344,7 @@ class Oblique(DatasetProtocol):
     def _tokenize_example(
         self,
         sample: _Sample,
-        examples: list[_Example],
+        examples: list[EvalExample],
         n_virtual: int = 0,
     ) -> BatchEncoding:
         max_length = get_max_length(self._tokenizer, n_virtual)
@@ -381,7 +391,8 @@ class Oblique(DatasetProtocol):
         encoded_prompt["truncated"] = is_truncated
         return encoded_prompt
 
-    def _sample_examples(self, n_shot: int) -> list[_Example]:
+    def few_shot_examples(self, n_shot: int) -> list[EvalExample]:
+        """Sample prompt and label pairs from the train split."""
         train = self.raw_data["train"]
         max_examples = len(train)
 
@@ -394,7 +405,10 @@ class Oblique(DatasetProtocol):
 
         examples = train.select(range(n_shot))
         return [
-            _Example(user=self._build_user_prompt(example), assistant=example["label"])
+            EvalExample(
+                user=self._build_user_prompt(cast("_Sample", example)),
+                label=cast("_Sample", example)["label"],
+            )
             for example in examples
         ]
 

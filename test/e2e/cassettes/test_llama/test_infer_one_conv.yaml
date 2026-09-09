@@ -1,0 +1,169 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:8080/models
+  response:
+    body:
+      string: '{"models":[{"name":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","aliases":["/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"],"tags":[],"object":"model","created":1788967975,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":128256,"n_ctx":131072,"n_ctx_train":131072,"n_embd":2048,"n_params":1235814432,"size":1313251456,"ftype":"Q8_0"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '751'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"Classify the text."},{"role":"user","content":"Sentence:
+      Barack Obama was president.\nEntity: Barack Obama\nTag:"},{"role":"assistant","content":"{\"label\":
+      \"PER\"}"},{"role":"user","content":"Sentence: Barack Obama was president.\nEntity:
+      Barack Obama\nTag:"}],"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}},"seed":7}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '645'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:8080/chat/completions
+  response:
+    body:
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"{\"label\":
+        \"PER\"}"}}],"created":1788967975,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":7,"prompt_tokens":84,"total_tokens":91,"prompt_tokens_details":{"cached_tokens":27}},"id":"chatcmpl-ECiXAacoOHhr9or0kDzPf2sV6qHxTH8b","timings":{"cache_n":27,"prompt_n":57,"prompt_ms":77.419,"prompt_per_token_ms":1.3582280701754386,"prompt_per_second":736.2533744946331,"predicted_n":7,"predicted_ms":70.972,"predicted_per_token_ms":11.828666666666665,"predicted_per_second":84.5403821225272}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '683'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"Classify the text."},{"role":"user","content":"Sentence:
+      Barack Obama was president.\nEntity: Barack Obama\nTag:"},{"role":"assistant","content":"{\"label\":
+      \"PER\"}"},{"role":"user","content":"Sentence: Barack Obama was president.\nEntity:
+      Barack Obama\nTag:"},{"role":"assistant","content":"{\"label\": \"PER\"}"},{"role":"user","content":"Sentence:
+      Tallinn is the capital of Estonia.\nEntity: Tallinn\nTag:"}],"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}},"seed":7}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '795'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:8080/chat/completions
+  response:
+    body:
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"{\"label\":
+        \"PER\"}"}}],"created":1788967975,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":7,"prompt_tokens":117,"total_tokens":124,"prompt_tokens_details":{"cached_tokens":90}},"id":"chatcmpl-2QtNM15ot8gy0zm8q2KtFBi17cvoZz96","timings":{"cache_n":90,"prompt_n":27,"prompt_ms":26.75,"prompt_per_token_ms":0.9907407407407407,"prompt_per_second":1009.3457943925234,"predicted_n":7,"predicted_ms":64.542,"predicted_per_token_ms":10.757,"predicted_per_second":92.96272194849865}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '674'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+version: 1

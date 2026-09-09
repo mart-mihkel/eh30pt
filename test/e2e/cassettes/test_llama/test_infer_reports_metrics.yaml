@@ -1,0 +1,187 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:8080/models
+  response:
+    body:
+      string: '{"models":[{"name":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","aliases":["/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"],"tags":[],"object":"model","created":1788954987,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":262144,"n_ctx_train":262144,"n_embd":3840,"n_params":11907350576,"size":6700531904,"ftype":"Q4_0"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '764'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"Classify the text."},{"role":"user","content":"Sentence:
+      Barack Obama was president.\nEntity: Barack Obama\nTag:"},{"role":"assistant","content":"{\"label\":
+      \"PER\"}"},{"role":"user","content":"Sentence: Barack Obama was president.\nEntity:
+      Barack Obama\nTag:"}],"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}},"seed":7}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '648'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:8080/chat/completions
+  response:
+    body:
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"{\"label\":
+        \"PER\"}","reasoning_content":"*   Input sentence: \"Barack Obama was president.\"\n    *   Entity:
+        \"Barack Obama\"\n    *   Task: Classify the entity tag.\n    *   Context
+        from previous turn: The model provided `{\"label\": \"PER\"}` for the same
+        entity in the same sentence.\n\n    *   \"Barack Obama\" is a person''s name.\n    *   In
+        Named Entity Recognition (NER), \"PER\" typically stands for \"Person\".\n\n    *   The
+        user is asking for the tag of \"Barack Obama\".\n    *   The previous response
+        was `{\"label\": \"PER\"}`.\n    *   I should provide the same classification
+        as it''s the correct standard for a person''s name.\n\n    *   Tag: PER"}}],"created":1788955005,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":181,"prompt_tokens":67,"total_tokens":248,"prompt_tokens_details":{"cached_tokens":62}},"id":"chatcmpl-1mHWaNa9byZq4Nky2maAuJvdoe4eLx0d","timings":{"cache_n":62,"prompt_n":5,"prompt_ms":462.294,"prompt_per_token_ms":92.4588,"prompt_per_second":10.8156281500517,"predicted_n":181,"predicted_ms":17505.655,"predicted_per_token_ms":97.25363888888889,"predicted_per_second":10.282391604313007,"draft_n":98,"draft_n_accepted":83}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '1362'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"Classify the text."},{"role":"user","content":"Sentence:
+      Barack Obama was president.\nEntity: Barack Obama\nTag:"},{"role":"assistant","content":"{\"label\":
+      \"PER\"}"},{"role":"user","content":"Sentence: Tallinn is the capital of Estonia.\nEntity:
+      Tallinn\nTag:"}],"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","response_format":{"type":"json_schema","json_schema":{"name":"label","schema":{"type":"object","properties":{"label":{"type":"string","enum":["PER","ORG","LOC","ANIM","BIO","CEL","DIS","EVE","FOOD","INST","MEDIA","MYTH","PLANT","TIME","VEHI"]}},"required":["label"]}}},"seed":7}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '650'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:8080/chat/completions
+  response:
+    body:
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"{\"label\":
+        \"LOC\"}","reasoning_content":"*   Input sentence: \"Tallinn is the capital
+        of Estonia.\"\n    *   Target entity: \"Tallinn\"\n    *   Goal: Classify/Tag
+        the entity.\n\n    *   \"Barack Obama\" was tagged as \"PER\" (Person).\n    *   \"Tallinn\"
+        is a city.\n\n    *   Common Named Entity Recognition (NER) tags are:\n        *   PER
+        (Person)\n        *   LOC (Location) or GPE (Geopolitical Entity)\n        *   ORG
+        (Organization)\n        *   DATE (Date)\n        *   MISC (Miscellaneous)\n    *   In
+        most standard NER datasets (like CoNLL-2003), \"Tallinn\" is a location.\n\n    *   The
+        first example used \"PER\" for a person.\n    *   For a city like Tallinn,
+        \"LOC\" (Location) or \"GPE\" (Geopolitical Entity) is the standard tag.\n    *   Looking
+        at the style of the previous prompt, it seems to follow a standard NER schema.
+        \"LOC\" is very common.\n\n    *   Sentence: Tallinn is the capital of Estonia.\n    *   Entity:
+        Tallinn\n    *   Tag: LOC (or GPE). Given the brevity of \"PER\", \"LOC\"
+        is the standard counterpart for a place."}}],"created":1788955038,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":300,"prompt_tokens":68,"total_tokens":368,"prompt_tokens_details":{"cached_tokens":43}},"id":"chatcmpl-hJRtgPS7wKIV2ZjWssQyqQL6vhD2j6iq","timings":{"cache_n":43,"prompt_n":25,"prompt_ms":891.928,"prompt_per_token_ms":35.67712,"prompt_per_second":28.029168273672315,"predicted_n":300,"predicted_ms":31750.451,"predicted_per_token_ms":106.18879933110368,"predicted_per_second":9.417189066070273,"draft_n":164,"draft_n_accepted":136}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '1762'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+version: 1

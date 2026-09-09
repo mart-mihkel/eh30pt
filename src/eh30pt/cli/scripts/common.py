@@ -33,51 +33,7 @@ def train_and_evaluate(
     batch_size: int,
     warmup_ratio: float,
 ) -> dict[str, float]:
-    """
-    Train `model` under `ctx`, then evaluate, log, and register the best.
-
-    Checkpoints land in the run's directory and training resumes from its
-    latest checkpoint when present.
-
-    Parameters
-    ----------
-    ctx : RunContext
-        Open run tracking the training.
-    model : PreTrainedModel | PeftModel
-        Model (or PEFT adapter) to train.
-    tokenizer : PreTrainedTokenizerFast
-        Tokenizer saved with the final model.
-    data : DatasetDict
-        Tokenized dataset splits, including `test`.
-    arch : Architecture
-        Model architecture, selecting the trainer flavor.
-    collate_fn : DataCollator
-        Data collator batching tokenized examples.
-    metrics_fn : ComputeMetricsFn
-        Metric function scoring evaluation predictions.
-    registered_name : str
-        Registered model name for the best-model comparison.
-    eval_steps : int
-        Evaluate every N training steps, 0 disables evaluation.
-    patience : int
-        Evals without improvement before stopping, 0 disables.
-    tolerance : float
-        Minimum eval improvement resetting the patience counter.
-    train_steps : int
-        Training step budget.
-    learning_rate : float
-        Optimizer learning rate.
-    batch_size : int
-        Training and evaluation batch size.
-    warmup_ratio : float
-        Fraction of training steps for learning rate warmup.
-
-    Returns
-    -------
-    dict[str, float]
-        Test metrics under the `test_` prefix.
-
-    """
+    """Train model under run context, then evaluate, log, and register the best."""
     trainer = get_trainer(
         model=model,
         tokenizer=tokenizer,
@@ -126,34 +82,7 @@ def evaluate_and_log(
     metrics_fn: ComputeMetricsFn,
     batch_size: int,
 ) -> dict[str, float]:
-    """
-    Evaluate `model` on the test split and log the returned metrics.
-
-    Parameters
-    ----------
-    ctx : RunContext
-        Open run tracking the evaluation.
-    model : PreTrainedModel | PeftModel
-        Model (or PEFT adapter) to evaluate.
-    tokenizer : PreTrainedTokenizerFast
-        Tokenizer passed as the SFT processing class for decoders.
-    data : DatasetDict
-        Tokenized dataset splits, including `test`.
-    arch : Architecture
-        Model architecture, selecting the trainer flavor.
-    collate_fn : DataCollator
-        Data collator batching tokenized examples.
-    metrics_fn : ComputeMetricsFn
-        Metric function scoring evaluation predictions.
-    batch_size : int
-        Evaluation batch size.
-
-    Returns
-    -------
-    dict[str, float]
-        Test metrics under the `test_` prefix.
-
-    """
+    """Evaluate model on the test split and log the returned metrics."""
     trainer = get_trainer(
         model=model,
         tokenizer=tokenizer,
@@ -181,21 +110,7 @@ def log_prompt_version(
     arch: Architecture,
     system_prompt: str,
 ) -> None:
-    """
-    Register the system prompt, recording its version on fresh runs.
-
-    Parameters
-    ----------
-    ctx : RunContext
-        Open run to link the prompt version to.
-    dataset : str
-        Dataset naming the prompt registry entry together with `arch`.
-    arch : Architecture
-        Architecture naming the prompt registry entry together with `dataset`.
-    system_prompt : str
-        Prompt template text to commit.
-
-    """
+    """Register the system prompt, recording its version on fresh runs."""
     prompt_version = ctx.register_prompt_version(
         f"{dataset}-{arch}",
         system_prompt,

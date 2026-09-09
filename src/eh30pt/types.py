@@ -1,6 +1,13 @@
 """Types and stubs."""
 
-from typing import TYPE_CHECKING, Literal, Protocol, TypedDict, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    NamedTuple,
+    Protocol,
+    TypedDict,
+    runtime_checkable,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -61,6 +68,15 @@ class PromptTuneRunConfig(TrainingRunConfig):
 class FewShotRunConfig(RunConfig):
     """Run configuration for few-shot evaluation."""
 
+    one_conv: bool
+
+
+class EvalExample(NamedTuple):
+    """User prompt and gold label for API-side evaluation."""
+
+    user: str
+    label: str
+
 
 @runtime_checkable
 class DatasetProtocol(Protocol):
@@ -94,4 +110,16 @@ class DatasetProtocol(Protocol):
         split: Split | None = None,
     ) -> None:
         """Load the dataset into instance state."""
+        ...
+
+    def load_raw(self) -> None:
+        """Load raw dataset splits without tokenizing."""
+        ...
+
+    def few_shot_examples(self, n_shot: int) -> list[EvalExample]:
+        """Sample `n_shot` prompt and label pairs from the train split."""
+        ...
+
+    def eval_samples(self) -> list[EvalExample]:
+        """Build prompt and label pairs for the test split."""
         ...

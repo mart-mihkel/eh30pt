@@ -7,10 +7,9 @@ import pytest
 from datasets import Dataset, DatasetDict
 
 from eh30pt.datasets.multinerd import Multinerd
-from eh30pt.datasets.multinerd import _Example as _MultinerdExample
 from eh30pt.datasets.oblique import Oblique
-from eh30pt.datasets.oblique import _Example as _ObliqueExample
 from eh30pt.datasets.oblique import _Sample as _ObliqueSample
+from eh30pt.types import EvalExample
 
 if TYPE_CHECKING:
     from eh30pt.types import Architecture
@@ -43,10 +42,10 @@ def _oblique_row(sentence: str, removed: str, label: str) -> dict[str, str]:
     return {"sentence": sentence, "removed": removed, "label": label}
 
 
-def _oblique_examples() -> list[_ObliqueExample]:
+def _oblique_examples() -> list[EvalExample]:
     return [
-        _ObliqueExample(user="Lause: a\nFraas: b\nKategooria:", assistant="vaba"),
-        _ObliqueExample(user="Lause: c\nFraas: d\nKategooria:", assistant="seotud"),
+        EvalExample(user="Lause: a\nFraas: b\nKategooria:", label="vaba"),
+        EvalExample(user="Lause: c\nFraas: d\nKategooria:", label="seotud"),
     ]
 
 
@@ -107,7 +106,7 @@ def test_oblique_format_examples_legacy_joins() -> None:
 def test_multinerd_format_examples_legacy_joins() -> None:
     ds = Multinerd(_mock_tokenizer(None), "decoder")
     examples = [
-        _MultinerdExample(user="Sentence: s\nEntity: e\nTag:", assistant="PER"),
+        EvalExample(user="Sentence: s\nEntity: e\nTag:", label="PER"),
     ]
 
     assert ds._format_examples_legacy(examples) == "Sentence: s\nEntity: e\nTag: PER\n"
@@ -122,7 +121,7 @@ def test_oblique_format_examples_template_requires_chat_template() -> None:
 
 def test_multinerd_format_examples_template_requires_chat_template() -> None:
     ds = Multinerd(_mock_tokenizer(None), "decoder")
-    examples = [_MultinerdExample(user="q", assistant="PER")]
+    examples = [EvalExample(user="q", label="PER")]
 
     with pytest.raises(RuntimeError, match="chat template"):
         ds._format_examples_template(examples)
@@ -249,7 +248,7 @@ def test_multinerd_encode_answer_template() -> None:
     ]
 
 
-def test_multinerd_sample_examples_joins_spans() -> None:
+def test_multinerd_few_shot_examples_joins_spans() -> None:
     ds = Multinerd(_mock_tokenizer(None), "decoder")
     ds._raw_data = DatasetDict(
         {
@@ -265,15 +264,15 @@ def test_multinerd_sample_examples_joins_spans() -> None:
         }
     )
 
-    assert ds._sample_examples(1) == [
-        _MultinerdExample(
+    assert ds.few_shot_examples(1) == [
+        EvalExample(
             user="Sentence: New York is big\nEntity: New York\nTag:",
-            assistant="LOC",
+            label="LOC",
         )
     ]
 
 
-def test_multinerd_sample_examples_over_request() -> None:
+def test_multinerd_few_shot_examples_over_request() -> None:
     ds = Multinerd(_mock_tokenizer(None), "decoder")
     ds._raw_data = DatasetDict(
         {
@@ -290,10 +289,10 @@ def test_multinerd_sample_examples_over_request() -> None:
     )
 
     with pytest.raises(ValueError, match="requested more than 1 examples"):
-        ds._sample_examples(2)
+        ds.few_shot_examples(2)
 
 
-def test_oblique_sample_examples_selects_first_rows() -> None:
+def test_oblique_few_shot_examples_selects_first_rows() -> None:
     ds = Oblique(_mock_tokenizer(None), "decoder")
     ds._raw_data = DatasetDict(
         {
@@ -307,25 +306,25 @@ def test_oblique_sample_examples_selects_first_rows() -> None:
         }
     )
 
-    examples = ds._sample_examples(2)
+    examples = ds.few_shot_examples(2)
 
     assert examples == [
-        _ObliqueExample(
+        EvalExample(
             user="Lause: Lause üks\nFraas: üks\nKategooria:",
-            assistant="vaba",
+            label="vaba",
         ),
-        _ObliqueExample(
+        EvalExample(
             user="Lause: Lause kaks\nFraas: kaks\nKategooria:",
-            assistant="seotud",
+            label="seotud",
         ),
     ]
 
 
-def test_oblique_sample_examples_over_request() -> None:
+def test_oblique_few_shot_examples_over_request() -> None:
     ds = Oblique(_mock_tokenizer(None), "decoder")
     ds._raw_data = DatasetDict(
         {"train": Dataset.from_list([_oblique_row("Lause üks", "üks", "vaba")])}
     )
 
     with pytest.raises(ValueError, match="requested more than 1 examples"):
-        ds._sample_examples(2)
+        ds.few_shot_examples(2)

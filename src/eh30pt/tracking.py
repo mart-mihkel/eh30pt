@@ -258,7 +258,7 @@ class RunContext:
                 versions[0].version,
             )
         else:
-            logger.info("commiting prompt '%s'", name)
+            logger.info("commiting prompt for '%s'", name)
             prompt_version = self.client.register_prompt(
                 name=name,
                 template=template,
