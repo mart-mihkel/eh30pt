@@ -25,13 +25,11 @@ def main(
     *,
     arch: Architecture | None = None,
     head_only: bool,
-    train_samples: int | None,
-    val_samples: int | None,
-    do_eval: bool,
+    eval_steps: int,
     patience: int,
     tolerance: float,
     resume: bool = True,
-    epochs: int,
+    train_steps: int,
     batch_size: int,
     learning_rate: float,
     warmup_ratio: float,
@@ -50,29 +48,28 @@ def main(
 
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
-    ds = load_data(
+    data = load_data(
         tokenizer,
         dataset,
         arch,
-        n_shot,
-        n_train_samples=train_samples,
-        n_val_samples=val_samples,
+        n_shot=n_shot,
     )
-    data = ds.data
+
+    tokenized = data.data
 
     if dataset in {"boolq", "wic"}:
         logger.warning("using superglue validation data for test, labels are private")
-        data["test"] = data["validation"]
+        tokenized["test"] = tokenized["validation"]
 
     logger.info("loading '%s'", model_path)
-    model = load_model(tokenizer, model_path, ds, arch, head_only=head_only)
+    model = load_model(tokenizer, model_path, data, arch, head_only=head_only)
 
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     method = "cls-head" if head_only else "fine-tune"
     if mlflow_run_name is None:
-        mlflow_run_name = build_run_name(dataset, model_path, method, train_samples)
+        mlflow_run_name = build_run_name(dataset, model_path, method, None)
 
     logger.info("total parameters %d", total)
     logger.info("trainable parameters %d", trainable)
@@ -85,20 +82,18 @@ def main(
         "base_model": model_path,
         "head_only": head_only,
         "n_shot": n_shot,
-        "train_subset": train_samples,
-        "val_subset": val_samples,
-        "do_eval": do_eval,
+        "eval_steps": eval_steps,
         "patience": patience,
         "tolerance": tolerance,
-        "epochs": epochs,
+        "train_steps": train_steps,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
         "warmup_ratio": warmup_ratio,
         "seed": seed,
-        "system_prompt": ds.system_prompt,
-        "train_samples": len(data["train"]),
-        "validation_samples": len(data["validation"]) if do_eval else 0,
-        "test_samples": len(data["test"]),
+        "system_prompt": data.system_prompt,
+        "train_samples": len(tokenized["train"]),
+        "validation_samples": len(tokenized["validation"]) if eval_steps > 0 else 0,
+        "test_samples": len(tokenized["test"]),
         "total_parameters": total,
         "trainable_parameters": trainable,
     }
@@ -110,20 +105,20 @@ def main(
         resume=resume,
         config=run_config,
     ) as ctx:
-        log_prompt_version(ctx, dataset, arch, ds.system_prompt)
+        log_prompt_version(ctx, dataset, arch, data.system_prompt)
         train_and_evaluate(
             ctx,
             model,
             tokenizer=tokenizer,
-            data=data,
+            data=tokenized,
             arch=arch,
             collate_fn=collate_fn,
             metrics_fn=metrics_fn,
             registered_name=f"{mlflow_experiment}-{dataset}-{arch}-{method}",
-            do_eval=do_eval,
+            eval_steps=eval_steps,
             patience=patience,
             tolerance=tolerance,
-            epochs=epochs,
+            train_steps=train_steps,
             learning_rate=learning_rate,
             batch_size=batch_size,
             warmup_ratio=warmup_ratio,

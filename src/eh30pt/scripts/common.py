@@ -25,10 +25,10 @@ def train_and_evaluate(
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
     registered_name: str,
-    do_eval: bool,
+    eval_steps: int,
     patience: int,
     tolerance: float,
-    epochs: int,
+    train_steps: int,
     learning_rate: float,
     batch_size: int,
     warmup_ratio: float,
@@ -57,14 +57,14 @@ def train_and_evaluate(
         Metric function scoring evaluation predictions.
     registered_name : str
         Registered model name for the best-model comparison.
-    do_eval : bool
-        Run evaluation during training.
+    eval_steps : int
+        Evaluate every N training steps, 0 disables evaluation.
     patience : int
-        Eval epochs without improvement before stopping, 0 disables.
+        Evals without improvement before stopping, 0 disables.
     tolerance : float
         Minimum eval improvement resetting the patience counter.
-    epochs : int
-        Number of training epochs.
+    train_steps : int
+        Training step budget.
     learning_rate : float
         Optimizer learning rate.
     batch_size : int
@@ -86,10 +86,10 @@ def train_and_evaluate(
         collate_fn=collate_fn,
         metrics_fn=metrics_fn,
         output_dir=ctx.dir,
-        do_eval=do_eval,
+        eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
-        epochs=epochs,
+        train_steps=train_steps,
         learning_rate=learning_rate,
         batch_size=batch_size,
         warmup_ratio=warmup_ratio,
@@ -162,7 +162,7 @@ def evaluate_and_log(
         collate_fn=collate_fn,
         metrics_fn=metrics_fn,
         output_dir=ctx.dir,
-        do_eval=False,
+        eval_steps=0,
         batch_size=batch_size,
         run_name=ctx.run_name or "eh30pt",
         report_to="mlflow",

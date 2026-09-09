@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Oblique
-from eh30pt.logging import logger
 
 if TYPE_CHECKING:
     from datasets.splits import Split
@@ -38,23 +37,13 @@ def load_data(
     tokenizer: PreTrainedTokenizerFast,
     dataset: DatasetName,
     arch: Architecture,
-    n_shot: int,
     *,
-    n_train_samples: int | None = None,
-    n_val_samples: int | None = None,
+    n_shot: int = 0,
     n_virtual: int = 0,
     split: Split | None = None,
 ) -> DatasetProtocol:
     """Load and prompt-format `dataset`, returning the pipeline."""
     ds = get_dataset(dataset, tokenizer, arch)
     ds.load(n_shot=n_shot, n_virtual=n_virtual, split=split)
-
-    data = ds.data
-    if n_train_samples is not None:
-        logger.debug("keep %d train samples", n_train_samples)
-        data["train"] = data["train"].select(range(n_train_samples))
-    if n_val_samples is not None:
-        logger.debug("keep %d validation samples", n_val_samples)
-        data["validation"] = data["validation"].select(range(n_val_samples))
 
     return ds

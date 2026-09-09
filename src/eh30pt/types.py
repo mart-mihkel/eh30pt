@@ -37,12 +37,10 @@ class RunConfig(TypedDict):
 class TrainingRunConfig(RunConfig):
     """Run configuration shared by the training scripts."""
 
-    train_subset: int | None
-    val_subset: int | None
-    do_eval: bool
+    eval_steps: int
     patience: int
     tolerance: float
-    epochs: int
+    train_steps: int
     learning_rate: float
     warmup_ratio: float
 

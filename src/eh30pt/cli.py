@@ -23,6 +23,54 @@ DatasetOption = Annotated[
     Option("--dataset", "-d", help="Dataset name"),
 ]
 
+NShotOption = Annotated[
+    int,
+    Option("--n-shot", "-n", min=0, help="Number of examples in system prompt"),
+]
+
+TrainStepsOption = Annotated[
+    int,
+    Option("--train-steps", "-t", min=1, help="Number of training steps"),
+]
+
+EvalStepsOption = Annotated[
+    int,
+    Option("--eval-steps", "-e", min=0, help="Evaluate every N steps, 0 disables"),
+]
+
+BatchSizeOption = Annotated[
+    int,
+    Option("--batch-size", "-b", min=1, help="Training/eval batch size"),
+]
+
+PatienceOption = Annotated[
+    int,
+    Option(
+        "--patience",
+        min=0,
+        help="Evals without improvement before stopping, 0 disables",
+    ),
+]
+
+ToleranceOption = Annotated[
+    float,
+    Option(
+        "--tolerance",
+        min=0,
+        help="Minimum eval improvement resetting the patience counter",
+    ),
+]
+
+LearningRateOption = Annotated[
+    float,
+    Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
+]
+
+WarmupRatioOption = Annotated[
+    float,
+    Option("--warmup-ratio", "-w", min=0, help="Fraction of steps for lr warmup"),
+]
+
 ArchOption = Annotated[
     Architecture.__value__ | None,
     Option("--arch", "-a", help="Override auto-detected model architecture"),
@@ -38,54 +86,6 @@ HeadOnlyOption = Annotated[
     Option(help="Freeze all parameters except for classifier head"),
 ]
 
-NShotOption = Annotated[
-    int,
-    Option("--n-shot", "-n", min=0, help="Number of examples in system prompt"),
-]
-
-TrainSamplesOption = Annotated[
-    int | None,
-    Option(
-        "--train-samples",
-        "-t",
-        min=0,
-        help="If present take a subset of tokenized train data",
-    ),
-]
-
-ValSamplesOption = Annotated[
-    int | None,
-    Option(
-        "--val-samples",
-        "-v",
-        min=0,
-        help="If present take a subset of tokenized validation data",
-    ),
-]
-
-DoEvalOption = Annotated[
-    bool,
-    Option(help="Run evalutaion during training"),
-]
-
-PatienceOption = Annotated[
-    int,
-    Option(
-        "--patience",
-        min=0,
-        help="Eval epochs without improvement before stopping, 0 disables",
-    ),
-]
-
-ToleranceOption = Annotated[
-    float,
-    Option(
-        "--tolerance",
-        min=0,
-        help="Minimum eval improvement resetting the patience counter",
-    ),
-]
-
 ResumeOption = Annotated[
     bool,
     Option(
@@ -94,25 +94,6 @@ ResumeOption = Annotated[
     ),
 ]
 
-LearningRateOption = Annotated[
-    float,
-    Option("--learning-rate", "-r", min=0, help="Optimizer learning rate"),
-]
-
-WarmupRatioOption = Annotated[
-    float,
-    Option("--warmup-ratio", min=0, help="Fraction of steps for lr warmup"),
-]
-
-EpochsOption = Annotated[
-    int,
-    Option("--epochs", "-e", min=0, help="Number of training epochs"),
-]
-
-BatchSizeOption = Annotated[
-    int,
-    Option("--batch-size", "-b", min=1, help="Training/eval batch size"),
-]
 
 TrackingUriOption = Annotated[
     str,
@@ -144,7 +125,7 @@ LogLevelOption = Annotated[
 
 SeedOption = Annotated[
     int | None,
-    Option(min=0, help="Random seed"),
+    Option("--seed", "-s", min=0, help="Random seed"),
 ]
 
 
@@ -192,22 +173,20 @@ def _setup() -> None:
 
 @app.command(help="Fine-tune and run test evaluation")
 def fine_tune(
+    *,
     model: ModelOption,
     dataset: DatasetOption,
-    *,
-    arch: ArchOption = None,
     head_only: HeadOnlyOption = False,
     n_shot: NShotOption = 0,
-    train_samples: TrainSamplesOption = None,
-    val_samples: ValSamplesOption = None,
-    do_eval: DoEvalOption = False,
-    patience: PatienceOption = 0,
-    tolerance: ToleranceOption = 0.01,
-    resume: ResumeOption = True,
-    epochs: EpochsOption = 5,
+    train_steps: TrainStepsOption,
+    eval_steps: EvalStepsOption = 0,
     batch_size: BatchSizeOption = 8,
     learning_rate: LearningRateOption = 5e-5,
     warmup_ratio: WarmupRatioOption = 0.06,
+    patience: PatienceOption = 0,
+    tolerance: ToleranceOption = 0.01,
+    arch: ArchOption = None,
+    resume: ResumeOption = True,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
@@ -228,13 +207,11 @@ def fine_tune(
         arch=arch,
         head_only=head_only,
         n_shot=n_shot,
-        train_samples=train_samples,
-        val_samples=val_samples,
-        do_eval=do_eval,
+        eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
         resume=resume,
-        epochs=epochs,
+        train_steps=train_steps,
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
@@ -247,22 +224,20 @@ def fine_tune(
 
 @app.command(help="Prompt-tune and run test evaluation")
 def prompt_tune(
+    *,
     model: ModelOption,
     dataset: DatasetOption,
-    *,
     prefix_init: PrefixInitOption = "pretrained",
-    arch: ArchOption = None,
     n_shot: NShotOption = 0,
-    train_samples: TrainSamplesOption = None,
-    val_samples: ValSamplesOption = None,
-    do_eval: DoEvalOption = False,
-    patience: PatienceOption = 0,
-    tolerance: ToleranceOption = 0.01,
-    resume: ResumeOption = True,
-    epochs: EpochsOption = 5,
+    train_steps: TrainStepsOption,
+    eval_steps: EvalStepsOption = 0,
     batch_size: BatchSizeOption = 8,
     learning_rate: LearningRateOption = 1e-3,
     warmup_ratio: WarmupRatioOption = 0.06,
+    patience: PatienceOption = 0,
+    tolerance: ToleranceOption = 0.01,
+    arch: ArchOption = None,
+    resume: ResumeOption = True,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
@@ -283,13 +258,11 @@ def prompt_tune(
         prefix_init=prefix_init,
         arch=arch,
         n_shot=n_shot,
-        train_samples=train_samples,
-        val_samples=val_samples,
-        do_eval=do_eval,
+        eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
         resume=resume,
-        epochs=epochs,
+        train_steps=train_steps,
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
@@ -302,12 +275,12 @@ def prompt_tune(
 
 @app.command(help="Run test evaluation with few-shot learning")
 def few_shot(
+    *,
     model: ModelOption,
     dataset: DatasetOption,
-    *,
-    arch: ArchOption = None,
     n_shot: NShotOption = 0,
     batch_size: BatchSizeOption = 8,
+    arch: ArchOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",

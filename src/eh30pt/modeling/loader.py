@@ -31,9 +31,15 @@ def load_model(
     have_mps = not have_cuda and torch.mps.is_available()
     if have_cuda:
         dtype = torch.bfloat16
+        device_map = "auto"
+        logger.debug("using bf16")
+    elif have_mps:
+        dtype = torch.bfloat16
+        device_map = "cpu"
         logger.debug("using bf16")
     else:
         dtype = torch.float32
+        device_map = "auto"
         logger.debug("using full precision")
 
     skip_freeze = None
@@ -46,7 +52,7 @@ def load_model(
             num_labels=len(data.id2label),
             id2label=data.id2label,
             label2id=data.label2id,
-            device_map="auto",
+            device_map=device_map,
             dtype=dtype,
         )
 
@@ -55,20 +61,20 @@ def load_model(
         logger.debug("loading '%s' for causal language modeling", model_path)
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            device_map="auto",
+            device_map=device_map,
             dtype=dtype,
         )
     elif arch == "encoder-decoder":
         logger.debug("loading '%s' for sequence to sequence", model_path)
         model = AutoModelForSeq2SeqLM.from_pretrained(
             model_path,
-            device_map="auto",
+            device_map=device_map,
             dtype=dtype,
         )
 
     if have_mps:
-        logger.debug("converting to bf16")
-        cast("Module", model).to(torch.bfloat16)
+        logger.debug("moving model to mps")
+        cast("Module", model).to("mps")
 
     config = model.config
     if "text_config" in config:

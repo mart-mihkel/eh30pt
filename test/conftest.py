@@ -22,6 +22,7 @@ models: Final[Mapping[str, str]] = {
     "bert": "hf-internal-testing/tiny-random-bert",
     "modernbert": "hf-internal-testing/tiny-random-ModernBertForSequenceClassification",
     "gpt2": "hf-internal-testing/tiny-random-gpt2",
+    "gpt-neox": "hf-internal-testing/tiny-random-GPTNeoXForCausalLM",
     "llama": "hf-internal-testing/tiny-random-LlamaForCausalLM",
     # extremely slow or broken, not sure but should be fixed
     # "qwen": "hf-internal-testing/tiny-random-Qwen3MoeForCausalLM",  # noqa: ERA001

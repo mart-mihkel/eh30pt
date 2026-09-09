@@ -27,13 +27,11 @@ def main(
     n_shot: int,
     *,
     arch: Architecture | None = None,
-    train_samples: int | None,
-    val_samples: int | None,
-    do_eval: bool,
+    eval_steps: int,
     patience: int,
     tolerance: float,
     resume: bool = True,
-    epochs: int,
+    train_steps: int,
     batch_size: int,
     learning_rate: float,
     warmup_ratio: float,
@@ -60,9 +58,7 @@ def main(
         tokenizer,
         dataset,
         arch,
-        n_shot,
-        n_train_samples=train_samples,
-        n_val_samples=val_samples,
+        n_shot=n_shot,
         n_virtual=n_virtual,
     )
 
@@ -86,7 +82,7 @@ def main(
 
     method = f"prompt-tune-{prefix_init}"
     if mlflow_run_name is None:
-        mlflow_run_name = build_run_name(dataset, model_path, method, train_samples)
+        mlflow_run_name = build_run_name(dataset, model_path, method, None)
 
     logger.info("total parameters %d", total)
     logger.info("trainable parameters %d", trainable)
@@ -101,19 +97,17 @@ def main(
         "prefix_init": prefix_init,
         "n_virtual": ptcfg.num_virtual_tokens,
         "n_shot": n_shot,
-        "train_subset": train_samples,
-        "val_subset": val_samples,
-        "do_eval": do_eval,
+        "eval_steps": eval_steps,
         "patience": patience,
         "tolerance": tolerance,
-        "epochs": epochs,
+        "train_steps": train_steps,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
         "warmup_ratio": warmup_ratio,
         "seed": seed,
         "system_prompt": data.system_prompt,
         "train_samples": len(tokenized["train"]),
-        "validation_samples": len(tokenized["validation"]) if do_eval else 0,
+        "validation_samples": len(tokenized["validation"]) if eval_steps > 0 else 0,
         "test_samples": len(tokenized["test"]),
         "total_parameters": total,
         "trainable_parameters": trainable,
@@ -136,10 +130,10 @@ def main(
             collate_fn=collate_fn,
             metrics_fn=metrics_fn,
             registered_name=f"{mlflow_experiment}-{dataset}-{arch}-{method}",
-            do_eval=do_eval,
+            eval_steps=eval_steps,
             patience=patience,
             tolerance=tolerance,
-            epochs=epochs,
+            train_steps=train_steps,
             learning_rate=learning_rate,
             batch_size=batch_size,
             warmup_ratio=warmup_ratio,

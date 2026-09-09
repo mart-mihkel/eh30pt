@@ -1,18 +1,51 @@
 """Tests for label-constrained decoding helpers."""
 
+from typing import TYPE_CHECKING, Any, Final, cast
+from unittest.mock import MagicMock
+
 import torch
 from datasets import Dataset
 from datasets.dataset_dict import DatasetDict
 
 from eh30pt.modeling.trainer import (
     _allowed_next,
+    _build_spec,
     _constrain_eval_logits,
     _label_completions,
 )
 
+if TYPE_CHECKING:
+    from transformers import DataCollator, PreTrainedTokenizerFast
+
+_DEFAULT_WARMUP: Final = 0.06
+_CUSTOM_WARMUP: Final = 0.1
+_TRAIN_STEPS: Final = 500
+_EVAL_STEPS: Final = 50
+
 
 def _dataset(labels: list[list[int]]) -> DatasetDict:
     return DatasetDict({"train": Dataset.from_dict({"labels": labels})})
+
+
+def test_build_spec_hyperparameters() -> None:
+    kwargs: dict[str, Any] = {
+        "model": torch.nn.Linear(2, 2),
+        "tokenizer": cast("PreTrainedTokenizerFast", MagicMock(eos_token_id=2)),
+        "data": DatasetDict(),
+        "arch": "decoder",
+        "collate_fn": cast("DataCollator", MagicMock()),
+        "metrics_fn": lambda _pred: {},
+        "output_dir": "log",
+        "eval_steps": _EVAL_STEPS,
+        "train_steps": _TRAIN_STEPS,
+    }
+    assert _build_spec(**kwargs).warmup_ratio == _DEFAULT_WARMUP
+    assert _build_spec(**kwargs).train_steps == _TRAIN_STEPS
+    assert _build_spec(**kwargs).eval_steps == _EVAL_STEPS
+    assert (
+        _build_spec(**kwargs, warmup_ratio=_CUSTOM_WARMUP).warmup_ratio
+        == _CUSTOM_WARMUP
+    )
 
 
 def test_label_completions_strips_mask_and_dedupes() -> None:
@@ -55,7 +88,7 @@ def test_constrain_forces_likeliest_legal_completion() -> None:
         ]
     )
     logits = torch.zeros(3, 4, 6)
-    # Favor the length-mismatched completion: it must still lose.
+
     logits[0, 1] = torch.tensor([0.0, 0.0, 0.0, 5.0, 0.0, 100.0])
     logits[0, 2] = torch.tensor([0.0, 0.0, 1.0, 0.0, 2.0, 100.0])
     logits[1, 0] = torch.tensor([0.0, 0.0, 0.0, 0.0, 0.0, 7.0])

@@ -1,6 +1,6 @@
 """Per-architecture Trainer construction."""
 
-from typing import TYPE_CHECKING, Any, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, cast
 
 import torch
 from transformers import (
@@ -43,8 +43,8 @@ class _Spec(NamedTuple):
     collate_fn: DataCollator
     metrics_fn: Callable
     output_dir: str
-    do_eval: bool
-    epochs: int
+    eval_steps: int
+    train_steps: int
     learning_rate: float
     batch_size: int
     warmup_ratio: float
@@ -58,6 +58,10 @@ class _Spec(NamedTuple):
     load_best: bool
     have_accel: bool
     label_completions: tuple[tuple[int, ...], ...]
+
+
+# Epochs only tick eval/save; the step budget governs total training.
+_NO_EPOCH_CAP: Final = 0
 
 
 class ConstrainedSFTTrainer(SFTTrainer):
@@ -148,7 +152,8 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         save_strategy=spec.save_strategy,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
-        eval_on_start=spec.do_eval,
+        eval_steps=spec.eval_steps,
+        eval_on_start=spec.eval_steps > 0,
         batch_eval_metrics=True,
         remove_unused_columns=False,
         logging_steps=100,
@@ -157,7 +162,8 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=spec.epochs,
+        num_train_epochs=_NO_EPOCH_CAP,
+        max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
         use_cpu=not spec.have_accel,
@@ -186,7 +192,8 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         save_strategy=spec.save_strategy,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
-        eval_on_start=spec.do_eval,
+        eval_steps=spec.eval_steps,
+        eval_on_start=spec.eval_steps > 0,
         batch_eval_metrics=True,
         remove_unused_columns=False,
         logging_steps=100,
@@ -195,7 +202,8 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=spec.epochs,
+        num_train_epochs=_NO_EPOCH_CAP,
+        max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
         use_cpu=not spec.have_accel,
@@ -317,7 +325,8 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         save_strategy=spec.save_strategy,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
-        eval_on_start=spec.do_eval,
+        eval_steps=spec.eval_steps,
+        eval_on_start=spec.eval_steps > 0,
         batch_eval_metrics=True,
         remove_unused_columns=False,
         logging_steps=100,
@@ -326,7 +335,8 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=spec.epochs,
+        num_train_epochs=_NO_EPOCH_CAP,
+        max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
         use_cpu=not spec.have_accel,
@@ -358,8 +368,8 @@ def _build_spec(
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
     output_dir: Path | str,
-    do_eval: bool,
-    epochs: int = 0,
+    eval_steps: int,
+    train_steps: int = 0,
     learning_rate: float = 5e-5,
     batch_size: int = 8,
     warmup_ratio: float = 0.06,
@@ -372,7 +382,7 @@ def _build_spec(
     have_cuda = torch.cuda.is_available()
     have_mps = torch.mps.is_available()
     have_accel = have_cuda or have_mps
-    do_checkpoints = do_eval and checkpoints
+    do_checkpoints = eval_steps > 0 and checkpoints
 
     return _Spec(
         model=model,
@@ -382,8 +392,8 @@ def _build_spec(
         collate_fn=collate_fn,
         metrics_fn=cast("Callable", metrics_fn),
         output_dir=str(output_dir),
-        do_eval=do_eval,
-        epochs=epochs,
+        eval_steps=eval_steps,
+        train_steps=train_steps,
         learning_rate=learning_rate,
         batch_size=batch_size,
         warmup_ratio=warmup_ratio,
@@ -392,7 +402,7 @@ def _build_spec(
         checkpoints=checkpoints,
         callbacks=list(callbacks),
         optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
-        eval_strategy="epoch" if do_eval else "no",
+        eval_strategy="steps" if eval_steps > 0 else "no",
         save_strategy="epoch" if checkpoints else "no",
         load_best=do_checkpoints,
         have_accel=have_accel,
@@ -411,10 +421,10 @@ def get_trainer(
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
     output_dir: Path | str,
-    do_eval: bool,
+    eval_steps: int,
     patience: int = 0,
     tolerance: float = 0.01,
-    epochs: int = 0,
+    train_steps: int = 0,
     learning_rate: float = 5e-5,
     batch_size: int = 8,
     warmup_ratio: float = 0.06,
@@ -442,14 +452,14 @@ def get_trainer(
         Metric function scoring evaluation predictions.
     output_dir : Path | str
         Directory for checkpoints and trainer state.
-    do_eval : bool
-        Run evaluation during training.
+    eval_steps : int
+        Evaluate every N training steps, 0 disables evaluation.
     patience : int
-        Eval epochs without improvement before stopping, 0 disables.
+        Evals without improvement before stopping, 0 disables.
     tolerance : float
         Minimum eval improvement resetting the patience counter.
-    epochs : int
-        Number of training epochs.
+    train_steps : int
+        Training step budget, 0 trains nothing (eval-only default).
     learning_rate : float
         Optimizer learning rate.
     batch_size : int
@@ -480,8 +490,8 @@ def get_trainer(
         collate_fn=collate_fn,
         metrics_fn=metrics_fn,
         output_dir=output_dir,
-        do_eval=do_eval,
-        epochs=epochs,
+        eval_steps=eval_steps,
+        train_steps=train_steps,
         learning_rate=learning_rate,
         batch_size=batch_size,
         warmup_ratio=warmup_ratio,
@@ -500,7 +510,7 @@ def get_trainer(
 
     _maybe_add_early_stopping(
         trainer,
-        do_eval=do_eval,
+        eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
     )
@@ -511,14 +521,14 @@ def get_trainer(
 def _maybe_add_early_stopping(
     trainer: Trainer,
     *,
-    do_eval: bool,
+    eval_steps: int,
     patience: int,
     tolerance: float,
 ) -> None:
     """Attach early stopping when evaluation and patience are enabled."""
-    if patience > 0 and not do_eval:
+    if patience > 0 and eval_steps == 0:
         logger.warning("not using early stopping because not running evaluation")
-    elif do_eval and patience > 0:
+    elif eval_steps > 0 and patience > 0:
         logger.info(
             "using early stopping with %d patience and %.2f tolerance",
             patience,

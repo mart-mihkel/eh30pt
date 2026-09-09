@@ -44,7 +44,7 @@ def main(
     metrics_fn = MetricsAccumulator(tokenizer, arch)
 
     split = cast("Split", {"test": "test"})
-    data = load_data(tokenizer, dataset, arch, n_shot, split=split)
+    data = load_data(tokenizer, dataset, arch, n_shot=n_shot, split=split)
     tokenized = data.data
 
     if dataset in {"boolq", "wic"}:
