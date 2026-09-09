@@ -1,8 +1,9 @@
 """Command line interface."""
 
+import asyncio
 from typing import Annotated
 
-from typer import Option, Typer
+from typer import Argument, Option, Typer
 
 from eh30pt.logging import setup_logging
 from eh30pt.types import Architecture, DatasetName, LogLevel, PrefixInit
@@ -126,6 +127,34 @@ LogLevelOption = Annotated[
 SeedOption = Annotated[
     int | None,
     Option("--seed", "-s", min=0, help="Random seed"),
+]
+
+PromptArgument = Annotated[
+    str,
+    Argument(help="User prompt to send to the server"),
+]
+
+SystemOption = Annotated[
+    str,
+    Option("--system", help="System prompt steering the completion"),
+]
+
+BaseUrlOption = Annotated[
+    str,
+    Option("--base-url", help="Base URL of the llama server"),
+]
+
+CompletionDatasetOption = Annotated[
+    DatasetName.__value__ | None,
+    Option("--dataset", "-d", help="Constrain output to the dataset label set"),
+]
+
+OneConvOption = Annotated[
+    bool,
+    Option(
+        "--one-conv/--no-one-conv",
+        help="Keep all samples in one conversation instead of restarting per sample",
+    ),
 ]
 
 
@@ -305,6 +334,60 @@ def few_shot(
         mlflow_run_name=mlflow_run_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
         seed=seed,
+    )
+
+
+@app.command(help="Query a llama server and print the completion")
+def completion(
+    *,
+    user_prompt: PromptArgument,
+    system_prompt: SystemOption,
+    base_url: BaseUrlOption = "http://localhost:8080",
+    dataset: CompletionDatasetOption = None,
+    log_level: LogLevelOption = "info",
+) -> None:
+    """Query a llama server and print the completion."""
+    from eh30pt.cli.scripts.completion import main
+    from eh30pt.datasets.registry import get_labels
+    from eh30pt.logging import logger
+
+    logger.setLevel(log_level.upper())
+    labels = get_labels(dataset) if dataset is not None else None
+    asyncio.run(main(user_prompt, system_prompt, base_url, labels=labels))
+
+
+@app.command(help="Run few-shot test evaluation against a llama server")
+def inference(
+    *,
+    system_prompt: SystemOption,
+    base_url: BaseUrlOption = "http://localhost:8080",
+    dataset: DatasetOption,
+    n_shot: NShotOption = 0,
+    one_conv: OneConvOption = False,
+    seed: SeedOption = None,
+    mlflow_run_name: RunNameOption = None,
+    mlflow_experiment: ExperimentOption = "eh30pt",
+    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
+    log_level: LogLevelOption = "info",
+) -> None:
+    """Run few-shot test evaluation against a llama server."""
+    from eh30pt.cli.scripts.inference import main
+    from eh30pt.logging import logger
+
+    logger.setLevel(log_level.upper())
+
+    asyncio.run(
+        main(
+            system_prompt=system_prompt,
+            base_url=base_url,
+            dataset=dataset,
+            n_shot=n_shot,
+            one_conv=one_conv,
+            mlflow_run_name=mlflow_run_name,
+            mlflow_experiment=mlflow_experiment,
+            mlflow_tracking_uri=mlflow_tracking_uri,
+            seed=seed,
+        ),
     )
 
 

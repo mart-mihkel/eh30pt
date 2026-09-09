@@ -31,6 +31,9 @@ def test_help_lists_commands() -> None:
     assert "fine-tune" in result.output
     assert "prompt-tune" in result.output
     assert "few-shot" in result.output
+    assert "completion" in result.output
+    assert "inference" in result.output
+    assert "collect" in result.output
 
 
 def test_rejects_unknown_dataset() -> None:

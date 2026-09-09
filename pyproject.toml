@@ -43,7 +43,6 @@ notebooks = [
 
 [project.scripts]
 cli = "eh30pt.cli.cli:app"
-llama-client = "eh30pt.cli.llama:app"
 
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
