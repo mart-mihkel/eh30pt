@@ -14,6 +14,7 @@ src/eh30pt/           # the package, installed as `cli`
   modeling/             # arch detection, loading, tokenization, collation, metrics, trainer, tuning
   cli/                  # command line interfaces
     cli.py                # Typer app, thin option definitions only
+    eh.py                 # Est-Health workflows
     scripts/              # command implementations: finetune, ptune, fewshot, export
 test/                 # tests, lint-relaxed
   unit/                 # fast pure-logic tests, no models or network

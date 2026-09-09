@@ -6,7 +6,7 @@ import pytest
 
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Oblique
-from eh30pt.datasets.registry import get_dataset, get_sys_prompt
+from eh30pt.datasets.registry import get_dataset, get_labels, get_sys_prompt
 from eh30pt.datasets.truncation import get_max_length
 from eh30pt.modeling.arch import infer_architecture
 
@@ -68,3 +68,11 @@ def test_unloaded_access_raises(model_setup: ModelSetup) -> None:
 
     with pytest.raises(RuntimeError, match="not loaded"):
         _ = unloaded.raw_data
+
+
+def test_get_labels_multinerd() -> None:
+    labels = get_labels("multinerd")
+    n_labels = 15
+
+    assert labels[:3] == ("PER", "ORG", "LOC")
+    assert len(labels) == n_labels

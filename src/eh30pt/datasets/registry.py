@@ -24,6 +24,14 @@ def get_dataset(
     return Oblique(tokenizer, arch)
 
 
+def get_labels(dataset: DatasetName) -> tuple[str, ...]:
+    """Return the label values of `dataset` in id order."""
+    if dataset == "multinerd":
+        return tuple(Multinerd.id2label.values())
+
+    return tuple(Oblique.id2label.values())
+
+
 def get_sys_prompt(
     dataset: DatasetName,
     tokenizer: PreTrainedTokenizerFast,
