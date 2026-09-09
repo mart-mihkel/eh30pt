@@ -1,30 +1,32 @@
-"""Fine-tune a pretrained model and run test evaluation."""
+"""Prompt-tune a pretrained model and run test evaluation."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from transformers import AutoConfig
 
-from eh30pt.datasets.registry import load_data
+from eh30pt.cli.scripts.common import log_prompt_version, train_and_evaluate
+from eh30pt.datasets.registry import get_sys_prompt, load_data
 from eh30pt.logging import logger
 from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
-from eh30pt.modeling.loader import load_model
 from eh30pt.modeling.metrics import MetricsAccumulator
 from eh30pt.modeling.tokenizer import cap_tokenizer_length, load_tokenizer
-from eh30pt.scripts.common import log_prompt_version, train_and_evaluate
+from eh30pt.modeling.tuning import get_n_virtual, prepare_pt_model
 from eh30pt.tracking import build_run_name, open_run
 
 if TYPE_CHECKING:
-    from eh30pt.types import Architecture, DatasetName, FineTuneRunConfig
+    from peft import PromptTuningConfig
+
+    from eh30pt.types import Architecture, DatasetName, PrefixInit, PromptTuneRunConfig
 
 
 def main(
     model_path: str,
     dataset: DatasetName,
+    prefix_init: PrefixInit,
     n_shot: int,
     *,
     arch: Architecture | None = None,
-    head_only: bool,
     eval_steps: int,
     patience: int,
     tolerance: float,
@@ -38,7 +40,7 @@ def main(
     mlflow_tracking_uri: str,
     seed: int | None = None,
 ) -> None:
-    """Fine-tune `model_path` on `dataset` and evaluate on the test split."""
+    """Prompt-tune `model_path` on `dataset` and evaluate on the test split."""
     logger.info("loading config for '%s'", model_path)
     config = AutoConfig.from_pretrained(model_path)
     arch = infer_architecture(config, arch)
@@ -48,11 +50,16 @@ def main(
 
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
+
+    sys_prompt = get_sys_prompt(dataset, tokenizer, arch)
+    n_virtual = get_n_virtual(tokenizer, sys_prompt)
+
     data = load_data(
         tokenizer,
         dataset,
         arch,
         n_shot=n_shot,
+        n_virtual=n_virtual,
     )
 
     tokenized = data.data
@@ -61,26 +68,34 @@ def main(
         logger.warning("using superglue validation data for test, labels are private")
         tokenized["test"] = tokenized["validation"]
 
-    logger.info("loading '%s'", model_path)
-    model = load_model(tokenizer, model_path, data, arch, head_only=head_only)
+    logger.info(
+        "preparing prompt tuning model for '%s' with %s prefix initialization",
+        model_path,
+        prefix_init,
+    )
+
+    model = prepare_pt_model(prefix_init, tokenizer, model_path, arch, data)
 
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    ptcfg = cast("PromptTuningConfig", model.peft_config["default"])
 
-    method = "cls-head" if head_only else "fine-tune"
+    method = f"prompt-tune-{prefix_init}"
     if mlflow_run_name is None:
         mlflow_run_name = build_run_name(dataset, model_path, method, None)
 
     logger.info("total parameters %d", total)
     logger.info("trainable parameters %d", trainable)
+    logger.info("virtual tokens %d", ptcfg.num_virtual_tokens)
     logger.info("tracking '%s' of experiment '%s'", mlflow_run_name, mlflow_experiment)
 
-    run_config: FineTuneRunConfig = {
+    run_config: PromptTuneRunConfig = {
         "method": method,
         "dataset": dataset,
         "architecture": arch,
         "base_model": model_path,
-        "head_only": head_only,
+        "prefix_init": prefix_init,
+        "n_virtual": ptcfg.num_virtual_tokens,
         "n_shot": n_shot,
         "eval_steps": eval_steps,
         "patience": patience,

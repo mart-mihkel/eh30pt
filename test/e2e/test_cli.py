@@ -7,7 +7,7 @@ import torch
 from mlflow.tracking import MlflowClient
 from typer.testing import CliRunner
 
-from eh30pt.cli import app
+from eh30pt.cli.cli import app
 from test.conftest import models
 
 if TYPE_CHECKING:

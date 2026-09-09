@@ -194,8 +194,8 @@ def fine_tune(
     seed: SeedOption = None,
 ) -> None:
     """Fine-tune and run test evaluation."""
+    from eh30pt.cli.scripts.finetune import main
     from eh30pt.logging import logger
-    from eh30pt.scripts.finetune import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()
@@ -245,8 +245,8 @@ def prompt_tune(
     seed: SeedOption = None,
 ) -> None:
     """Prompt-tune and run test evaluation."""
+    from eh30pt.cli.scripts.ptune import main
     from eh30pt.logging import logger
-    from eh30pt.scripts.ptune import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()
@@ -288,8 +288,8 @@ def few_shot(
     seed: SeedOption = None,
 ) -> None:
     """Run test evaluation with few-shot learning."""
+    from eh30pt.cli.scripts.fewshot import main
     from eh30pt.logging import logger
-    from eh30pt.scripts.fewshot import main
 
     logger.setLevel(log_level.upper())
     _log_accelerator()

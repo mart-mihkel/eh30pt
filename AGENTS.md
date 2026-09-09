@@ -6,14 +6,15 @@ eh30pt (prompt tuning on Est-Health 30) is a single-package Python project for p
 
 ```
 src/eh30pt/           # the package, installed as `cli`
-  cli.py                # Typer app, thin option definitions only
   constants.py          # shared paths (e.g. LOGDIR)
   logging.py            # rich-backed shared logger, tqdm-safe
   tracking.py           # MLflow run management, config-hash resume
   types.py              # shared Literals, TypedDicts, Protocols
   datasets/             # per-dataset pipelines + registry + truncation
   modeling/             # arch detection, loading, tokenization, collation, metrics, trainer, tuning
-  scripts/              # command implementations: finetune, ptune, fewshot, export
+  cli/                  # command line interfaces
+    cli.py                # Typer app, thin option definitions only
+    scripts/              # command implementations: finetune, ptune, fewshot, export
 test/                 # tests, lint-relaxed
   unit/                 # fast pure-logic tests, no models or network
   integration/          # dataset loading and forward passes on tiny-random models
