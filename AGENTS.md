@@ -72,3 +72,4 @@ uv run --no-sync ty check --output-format concise    # type-check Python
 - Don't use comments to narrate code, but do use them to explain invariants and why something unusual was done a particular way
 - Make sure that a comment will make sense to somebody who's reading the code for the first time. Prefer plain language, avoid jargon, and don't be afraid to be more verbose if it's necessary to explain something well.
 - Avoid writing walls of rich markdown text when documenting code objects. Use a docstring format.
+- Try not to create module level constatns, inline them or create a function parameter with a default value.

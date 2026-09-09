@@ -1,8 +1,9 @@
 """Est-Health 30 workflows."""
 
+import asyncio
 from typing import Annotated
 
-from typer import Argument, Option, Typer, echo
+from typer import Argument, Option, Typer
 
 from eh30pt.logging import setup_logging
 from eh30pt.types import DatasetName, LogLevel
@@ -18,19 +19,24 @@ PromptArgument = Annotated[
     Argument(help="User prompt to send to the server"),
 ]
 
+SystemOption = Annotated[
+    str,
+    Option("--system", help="System prompt steering the completion"),
+]
+
 BaseUrlOption = Annotated[
     str,
     Option("--base-url", help="Base URL of the llama server"),
 ]
 
-SystemOption = Annotated[
-    str | None,
-    Option("--system", help="System prompt steering the completion"),
+DatasetOption = Annotated[
+    DatasetName.__value__ | None,
+    Option("--dataset", "-d", help="Constrain output to the dataset label set"),
 ]
 
-MaxTokensOption = Annotated[
+NShotOption = Annotated[
     int,
-    Option("--max-tokens", min=1, help="Maximum number of tokens to generate"),
+    Option("--n-shot", "-n", min=0, help="Number of few-shot examples"),
 ]
 
 DatasetOption = Annotated[
@@ -56,11 +62,10 @@ def _setup() -> None:
 
 @app.command(help="Query a llama server and print the completion")
 def completion(
-    prompt: PromptArgument,
+    user_prompt: PromptArgument,
+    system_prompt: SystemOption,
     *,
     base_url: BaseUrlOption = "http://localhost:8080",
-    system: SystemOption = None,
-    max_tokens: MaxTokensOption = 512,
     dataset: DatasetOption = None,
     log_level: LogLevelOption = "info",
 ) -> None:
@@ -71,16 +76,7 @@ def completion(
 
     logger.setLevel(log_level.upper())
     labels = get_labels(dataset) if dataset is not None else None
-
-    content = main(
-        prompt,
-        base_url=base_url,
-        system=system,
-        max_tokens=max_tokens,
-        labels=labels,
-    )
-
-    echo(content)
+    asyncio.run(main(user_prompt, system_prompt, base_url, labels=labels))
 
 
 if __name__ == "__main__":

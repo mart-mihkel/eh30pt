@@ -1,154 +1,55 @@
 """Query a llama.cpp server through its OpenAI-compatible chat endpoint."""
 
 import json
-from typing import Final, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING
 
-import httpx
+from openai import AsyncOpenAI, omit
 
 from eh30pt.logging import logger
 
-_TIMEOUT: Final = 300.0
-"""Seconds to wait for a completion, generation can take a while."""
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+    from openai.types.chat.completion_create_params import ResponseFormatJSONSchema
 
 
-class ChatMessage(TypedDict):
-    """Single turn of a chat completion request."""
+def build_conversation(
+    user_prompt: str,
+    system_prompt: str | None,
+) -> list[ChatCompletionMessageParam]:
+    """Build the chat turns for user prompt, prepending system prompt when given."""
+    conversation: list[ChatCompletionMessageParam] = []
 
-    role: str
-    content: str
+    if system_prompt is not None:
+        conversation.append({"role": "system", "content": system_prompt})
 
-
-class ChatCompletionRequest(TypedDict):
-    """Body of an OpenAI-style chat completion request."""
-
-    messages: list[ChatMessage]
-    max_tokens: int
-    response_format: NotRequired[ResponseFormat]
-
-
-class _LabelProperty(TypedDict):
-    """Label enum of a classification response schema."""
-
-    type: str
-    enum: list[str]
+    conversation.append({"role": "user", "content": user_prompt})
+    return conversation
 
 
-class _LabelProperties(TypedDict):
-    """Properties of a classification response schema."""
-
-    label: _LabelProperty
-
-
-class _LabelJsonSchema(TypedDict):
-    """JSON schema of a classification response."""
-
-    type: str
-    properties: _LabelProperties
-    required: list[str]
-
-
-class _JsonSchemaSpec(TypedDict):
-    """Named JSON schema of a structured response format."""
-
-    name: str
-    schema: _LabelJsonSchema
-
-
-class ResponseFormat(TypedDict):
-    """JSON-schema response format constraining generation to labels."""
-
-    type: str
-    json_schema: _JsonSchemaSpec
-
-
-class _ResponseMessage(TypedDict):
-    """Assistant message of a chat completion response."""
-
-    role: str
-    content: str
-
-
-class _ResponseChoice(TypedDict):
-    """Single completion choice of a chat completion response."""
-
-    message: _ResponseMessage
-
-
-class _ChatCompletion(TypedDict):
-    """Subset of an OpenAI-style chat completion response."""
-
-    choices: list[_ResponseChoice]
-
-
-def build_messages(prompt: str, system: str | None) -> list[ChatMessage]:
-    """
-    Build the chat turns for `prompt`, prepending `system` when given.
-
-    Parameters
-    ----------
-    prompt : str
-        User prompt to send to the server.
-    system : str | None
-        System prompt steering the completion, omitted when None.
-
-    Returns
-    -------
-    list[ChatMessage]
-        Chat turns starting with the user prompt.
-
-    """
-    messages: list[ChatMessage] = []
-
-    if system is not None:
-        messages.append({"role": "system", "content": system})
-
-    messages.append({"role": "user", "content": prompt})
-
-    return messages
-
-
-def extract_content(payload: _ChatCompletion) -> str:
-    """
-    Return the assistant content of the first choice in `payload`.
-
-    Parameters
-    ----------
-    payload : _ChatCompletion
-        Parsed chat completion response from the server.
-
-    Returns
-    -------
-    str
-        Assistant content of the first choice.
-
-    Raises
-    ------
-    ValueError
-        If the response contains no choices.
-
-    """
-    if not payload["choices"]:
+def extract_content(completion: ChatCompletion) -> str:
+    """Return the assistant content of the first choice in completion."""
+    if not completion.choices:
         msg = "llama server returned no choices"
         raise ValueError(msg)
 
-    return payload["choices"][0]["message"]["content"]
+    message = completion.choices[0].message
+
+    content = message.content
+    if content is None:
+        msg = "llama server returned no content"
+        raise ValueError(msg)
+
+    reasoning = getattr(message, "reasoning_content", None)
+    if reasoning is not None:
+        logger.debug("reasoning trace: '%s'", reasoning)
+    else:
+        logger.debug("model performed no reasoning")
+
+    return content
 
 
-def build_response_format(labels: tuple[str, ...]) -> ResponseFormat:
-    """
-    Build the response format constraining generation to `labels`.
-
-    Parameters
-    ----------
-    labels : tuple[str, ...]
-        Allowed label values for the classification.
-
-    Returns
-    -------
-    ResponseFormat
-        JSON-schema response format with a label enum.
-
-    """
+def build_response_format(labels: tuple[str, ...]) -> ResponseFormatJSONSchema:
+    """Build the response format constraining generation to labels."""
     return {
         "type": "json_schema",
         "json_schema": {
@@ -164,53 +65,9 @@ def build_response_format(labels: tuple[str, ...]) -> ResponseFormat:
     }
 
 
-def classification_prompt(labels: tuple[str, ...]) -> str:
-    """
-    Build the default system prompt for classifying into `labels`.
-
-    Parameters
-    ----------
-    labels : tuple[str, ...]
-        Allowed label values for the classification.
-
-    Returns
-    -------
-    str
-        System prompt describing the JSON label response.
-
-    """
-    joined = ", ".join(labels)
-
-    return (
-        "Classify the text. "
-        'Respond with a JSON object like {"label": "<TAG>"} '
-        f"where <TAG> is one of: {joined}."
-    )
-
-
-def extract_label(payload: _ChatCompletion, labels: tuple[str, ...]) -> str:
-    """
-    Return the validated label of the first choice in `payload`.
-
-    Parameters
-    ----------
-    payload : _ChatCompletion
-        Parsed chat completion response from the server.
-    labels : tuple[str, ...]
-        Allowed label values for the classification.
-
-    Returns
-    -------
-    str
-        Label of the first choice.
-
-    Raises
-    ------
-    ValueError
-        If the content is not JSON with a known `label` value.
-
-    """
-    content = extract_content(payload)
+def extract_label(completion: ChatCompletion, labels: tuple[str, ...]) -> str:
+    """Return the validated label of the first choice in completion."""
+    content = extract_content(completion)
 
     try:
         decoded = json.loads(content)
@@ -227,61 +84,68 @@ def extract_label(payload: _ChatCompletion, labels: tuple[str, ...]) -> str:
         msg = f"llama server returned unknown label: {label}"
         raise ValueError(msg)
 
+    logger.debug("extracted label: %r", label)
     return label
 
 
-def main(
-    prompt: str,
-    *,
+def _client(base_url: str) -> AsyncOpenAI:
+    return AsyncOpenAI(base_url=base_url, api_key="no-auth", timeout=300)
+
+
+async def server_model(base_url: str) -> str:
+    """Return the id of the model."""
+    logger.debug("listing models on server")
+    async with _client(base_url) as client:
+        models = await client.models.list()
+
+    if not models.data:
+        msg = f"llama server at '{base_url}' serves no models"
+        raise ValueError(msg)
+
+    model = models.data[0].id
+    logger.debug("using model '%s'", model.split("/")[-1])
+    return model
+
+
+async def complete(
     base_url: str,
-    system: str | None,
-    max_tokens: int,
+    model: str,
+    conversation: list[ChatCompletionMessageParam],
+    *,
     labels: tuple[str, ...] | None = None,
+    seed: int | None = None,
 ) -> str:
-    """
-    Complete `prompt` on the llama server at `base_url`.
+    """Complete ready-made messages on the server."""
+    logger.debug("completing message")
+    response_format = build_response_format(labels) if labels is not None else omit
 
-    Parameters
-    ----------
-    prompt : str
-        User prompt to send to the server.
-    base_url : str
-        Base URL of the llama server.
-    system : str | None
-        System prompt steering the completion, a classification prompt
-        over `labels` when None and `labels` are given.
-    max_tokens : int
-        Maximum number of tokens to generate.
-    labels : tuple[str, ...] | None
-        Allowed label values, constraining generation and validating
-        the returned label when given.
+    async with _client(base_url) as client:
+        completion = await client.chat.completions.create(
+            model=model,
+            messages=conversation,
+            response_format=response_format,
+            seed=seed if seed is not None else omit,
+        )
 
-    Returns
-    -------
-    str
-        Label of the first choice when `labels` are given, otherwise
-        the assistant content of the first choice.
-
-    """
-    if labels is not None and system is None:
-        system = classification_prompt(labels)
-
-    url = base_url.rstrip("/") + "/v1/chat/completions"
-    body: ChatCompletionRequest = {
-        "messages": build_messages(prompt, system),
-        "max_tokens": max_tokens,
-    }
-
+    logger.debug("received completion with %d choices", len(completion.choices))
     if labels is not None:
-        body["response_format"] = build_response_format(labels)
+        return extract_label(completion, labels)
 
-    logger.info("querying '%s'", url)
-    response = httpx.post(url, json=body, timeout=_TIMEOUT)
-    response.raise_for_status()
+    return extract_content(completion)
 
-    payload = cast("_ChatCompletion", response.json())
 
-    if labels is not None:
-        return extract_label(payload, labels)
+async def main(
+    user_prompt: str,
+    system_prompt: str,
+    base_url: str,
+    *,
+    labels: tuple[str, ...] | None = None,
+    seed: int | None = None,
+) -> None:
+    """Complete prompt on the llama server."""
+    logger.debug("completing prompt (%d chars)", len(user_prompt))
 
-    return extract_content(payload)
+    model = await server_model(base_url)
+    conversation = build_conversation(user_prompt, system_prompt)
+    content = await complete(base_url, model, conversation, labels=labels, seed=seed)
+    logger.info("completion: %s", content)

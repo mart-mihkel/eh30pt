@@ -13,7 +13,9 @@ dependencies = [
     "accelerate~=1.14.0",
     "tiktoken~=0.14.0",
     "datasets~=5.0.1",
+    "openai~=3.10.0",
     "mlflow~=3.16.0",
+    "openai~=3.10.0",
     "polars~=1.44.1",
     "torch~=2.14.0",
     "typer~=0.27.2",
@@ -52,7 +54,6 @@ markers = [
     "slow: slow tests, skipped unless --run-slow is passed",
 ]
 filterwarnings = [
-    # raise warnings as errors
     "error::DeprecationWarning",
     "error::FutureWarning",
     "error::RuntimeWarning",
