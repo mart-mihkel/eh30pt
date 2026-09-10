@@ -30,6 +30,11 @@ rsync commit='false' host=env('REMOTE'):
 wheel:
     uv build --wheel
 
+[doc('serve marimo')]
+[group('dev')]
+marimo *args='notebooks':
+    uv run --no-sync marimo edit {{ args }}
+
 [doc('build docker services')]
 [group('docker')]
 @build *args:
