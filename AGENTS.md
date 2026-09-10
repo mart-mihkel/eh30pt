@@ -2,7 +2,7 @@
 
 eh30pt (prompt tuning on Est-Health 30) is a single-package Python project for prompt-tuning, fine-tuning, and few-shot evaluation of HuggingFace models on Estonian clinical NLP datasets. Given a model and a dataset, it trains or evaluates under an open MLflow run and registers the best checkpoint.
 
-## Repository layout
+## Layout
 
 ```
 src/eh30pt/           # the package, installed as `cli`
@@ -20,6 +20,9 @@ test/                 # tests, lint-relaxed
   unit/                 # fast pure-logic tests, no models or network
   integration/          # dataset loading and forward passes on tiny-random models
   e2e/                  # cli tests
+docs/                 # documentation markdown files
+  development/          # development guide
+  tests/                # testing layout and conventions
 notebooks/            # exploratory marimo notebook analysis, lint-relaxed
 sql/                  # initdb seed scripts for the dev database
 justfile              # project commands
