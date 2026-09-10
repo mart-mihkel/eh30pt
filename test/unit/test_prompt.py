@@ -1,330 +1,287 @@
-"""Tests for prompt, example, answer, and conversation formatting."""
+"""Tests for prompting, few-shot formatting, and dataset registries."""
 
-from typing import TYPE_CHECKING, Final
-from unittest.mock import MagicMock
+from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING, cast
 
 import pytest
-from datasets import Dataset, DatasetDict
 
+from eh30pt.datasets.discontinuation import (
+    DeciderRow,
+    DiscontClassifier,
+    DiscontDecider,
+    DiscontExtract,
+)
 from eh30pt.datasets.multinerd import Multinerd
-from eh30pt.datasets.oblique import Oblique
-from eh30pt.datasets.oblique import _Sample as _ObliqueSample
-from eh30pt.types import EvalExample
+from eh30pt.datasets.oblique import Obl
+from eh30pt.datasets.registry import (
+    assert_classification,
+    assert_extraction,
+    get_extract_fields,
+    get_extract_shots,
+    get_few_shots,
+    get_labels,
+    get_response_schema,
+    get_sys_prompt,
+    get_task,
+    load_data,
+)
 
 if TYPE_CHECKING:
-    from eh30pt.types import Architecture
+    from transformers import PreTrainedTokenizerFast
 
-_max_length: Final = 512
-_separator: Final = "[SEP]"
-
-
-def _mock_tokenizer(chat_template: str | None, sep: str = _separator) -> MagicMock:
-    return MagicMock(chat_template=chat_template, sep_token=sep)
+    from eh30pt.types import Architecture, DatasetName
 
 
-def _oblique_sample() -> _ObliqueSample:
-    return {
-        "id": 1,
-        "fpath": "f.txt",
-        "sentence": "Tere maailm",
-        "remove_start": 0,
-        "remove_end": 4,
-        "removed": "Tere",
-        "label": "vaba",
-        "short_sent": "Tere",
-        "cons_score": 0.0,
-        "ual": 0.0,
-        "la": 0.0,
-    }
-
-
-def _oblique_row(sentence: str, removed: str, label: str) -> dict[str, str]:
-    return {"sentence": sentence, "removed": removed, "label": label}
-
-
-def _oblique_examples() -> list[EvalExample]:
-    return [
-        EvalExample(user="Lause: a\nFraas: b\nKategooria:", label="vaba"),
-        EvalExample(user="Lause: c\nFraas: d\nKategooria:", label="seotud"),
-    ]
-
-
-def test_oblique_user_prompt_decoder() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
-
+def test_oblique_format_user_prompt() -> None:
     assert (
-        ds._build_user_prompt(_oblique_sample())
+        Obl._format_user_prompt("Tere maailm", "Tere")
         == "Lause: Tere maailm\nFraas: Tere\nKategooria:"
     )
 
 
-def test_oblique_user_prompt_encoder_decoder() -> None:
-    ds = Oblique(_mock_tokenizer(None), "encoder-decoder")
-
+def test_multinerd_format_user_prompt() -> None:
     assert (
-        ds._build_user_prompt(_oblique_sample())
-        == "lause: Tere maailm\nfraas: Tere\nkategooria:"
-    )
-
-
-def test_oblique_user_prompt_encoder_uses_sep_token() -> None:
-    ds = Oblique(_mock_tokenizer(None, "|"), "encoder")
-
-    assert ds._build_user_prompt(_oblique_sample()) == "Tere|Tere maailm"
-
-
-def test_multinerd_user_prompt_decoder() -> None:
-    ds = Multinerd(_mock_tokenizer(None), "decoder")
-
-    assert (
-        ds._build_user_prompt("Cats run fast", "Cats")
+        Multinerd._format_user_prompt("Cats run fast", "Cats")
         == "Sentence: Cats run fast\nEntity: Cats\nTag:"
     )
 
 
-def test_multinerd_user_prompt_encoder_uses_sep_token() -> None:
-    ds = Multinerd(_mock_tokenizer(None, "|"), "encoder")
+def test_few_shots_cover_labels() -> None:
+    assert {shot.label for shot in Obl.few_shots} == set(Obl.id2label.values())
+    assert len(Obl.few_shots) == 2 * len(Obl.id2label)
 
-    assert ds._build_user_prompt("Cats run fast", "Cats") == "Cats run fast|Cats"
+    assert {shot.label for shot in Multinerd.few_shots} == set(
+        Multinerd.id2label.values()
+    )
 
+    assert {shot.label for shot in DiscontClassifier.few_shots} == set(
+        DiscontClassifier.id2label.values()
+    )
 
-def test_oblique_format_examples_legacy_empty() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
-
-    assert ds._format_examples_legacy([]) == ""
-
-
-def test_oblique_format_examples_legacy_joins() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
-
-    assert ds._format_examples_legacy(_oblique_examples()) == (
-        "Lause: a\nFraas: b\nKategooria: vaba\n"
-        "\nLause: c\nFraas: d\nKategooria: seotud\n"
+    assert {shot.label for shot in DiscontDecider.few_shots} == set(
+        DiscontDecider.id2label.values()
     )
 
 
-def test_multinerd_format_examples_legacy_joins() -> None:
-    ds = Multinerd(_mock_tokenizer(None), "decoder")
-    examples = [
-        EvalExample(user="Sentence: s\nEntity: e\nTag:", label="PER"),
+def test_get_few_shots() -> None:
+    shots = get_few_shots("oblique", 5)
+    assert [shot.label for shot in shots] == [
+        "seotud",
+        "vaba",
+        "ebaloomulik",
+        "liigne koma",
+        "kaheldav",
     ]
 
-    assert ds._format_examples_legacy(examples) == "Sentence: s\nEntity: e\nTag: PER\n"
+    with pytest.raises(ValueError, match="only 10 defined"):
+        get_few_shots("oblique", 11)
 
 
-def test_oblique_format_examples_template_requires_chat_template() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
+def test_discont_extract_few_shots_are_extraction_objects() -> None:
+    _defined = 5
+    shots = get_few_shots("discont-extract", _defined)
 
-    with pytest.raises(RuntimeError, match="chat template"):
-        ds._format_examples_template(_oblique_examples())
+    assert len(shots) == _defined
+    for shot in shots:
+        assert set(json.loads(shot.label)) == set(get_extract_fields("discont-extract"))
 
-
-def test_multinerd_format_examples_template_requires_chat_template() -> None:
-    ds = Multinerd(_mock_tokenizer(None), "decoder")
-    examples = [EvalExample(user="q", label="PER")]
-
-    with pytest.raises(RuntimeError, match="chat template"):
-        ds._format_examples_template(examples)
+    with pytest.raises(ValueError, match="only 5 defined"):
+        get_few_shots("discont-extract", _defined + 1)
 
 
-def test_oblique_format_examples_template_builds_turns() -> None:
-    ds = Oblique(_mock_tokenizer("dummy"), "decoder")
-
-    assert ds._format_examples_template([]) == []
-    assert ds._format_examples_template(_oblique_examples()) == [
-        {"role": "user", "content": "Lause: a\nFraas: b\nKategooria:"},
-        {"role": "assistant", "content": "vaba"},
-        {"role": "user", "content": "Lause: c\nFraas: d\nKategooria:"},
-        {"role": "assistant", "content": "seotud"},
-    ]
-
-
-def test_oblique_encode_prompt_legacy() -> None:
-    tokenizer = _mock_tokenizer(None)
-    ds = Oblique(tokenizer, "decoder")
-    ds._encode_prompt("SYS", "USER", None, _oblique_examples())
-
-    tokenizer.assert_called_once_with(
-        "SYS\nLause: a\nFraas: b\nKategooria: vaba\n"
-        "\nLause: c\nFraas: d\nKategooria: seotud\n\nUSER",
-        truncation=True,
-        max_length=None,
-    )
-
-
-def test_multinerd_encode_prompt_legacy_empty_examples() -> None:
-    tokenizer = _mock_tokenizer(None)
-    ds = Multinerd(tokenizer, "decoder")
-    ds._encode_prompt("SYS", "USER", None, [])
-
-    tokenizer.assert_called_once_with("SYS\n\nUSER", truncation=True, max_length=None)
-
-
-def test_oblique_encode_prompt_template_conversation() -> None:
-    tokenizer = _mock_tokenizer("dummy")
-    ds = Oblique(tokenizer, "decoder")
-    ds._encode_prompt("SYS", "USER", _max_length, _oblique_examples())
-
-    call = tokenizer.apply_chat_template.call_args
-    assert call is not None
-    assert call.args[0] == [
-        {"role": "system", "content": "SYS"},
-        {"role": "user", "content": "Lause: a\nFraas: b\nKategooria:"},
-        {"role": "assistant", "content": "vaba"},
-        {"role": "user", "content": "Lause: c\nFraas: d\nKategooria:"},
-        {"role": "assistant", "content": "seotud"},
-        {"role": "user", "content": "USER"},
-    ]
-
-
-@pytest.mark.parametrize("arch", ["encoder", "decoder", "encoder-decoder"])
-def test_oblique_encode_prompt_generation_flag(arch: Architecture) -> None:
-    tokenizer = _mock_tokenizer("dummy")
-    ds = Oblique(tokenizer, arch)
-    ds._encode_prompt("SYS", "USER", None, [])
-
-    call = tokenizer.apply_chat_template.call_args
-    assert call is not None
-    assert [m["role"] for m in call.args[0]] == ["system", "user"]
-
-
-@pytest.mark.parametrize("arch", ["encoder", "decoder", "encoder-decoder"])
-def test_multinerd_encode_prompt_generation_flag(arch: Architecture) -> None:
-    tokenizer = _mock_tokenizer("dummy")
-    ds = Multinerd(tokenizer, arch)
-    ds._encode_prompt("SYS", "USER", None, [])
-
-    call = tokenizer.apply_chat_template.call_args
-    assert call is not None
-    assert [m["role"] for m in call.args[0]] == ["system", "user"]
-
-
-def test_oblique_encode_answer_legacy() -> None:
-    tokenizer = _mock_tokenizer(None)
-    ds = Oblique(tokenizer, "decoder")
-    ds._encode_answer("SYS", "USER", "vaba", None, _oblique_examples())
-
-    tokenizer.assert_called_once_with(
-        "SYS\nLause: a\nFraas: b\nKategooria: vaba\n"
-        "\nLause: c\nFraas: d\nKategooria: seotud\n\nUSER vaba",
-        truncation=True,
-        max_length=None,
-    )
-
-
-def test_oblique_encode_answer_template() -> None:
-    tokenizer = _mock_tokenizer("dummy")
-    ds = Oblique(tokenizer, "decoder")
-    ds._encode_answer("SYS", "USER", "vaba", None, _oblique_examples())
-
-    call = tokenizer.apply_chat_template.call_args
-    assert call is not None
-    assert call.args[0][-2:] == [
-        {"role": "user", "content": "USER"},
-        {"role": "assistant", "content": "vaba"},
-    ]
-
-
-def test_multinerd_encode_answer_legacy() -> None:
-    tokenizer = _mock_tokenizer(None)
-    ds = Multinerd(tokenizer, "decoder")
-    ds._encode_answer("SYS", "USER", 0, None, [])
-
-    tokenizer.assert_called_once_with(
-        "SYS\n\nUSER PER", truncation=True, max_length=None
-    )
-
-
-def test_multinerd_encode_answer_template() -> None:
-    tokenizer = _mock_tokenizer("dummy")
-    ds = Multinerd(tokenizer, "decoder")
-    ds._encode_answer("SYS", "USER", 3, None, [])
-
-    call = tokenizer.apply_chat_template.call_args
-    assert call is not None
-    assert call.args[0][-2:] == [
-        {"role": "user", "content": "USER"},
-        {"role": "assistant", "content": "ANIM"},
-    ]
-
-
-def test_multinerd_few_shot_examples_joins_spans() -> None:
-    ds = Multinerd(_mock_tokenizer(None), "decoder")
-    ds._raw_data = DatasetDict(
-        {
-            "train": Dataset.from_list(
-                [
-                    {
-                        "tokens": ["New", "York", "is", "big"],
-                        "ner_tags": [5, 6, 0, 0],
-                        "lang": "en",
-                    }
-                ]
-            )
-        }
-    )
-
-    assert ds.few_shot_examples(1) == [
-        EvalExample(
-            user="Sentence: New York is big\nEntity: New York\nTag:",
-            label="LOC",
+def test_few_shots_derive_from_extract_shots() -> None:
+    pairs = list(
+        zip(
+            DiscontExtract.few_shots,
+            DiscontExtract.extract_shots,
+            strict=True,
         )
+    )
+
+    assert len(pairs) == len(DiscontExtract.extract_shots)
+    for few, extract in pairs:
+        assert few.user == extract.user
+        assert json.loads(few.label) == extract.extractions
+
+
+def test_extract_schema_limits_field_lengths() -> None:
+    properties = get_response_schema("discont-extract")["json_schema"]["schema"][
+        "properties"
+    ]
+
+    assert properties == {
+        "reason": {"type": "string", "maxLength": 1024},
+        "phrase": {"type": "string", "maxLength": 512},
+        "drug": {"type": "string", "maxLength": 256},
+    }
+
+
+def test_registry() -> None:
+    _obl_fewshots = 5
+    _multinerd_labels = 15
+    _classifier_labels = 7
+    _decider_labels = 3
+
+    assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
+    assert len(get_labels("multinerd")) == _multinerd_labels
+    assert len(get_labels("discont-classifier")) == _classifier_labels
+    assert len(get_labels("discont-decider")) == _decider_labels
+
+    assert get_sys_prompt("oblique") == Obl.system_prompt
+    assert get_sys_prompt("multinerd") == Multinerd.system_prompt
+    assert get_sys_prompt("discont-classifier") == DiscontClassifier.system_prompt
+    assert get_sys_prompt("discont-decider") == DiscontDecider.system_prompt
+
+    assert len(get_few_shots("oblique", 5)) == _obl_fewshots
+
+    with pytest.raises(ValueError, match="only 10 defined"):
+        get_few_shots("oblique", 11)
+
+
+def test_get_response_schema() -> None:
+    schema = get_response_schema("multinerd")
+
+    assert schema["type"] == "json_schema"
+    assert schema["json_schema"]["name"] == "label"
+    assert schema["json_schema"]["schema"] == {
+        "type": "string",
+        "enum": list(Multinerd.id2label.values()),
+    }
+    assert get_response_schema("oblique")["json_schema"]["schema"] == {
+        "type": "string",
+        "enum": list(Obl.id2label.values()),
+    }
+
+    extract = get_response_schema("discont-extract")
+
+    assert extract["json_schema"]["name"] == "extraction"
+    assert (
+        extract["json_schema"]["schema"]
+        == DiscontExtract.response_format()["json_schema"]["schema"]
+    )
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_response_schema(cast("DatasetName", "unknown"))
+
+
+def test_get_task_marks_extraction_dataset() -> None:
+
+    assert get_task("multinerd") == "classification"
+    assert get_task("oblique") == "classification"
+    assert get_task("discont-classifier") == "classification"
+    assert get_task("discont-decider") == "classification"
+    assert get_task("discont-extract") == "extraction"
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_task(cast("DatasetName", "unknown"))
+
+
+def test_get_labels_rejects_extraction_dataset() -> None:
+    with pytest.raises(ValueError, match="has no labels"):
+        get_labels("discont-extract")
+
+
+def test_require_classification_rejects_extraction_dataset() -> None:
+    assert_classification("oblique", "training needs labels")
+
+    with pytest.raises(ValueError, match="extraction dataset"):
+        assert_classification("discont-extract", "training needs labels")
+
+
+def test_require_extraction_rejects_classification_dataset() -> None:
+    assert_extraction("discont-extract", "langextract needs extraction fields")
+
+    with pytest.raises(ValueError, match="classification dataset"):
+        assert_extraction("oblique", "langextract needs extraction fields")
+
+
+def test_get_extract_shots() -> None:
+    _defined = 5
+    shots = get_extract_shots("discont-extract", _defined)
+
+    assert len(shots) == _defined
+    assert all(
+        set(shot.extractions) == set(get_extract_fields("discont-extract"))
+        for shot in shots
+    )
+
+    with pytest.raises(ValueError, match="only 5 defined"):
+        get_extract_shots("discont-extract", _defined + 1)
+
+    with pytest.raises(ValueError, match="has no extraction examples"):
+        get_extract_shots("oblique", 1)
+
+
+def test_get_extract_fields() -> None:
+    assert get_extract_fields("discont-extract") == ("phrase", "reason", "drug")
+
+    with pytest.raises(ValueError, match="has no extraction fields"):
+        get_extract_fields("oblique")
+
+
+def test_response_schemas_serialize_to_json() -> None:
+    datasets: list[DatasetName] = [
+        "multinerd",
+        "oblique",
+        "discont-classifier",
+        "discont-decider",
+        "discont-extract",
+    ]
+
+    for dataset in datasets:
+        assert json.loads(json.dumps(get_response_schema(dataset))) == (
+            get_response_schema(dataset)
+        )
+
+
+@pytest.mark.parametrize("dataset", ["multinerd", "oblique"])
+def test_load_data_rejects_start_after_for_static_datasets(
+    dataset: DatasetName,
+) -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    with pytest.raises(ValueError, match="only supported for discont"):
+        load_data(
+            tokenizer,
+            dataset,
+            "decoder",
+            start_after=100,
+        )
+
+
+def test_load_data_rejects_source_for_static_datasets() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    with pytest.raises(ValueError, match="only supported for discont"):
+        load_data(tokenizer, "oblique", "decoder", source="observed")
+
+
+def test_load_data_defaults_to_trigger_source() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    data = load_data(tokenizer, "discont-classifier", "decoder")
+
+    assert list(data.train) == []
+    assert list(data.eval) == []
+
+
+def test_discont_samples_carry_row_id() -> None:
+
+    rows: list[DeciderRow] = [
+        {"id": 42, "text": "katkestas"},
+        {"id": 7, "text": "lõpetas"},
+    ]
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    decider = DiscontDecider(lambda: iter(rows), tokenizer, "decoder")
+
+    assert [(sample.id, sample.user) for sample in decider.samples()] == [
+        (42, "katkestas"),
+        (7, "lõpetas"),
     ]
 
 
-def test_multinerd_few_shot_examples_over_request() -> None:
-    ds = Multinerd(_mock_tokenizer(None), "decoder")
-    ds._raw_data = DatasetDict(
-        {
-            "train": Dataset.from_list(
-                [
-                    {
-                        "tokens": ["New", "York"],
-                        "ner_tags": [5, 6],
-                        "lang": "en",
-                    }
-                ]
-            )
-        }
-    )
+@pytest.mark.parametrize("arch", ["encoder", "encoder-decoder"])
+def test_load_data_rejects_non_decoder_arch_for_extract(arch: Architecture) -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    with pytest.raises(ValueError, match="requested more than 1 examples"):
-        ds.few_shot_examples(2)
-
-
-def test_oblique_few_shot_examples_selects_first_rows() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
-    ds._raw_data = DatasetDict(
-        {
-            "train": Dataset.from_list(
-                [
-                    _oblique_row("Lause üks", "üks", "vaba"),
-                    _oblique_row("Lause kaks", "kaks", "seotud"),
-                    _oblique_row("Lause kolm", "kolm", "vaba"),
-                ]
-            )
-        }
-    )
-
-    examples = ds.few_shot_examples(2)
-
-    assert examples == [
-        EvalExample(
-            user="Lause: Lause üks\nFraas: üks\nKategooria:",
-            label="vaba",
-        ),
-        EvalExample(
-            user="Lause: Lause kaks\nFraas: kaks\nKategooria:",
-            label="seotud",
-        ),
-    ]
-
-
-def test_oblique_few_shot_examples_over_request() -> None:
-    ds = Oblique(_mock_tokenizer(None), "decoder")
-    ds._raw_data = DatasetDict(
-        {"train": Dataset.from_list([_oblique_row("Lause üks", "üks", "vaba")])}
-    )
-
-    with pytest.raises(ValueError, match="requested more than 1 examples"):
-        ds.few_shot_examples(2)
+    with pytest.raises(ValueError, match="not supported"):
+        load_data(tokenizer, "discont-extract", arch)

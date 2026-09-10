@@ -1,177 +1,195 @@
-"""Run few-shot test evaluation against a llama server."""
+"""Run few-shot test evaluation against a server."""
 
-import json
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, cast
 
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from tqdm import tqdm
 
-from eh30pt.cli.scripts.common import log_prompt_version
-from eh30pt.cli.scripts.completion import complete, server_model
-from eh30pt.datasets.registry import get_dataset, get_labels
+from eh30pt.datasets.registry import (
+    assert_classification,
+    get_sys_prompt,
+    load_data,
+)
 from eh30pt.logging import logger
-from eh30pt.tracking import build_run_name, open_run
+from eh30pt.modeling.metrics import StreamingClassificationMetrics
+from eh30pt.openai.complete import CompletionClient
+from eh30pt.openai.stream import (
+    CompletionPredictor,
+    batched_concurrent,
+    log_invalid,
+    log_summary,
+)
+from eh30pt.tracking.context import RunContext
+from eh30pt.tracking.resume import (
+    build_run_name,
+)
 
 if TYPE_CHECKING:
-    from openai.types.chat import ChatCompletionMessageParam
+    from collections.abc import Iterator
+
     from transformers import PreTrainedTokenizerFast
 
-    from eh30pt.types import DatasetName, EvalExample, FewShotRunConfig
-
-
-class EvalData(NamedTuple):
-    """Few-shot examples and test samples for API-side evaluation."""
-
-    examples: list[EvalExample]
-    samples: list[EvalExample]
-    labels: tuple[str, ...]
-
-
-def load_eval_data(dataset: DatasetName, n_shot: int) -> EvalData:
-    """Load few-shot examples and test samples for dataset."""
-    tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = get_dataset(dataset, tokenizer, "decoder")
-    data.load_raw()
-
-    samples = data.eval_samples()
-    return EvalData(
-        examples=data.few_shot_examples(n_shot),
-        samples=samples,
-        labels=get_labels(dataset),
+    from eh30pt.settings import MlflowSettings, ServerSettings, StreamSettings
+    from eh30pt.types import (
+        DatasetName,
+        DataSource,
+        FewShot,
+        FewShotRunConfig,
+        Method,
+        Predictor,
     )
 
 
-def build_converstaion(examples: list[EvalExample]) -> list[ChatCompletionMessageParam]:
-    """Format few-shot examples as alternating user and assistant turns."""
-    conversation: list[ChatCompletionMessageParam] = []
-    for example in examples:
-        answer = json.dumps({"label": example.label})
-        conversation.append({"role": "user", "content": example.user})
-        conversation.append({"role": "assistant", "content": answer})
+def _fold_eval_window(
+    ctx: RunContext,
+    accumulator: StreamingClassificationMetrics,
+    window: list[FewShot],
+    results: list[str | None],
+    *,
+    log_interval: int,
+    n_seen: int,
+    invalid: int,
+    step_offset: int = 0,
+) -> tuple[int, int]:
+    """Fold one ordered window into the accumulator, returning (n_seen, invalid)."""
+    for sample, prediction in zip(window, results, strict=True):
+        n_seen += 1
+        if prediction is None:
+            invalid += 1
+            continue
 
-    return conversation
+        accumulator.update(sample.label, prediction)
+        if (n_seen + step_offset) % log_interval == 0:
+            metrics = accumulator.finalize().items()
+            metrics = {f"test_{key}": value for key, value in metrics}
+            ctx.log_metrics(metrics, step=n_seen + step_offset)
+
+    return n_seen, invalid
 
 
-def compute_metrics(references: list[str], predictions: list[str]) -> dict[str, float]:
-    """Compute accuracy and macro-averaged precision, recall, and f1."""
-    accuracy = accuracy_score(references, predictions)
-    precision = precision_score(
-        references,
-        predictions,
-        average="macro",
-        zero_division=0,
-    )
+async def _stream_evaluate(
+    *,
+    predictor: Predictor[FewShot, str | None],
+    samples: Iterator[FewShot],
+    concurrency: int,
+    log_interval: int,
+    ctx: RunContext,
+    accumulator: StreamingClassificationMetrics,
+    bar: tqdm,
+    step_offset: int = 0,
+) -> tuple[int, int]:
+    """Stream samples concurrently into the accumulator, returning (n_seen, invalid)."""
+    n_seen = 0
+    invalid = 0
 
-    recall = recall_score(
-        references,
-        predictions,
-        average="macro",
-        zero_division=0,
-    )
+    async for window, results in batched_concurrent(samples, predictor, concurrency):
+        n_seen, invalid = _fold_eval_window(
+            ctx,
+            accumulator,
+            window,
+            results,
+            log_interval=log_interval,
+            n_seen=n_seen,
+            invalid=invalid,
+            step_offset=step_offset,
+        )
 
-    f1 = f1_score(references, predictions, average="macro", zero_division=0)
+        bar.update(len(window))
 
-    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+    return n_seen, invalid
 
 
 async def main(
     *,
-    system_prompt: str,
-    base_url: str,
+    system_prompt: str | None,
+    server: ServerSettings,
     dataset: DatasetName,
+    source: DataSource,
     n_shot: int,
-    one_conv: bool = False,
-    mlflow_run_name: str | None,
-    mlflow_experiment: str,
-    mlflow_tracking_uri: str,
+    stream: StreamSettings,
+    mlflow: MlflowSettings,
     seed: int | None,
 ) -> None:
-    """Run few-shot test evaluation on the llama server."""
-    data = load_eval_data(dataset, n_shot)
-    if not data.samples:
-        msg = f"no test samples for dataset '{dataset}'"
-        raise ValueError(msg)
+    """Run few-shot test evaluation on the server."""
+    assert_classification(dataset, "metrics need labels")
 
-    model = await server_model(base_url)
-    method = f"{n_shot}-shot"
-    if mlflow_run_name is None:
-        mlflow_run_name = build_run_name(dataset, model, method, train_samples=0)
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    data = load_data(
+        tokenizer,
+        dataset,
+        "decoder",
+        n_shot=n_shot,
+        source=source,
+        start_after=stream.from_id,
+    )
 
-    logger.info("tracking '%s' of experiment '%s'", mlflow_run_name, mlflow_experiment)
-    run_config: FewShotRunConfig = {
+    if system_prompt is None:
+        logger.debug("using '%s' system prompt", dataset)
+        system_prompt = get_sys_prompt(dataset)
+
+    client = CompletionClient(server, seed)
+    model = (await client.model()).unwrap()
+
+    method: Method = "few-shot"
+    if mlflow.run_name is None:
+        mlflow.run_name = build_run_name(model, method, f"{n_shot}-shot")
+
+    logger.info(
+        "tracking '%s' of experiment '%s'",
+        mlflow.run_name,
+        mlflow.experiment,
+    )
+
+    config: FewShotRunConfig = {
         "method": method,
         "dataset": dataset,
         "architecture": "decoder",
         "base_model": model,
         "n_shot": n_shot,
         "batch_size": 1,
-        "seed": seed,
-        "one_conv": one_conv,
         "system_prompt": system_prompt,
-        "train_samples": 0,
-        "validation_samples": 0,
-        "test_samples": len(data.samples),
-        "total_parameters": 0,
-        "trainable_parameters": 0,
     }
 
-    conversation: list[ChatCompletionMessageParam] = [
-        {"role": "system", "content": system_prompt},
-        *build_converstaion(data.examples),
-    ]
+    conv = client.build_conversation(
+        system=system_prompt,
+        examples=data.test.few_shots,
+    )
 
-    references: list[str] = []
-    predictions: list[str] = []
-    invalid = 0
+    predictor = CompletionPredictor(client=client, conversation=conv)
 
-    total = len(data.samples)
+    with RunContext(mlflow, config) as ctx:
+        ctx.log_prompt_version(dataset, "decoder", system_prompt)
 
-    logger.info("evaluating %d samples with %d examples", total, n_shot)
-    samples = tqdm(data.samples, desc="evaluating", unit="sample")
-    for index, sample in enumerate(samples, start=1):
-        messages: list[ChatCompletionMessageParam]
-        if one_conv:
-            conversation.append({"role": "user", "content": sample.user})
-            messages = conversation
+        if mlflow.run_id is not None:
+            step_offset = ctx.existing_max_step()
+            logger.info("continuing run '%s' at step %d", ctx.run_id, step_offset)
         else:
-            messages = [*conversation, {"role": "user", "content": sample.user}]
+            step_offset = 0
 
-        try:
-            prediction = await complete(
-                base_url,
-                model,
-                messages,
-                labels=data.labels,
-                seed=seed,
+        if stream.from_id is not None:
+            logger.info("streaming rows with id greater than %d", stream.from_id)
+            ctx.record_from_id(stream.from_id)
+
+        accumulator = StreamingClassificationMetrics()
+
+        logger.info("starting eval loop")
+        with tqdm(desc="evaluating", unit="samples") as bar:
+            n_seen, invalid = await _stream_evaluate(
+                predictor=predictor,
+                samples=data.test.samples(),
+                concurrency=stream.concurrency,
+                log_interval=stream.log_interval,
+                ctx=ctx,
+                accumulator=accumulator,
+                bar=bar,
+                step_offset=step_offset,
             )
-        except ValueError:
-            invalid += 1
-            logger.debug("invalid response for sample %d, counting as other", index)
-            prediction = "other"
 
-        if one_conv:
-            answer = json.dumps({"label": prediction})
-            conversation.append({"role": "assistant", "content": answer})
+        log_invalid(invalid, n_seen)
 
-        references.append(sample.label)
-        predictions.append(prediction)
+        items = accumulator.finalize().items()
+        metrics = {f"test_{key}": value for key, value in items}
+        ctx.log_metrics(metrics, step=n_seen + step_offset)
 
-    if invalid:
-        logger.warning("%d/%d invalid responses counted as other", invalid, total)
-
-    metrics = {
-        f"test_{key}": value
-        for key, value in compute_metrics(references, predictions).items()
-    }
-
-    with open_run(
-        mlflow_experiment,
-        mlflow_run_name,
-        mlflow_tracking_uri,
-        resume=False,
-        config=run_config,
-    ) as ctx:
-        log_prompt_version(ctx, dataset, "decoder", system_prompt)
-        ctx.log_metrics(metrics)
-
-    logger.info(" ".join(f"'{key}'={value}" for key, value in sorted(metrics.items())))
+    log_summary(bar, "evaluated", n_seen, invalid)
+    pretty = " ".join(f"'{key}'={value}" for key, value in sorted(metrics.items()))
+    logger.info(pretty)

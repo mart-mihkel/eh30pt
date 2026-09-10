@@ -1,78 +1,92 @@
-"""Dataset loading and schema integration tests."""
+"""Dataset loading and streaming integration tests."""
 
-from typing import TYPE_CHECKING, Final
+from itertools import islice
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from eh30pt.datasets.multinerd import Multinerd
-from eh30pt.datasets.oblique import Oblique
-from eh30pt.datasets.registry import get_dataset, get_labels, get_sys_prompt
-from eh30pt.datasets.truncation import get_max_length
+from eh30pt.constants import SENTINEL_TOKEN
+from eh30pt.datasets.discontinuation import (
+    load_discont_classifier,
+    load_discont_extract,
+)
+from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.modeling.arch import infer_architecture
 
 if TYPE_CHECKING:
-    from test.conftest import ModelSetup
+    from transformers import PreTrainedTokenizerFast
 
-_sample_size: Final = 32
+    from test.integration.conftest import ModelSetup
 
 
-def test_splits_and_columns(model_setup: ModelSetup) -> None:
-    _, _, dataset, _ = model_setup
-
-    data = dataset.data
-    assert {"train", "validation"} <= set(data.keys())
-
+def test_splits_stream_tokenized_rows(model_setup: ModelSetup) -> None:
     expected = {"input_ids", "attention_mask", "labels", "truncated"}
-    for split in data:
-        assert len(data[split]) > 0
-        assert set(data[split].column_names) >= expected
+    splits = (
+        model_setup.splits.train,
+        model_setup.splits.eval,
+        model_setup.splits.test,
+    )
+
+    for split in splits:
+        rows = list(islice(split, 4))
+
+        assert rows
+        assert all(expected <= set(row) for row in rows)
 
 
-def test_truncation_budget(model_setup: ModelSetup) -> None:
-    _, tokenizer, dataset, _ = model_setup
+def test_labels_match_architecture(model_setup: ModelSetup) -> None:
     arch = infer_architecture(model_setup.config)
+    rows = list(islice(model_setup.splits.train, 8))
 
-    max_length = get_max_length(tokenizer, 0)
+    assert rows
+    if arch == "encoder":
+        assert all(isinstance(row["labels"], int) for row in rows)
+        assert all(0 <= row["labels"] < len(model_setup.labels) for row in rows)
+    else:
+        assert all(isinstance(row["labels"], list) for row in rows)
+        assert any(label != SENTINEL_TOKEN for row in rows for label in row["labels"])
+
+
+def test_truncation_flags(model_setup: ModelSetup) -> None:
+    max_length = DatasetMixin._model_max_len(model_setup.tokenizer, 0)
     if max_length is None:
         pytest.skip("tokenizer has no length limit")
 
-    sample = dataset.data["train"][:_sample_size]
-    for ids, truncated in zip(sample["input_ids"], sample["truncated"], strict=True):
-        if arch == "encoder":
-            assert truncated == (len(ids) >= max_length)
-        elif not truncated:
-            assert len(ids) < max_length
+    for row in islice(model_setup.splits.train, 8):
+        ids = row["input_ids"]
+        assert row["truncated"] == (len(ids) >= max_length)
 
 
-def test_registry(model_setup: ModelSetup) -> None:
-    _, tokenizer, _, _ = model_setup
-    arch = infer_architecture(model_setup.config)
+def test_samples_have_valid_labels(model_setup: ModelSetup) -> None:
+    split = model_setup.splits.test
+    samples = list(islice(split.samples(), 2))
 
-    multinerd = get_dataset("multinerd", tokenizer, arch)
-    oblique = get_dataset("oblique", tokenizer, arch)
-
-    assert isinstance(multinerd, Multinerd)
-    assert isinstance(oblique, Oblique)
-
-    assert get_sys_prompt("multinerd", tokenizer, arch) == multinerd.system_prompt
-    assert get_sys_prompt("oblique", tokenizer, arch) == oblique.system_prompt
+    assert samples
+    for sample in samples:
+        assert sample.user
+        assert sample.label in model_setup.labels
 
 
-def test_unloaded_access_raises(model_setup: ModelSetup) -> None:
-    tokenizer = model_setup.tokenizer
-    arch = infer_architecture(model_setup.config)
-    unloaded = type(model_setup.dataset)(tokenizer, arch)
+def test_discont_extract_streams_seeded_rows(database: None) -> None:
+    """Extract candidates stream from seeded postgres with row ids."""
+    _ = database
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    data = load_discont_extract(tokenizer, "decoder")
+    samples = list(islice(data.test.samples(), 5))
 
-    with pytest.raises(RuntimeError, match="not loaded"):
-        _ = unloaded.data
+    assert samples
+    for sample in samples:
+        assert isinstance(sample.user, str)
+        assert isinstance(sample.id, int)
+        assert sample.label == ""
 
-    with pytest.raises(RuntimeError, match="not loaded"):
-        _ = unloaded.raw_data
 
+def test_discont_classifier_streams_sample_source(database: None) -> None:
+    """Classifier rows stream from the random sample table when asked."""
+    _ = database
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    data = load_discont_classifier(tokenizer, "decoder", source="observed")
+    samples = list(islice(data.test.samples(), 5))
 
-def test_get_labels_multinerd() -> None:
-    labels = get_labels("multinerd")
-    n_labels = 15
-
-    assert labels[:3] == ("PER", "ORG", "LOC")
-    assert len(labels) == n_labels
+    assert samples
+    assert all(isinstance(sample.id, int) for sample in samples)

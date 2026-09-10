@@ -3,23 +3,27 @@ name = "eh30pt"
 version = "0.1.0"
 description = "Prompt tuning on Est-Health 30"
 readme = "README.md"
-authors = [
-    { name = "mart-mihkel", email = "mart.mihkel.aun@gmail.com" }
-]
+authors = [{ name = "mart-mihkel", email = "mart.mihkel.aun@gmail.com" }]
 requires-python = "~=3.14.7"
 dependencies = [
+    "pydantic-settings~=2.15.0",
+    "psycopg[binary]~=3.2",
     "transformers~=5.17.0",
     "bitsandbytes~=0.50.2",
+    "langextract~=1.7.0",
     "accelerate~=1.15.0",
+    "sqlalchemy~=2.0.0",
+    "pydantic~=2.13.5",
     "tiktoken~=0.14.0",
     "datasets~=5.0.1",
+    "returns~=0.29.0",
+    "estnltk~=1.7.5",
     "openai~=3.10.0",
     "mlflow~=3.16.0",
     "polars~=1.44.2",
     "torch~=2.14.0",
     "typer~=0.27.2",
     "httpx~=0.28.1",
-    "oxyde~=0.8.0",
     "rich~=15.0.0",
     "peft~=0.20.0",
     "trl~=1.13.0",
@@ -27,16 +31,21 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ty",
     "prek",
     "ruff",
-    "ty",
     { include-group = "test" },
     { include-group = "notebooks" },
 ]
+
 test = [
+    "testcontainers",
     "pytest-recording",
+    "pytest-xdist",
+    "pytest-cov",
     "pytest",
 ]
+
 notebooks = [
     "ipykernel",
     "plotnine",
@@ -45,21 +54,29 @@ notebooks = [
 ]
 
 [project.scripts]
-cli = "eh30pt.cli.cli:app"
+eh30pt = "eh30pt.cli.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
 
+[tool.uv]
+exclude-newer = "2 days"
+
 [tool.pytest.ini_options]
 markers = [
     "slow: slow tests, skipped unless --run-slow is passed",
 ]
+
 filterwarnings = [
     "error::DeprecationWarning",
     "error::FutureWarning",
     "error::RuntimeWarning",
     "error::UserWarning",
+
+    "ignore:.*inferred as AnyType.*:UserWarning",                # MLflow infers an Any type schema from its own ResponsesAgentRequest model
+    "ignore:.*codecs.open.*is deprecated.*:DeprecationWarning",  # MLflow still uses codecs.open() internally, deprecated in Python 3.14.
+    "ignore:.*use_reentrant.*:UserWarning",                      # PEFT enables gradient checkpointing without an explicit use_reentrant flag.
 ]
 
 [tool.ruff.lint]
@@ -92,3 +109,7 @@ ignore = [
     "PLR1711",  # Useless `return` statement at end of function
     "PLR0917",  # Too many positional arguments
 ]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-decorators = ["typer.Typer.command"]
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]

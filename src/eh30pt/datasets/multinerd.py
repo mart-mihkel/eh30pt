@@ -3,37 +3,25 @@
 from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
+from datasets.iterable_dataset import IterableDataset
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
+from torch.utils.data import IterableDataset as TorchIterableDataset
 
-from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.truncation import get_max_length
+from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.logging import logger
-from eh30pt.types import DatasetProtocol, EvalExample
+from eh30pt.types import DataSplits, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
 
-    from datasets.dataset_dict import DatasetDict
-    from datasets.splits import Split
+    from datasets.arrow_dataset import Dataset
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
     from eh30pt.types import Architecture
 
-type _Lang = Literal[
-    "zh",
-    "nl",
-    "en",
-    "fr",
-    "de",
-    "it",
-    "pl",
-    "pt",
-    "ru",
-    "es",
-]
 
-type _Tag = Literal[
+type MultinerdTag = Literal[
     "PER",
     "ORG",
     "LOC",
@@ -51,6 +39,19 @@ type _Tag = Literal[
     "VEHI",
 ]
 
+type _Lang = Literal[
+    "zh",
+    "nl",
+    "en",
+    "fr",
+    "de",
+    "it",
+    "pl",
+    "pt",
+    "ru",
+    "es",
+]
+
 
 class _Batch(TypedDict):
     tokens: list[list[str]]
@@ -58,27 +59,18 @@ class _Batch(TypedDict):
     lang: list[_Lang]
 
 
-class _TokBatch(TypedDict):
-    input_ids: list[list[int]]
-    attention_mask: list[list[int]]
-    labels: list[int | list[int]]
-    truncated: list[bool]
+class MultinerdRow(TypedDict):
+    """One entity sample with its sentence context."""
+
+    sentence: str
+    entity: str
+    label: MultinerdTag
 
 
-class Multinerd(DatasetProtocol):
-    """
-    MultiNERD NER tag classification dataset.
+class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
+    """MultiNERD NER tag classification."""
 
-    Parameters
-    ----------
-    tokenizer : PreTrainedTokenizerFast
-        Tokenizer used for prompting and tokenization.
-    arch : Architecture
-        Model architecture, selecting the prompt format.
-
-    """
-
-    id2label: ClassVar[Mapping[int, _Tag]] = {
+    id2label: ClassVar[Mapping[int, MultinerdTag]] = {
         0: "PER",
         1: "ORG",
         2: "LOC",
@@ -96,7 +88,7 @@ class Multinerd(DatasetProtocol):
         14: "VEHI",
     }
 
-    label2id: ClassVar[Mapping[_Tag, int]] = {
+    label2id: ClassVar[Mapping[MultinerdTag, int]] = {
         "PER": 0,
         "ORG": 1,
         "LOC": 2,
@@ -114,7 +106,7 @@ class Multinerd(DatasetProtocol):
         "VEHI": 14,
     }
 
-    _id2label_bio: ClassVar[Mapping[int, str]] = {
+    id2label_bio: ClassVar[Mapping[int, str]] = {
         0: "O",
         1: "B-PER",
         2: "I-PER",
@@ -148,267 +140,198 @@ class Multinerd(DatasetProtocol):
         30: "I-VEHI",
     }
 
-    def __init__(self, tokenizer: PreTrainedTokenizerFast, arch: Architecture) -> None:
-        """Store the tokenizer and architecture."""
-        self._tokenizer = tokenizer
-        self._arch = arch
-        self._data: DatasetDict | None = None
-        self._raw_data: DatasetDict | None = None
+    system_prompt = dedent(f"""
+        Identify the NER tag of the entity in the sentence.
+        Possible tags are: {", ".join(id2label.values())}.
 
-    @property
-    def system_prompt(self) -> str:
-        """Return the system prompt for the configured architecture."""
-        if self._arch == "encoder":
-            return (
-                "What is the NER tag of the entity in the sentence?"
-                f"{self._tokenizer.sep_token}"
-            )
+        Output only the tag.
+    """).strip()
 
-        return dedent(f"""
-            Identify the NER tag of the entity in the sentence.
-            Possible tags are: {", ".join(self.id2label.values())}.
-
-            Output only the tag.
-        """).strip()
-
-    @property
-    def data(self) -> DatasetDict:
-        """Return the loaded dataset splits."""
-        if self._data is None:
-            msg = "dataset not loaded, call load() first"
-            raise RuntimeError(msg)
-
-        return self._data
-
-    @property
-    def raw_data(self) -> DatasetDict:
-        """Return the untokenized dataset splits."""
-        if self._raw_data is None:
-            msg = "dataset not loaded, call load() first"
-            raise RuntimeError(msg)
-
-        return self._raw_data
-
-    def load(
-        self,
-        *,
-        n_shot: int = 0,
-        n_virtual: int = 0,
-        split: Split | None = None,
-        filter_en: bool = True,
-    ) -> None:
-        """
-        Load a modified subset of the MultiNERD dataset into instance state.
-
-        The BIO tagging task is converted to a regular NER tagging task by
-        joining tokens with B- and I- prefixes into a single span. O tags are
-        dropped entirely.
-
-        Each token is split into a separate sample containing the entire
-        context sentence and the target token. The task is to classify the tag
-        of the token in the entire sequence.
-
-        Parameters
-        ----------
-        n_shot : int
-            Number of few-shot examples prepended to each prompt.
-        n_virtual : int
-            Number of virtual tokens reserved in the truncation budget.
-        split : Split | None
-            Dataset split to load, or None for all splits.
-        filter_en : bool
-            Only use the english subset.
-
-        """
-        if self._raw_data is None:
-            self.load_raw(split=split, filter_en=filter_en)
-
-        self._data = self._tokenize(n_shot, n_virtual)
-
-    def eval_samples(self) -> list[EvalExample]:
-        """Build prompt and label pairs for every test entity."""
-        samples: list[EvalExample] = []
-        for sample in self.raw_data["test"]:
-            tokens = cast("list[str]", sample["tokens"])
-            raw_tag_ids = cast("list[int]", sample["ner_tags"])
-            sentence = " ".join(tokens)
-            entities, tag_ids = Multinerd._join_spans(tokens, raw_tag_ids)
-
-            for entity, tag_id in zip(entities, tag_ids, strict=True):
-                if tag_id == -1:
-                    continue
-
-                example = EvalExample(
-                    user=self._build_user_prompt(sentence, entity),
-                    label=Multinerd.id2label[tag_id],
-                )
-
-                samples.append(example)
-
-        return samples
-
-    def load_raw(
-        self,
-        split: Split | None = None,
-        *,
-        filter_en: bool = True,
-    ) -> None:
-        """
-        Load raw MultiNERD splits without tokenizing.
-
-        Parameters
-        ----------
-        split : Split | None
-            Dataset split to load, or None for all splits.
-        filter_en : bool
-            Only use the english subset.
-
-        """
-        logger.debug("loading raw multinerd dataset")
-        data = load_dataset(
-            "Babelscape/multinerd",
-            split=split,
-            verification_mode=VerificationMode.NO_CHECKS,
-        )
-
-        data = cast("DatasetDict", data)
-        if filter_en:
-            logger.warning("using english only subset")
-            data = data.filter(self._filter_english, batched=True)
-
-        self._raw_data = data
-
-    def _tokenize(self, n_shot: int, n_virtual: int, num_proc: int = 4) -> DatasetDict:
-        logger.debug("tokenizing multinerd")
-
-        examples = self.few_shot_examples(n_shot)
-        data = self.raw_data.map(
-            self._tokenize_batch,
-            batched=True,
-            num_proc=num_proc,
-            remove_columns=["tokens", "ner_tags", "lang"],
-            fn_kwargs={"examples": examples, "n_virtual": n_virtual},
-        )
-
-        for subsplit in data:
-            logger.debug("tokenized %d %s samples", len(data[subsplit]), subsplit)
-
-        return data
-
-    def _build_user_prompt(self, sentence: str, entity: str) -> str:
-        if self._arch == "encoder":
-            return f"{sentence}{self._tokenizer.sep_token}{entity}"
-
+    @staticmethod
+    def _format_user_prompt(sentence: str, entity: str) -> str:
+        """Format a sentence and entity as a tag classification prompt."""
         return dedent(f"""
             Sentence: {sentence}
             Entity: {entity}
             Tag:
         """).strip()
 
-    def _format_examples_legacy(self, examples: list[EvalExample]) -> str:
-        if not examples:
-            return ""
+    few_shots: ClassVar[list[FewShot]] = [
+        FewShot(
+            user=_format_user_prompt(
+                "Chris LaCivita .",
+                "Chris LaCivita",
+            ),
+            label="PER",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "With FC Dynamo Moscow .",
+                "FC Dynamo Moscow",
+            ),
+            label="ORG",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "It is found on Fiji .",
+                "Fiji",
+            ),
+            label="LOC",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                '" Charaxes varanes " group .',
+                "Charaxes varanes",
+            ),
+            label="ANIM",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                '" Entomophaga " is effective against pests such '
+                "as the green peach aphid .",
+                "Entomophaga",
+            ),
+            label="BIO",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "5 - 3754 , the closest discovered neutron star to Earth .",
+                "neutron star",
+            ),
+            label="CEL",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "and often obesity .",
+                "obesity",
+            ),
+            label="DIS",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "See Japan Golf Tour .",
+                "Japan Golf Tour",
+            ),
+            label="EVE",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "The mushroom is not edible .",
+                "edible",
+            ),
+            label="FOOD",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Dust devils had previously only been photographed "
+                'by the " Pathfinder " probe .',
+                "Pathfinder",
+            ),
+            label="INST",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                ', as well as " National Lampoon " .',
+                "National Lampoon",
+            ),
+            label="MEDIA",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "This form of teasing could be called "
+                '" tantalizing " , after the story of Tantalus .',
+                "Tantalus",
+            ),
+            label="MYTH",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Sometimes garlic is used .",
+                "garlic",
+            ),
+            label="PLANT",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "The 13th century was very hard for the town .",
+                "13th century",
+            ),
+            label="TIME",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "It is powered by a pair of Rolls-Royce Tyne turboprop engines .",
+                "Rolls-Royce Tyne",
+            ),
+            label="VEHI",
+        ),
+    ]
 
-        return "\n".join(f"{example.user} {example.label}\n" for example in examples)
-
-    def _format_examples_template(
+    def __init__(
         self,
-        examples: list[EvalExample],
-    ) -> list[dict[str, str]]:
-        if self._tokenizer.chat_template is None:
-            msg = "attempt to format with no chat template, use _format_examples_legacy"
-            raise RuntimeError(msg)
-
-        conversation: list[dict[str, str]] = []
-        for example in examples:
-            conversation.append({"role": "user", "content": example.user})
-            conversation.append({"role": "assistant", "content": example.label})
-
-        return conversation
-
-    def _encode_prompt(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        max_length: int | None,
-        examples: list[EvalExample],
-    ) -> BatchEncoding[list[int]]:
-        if self._tokenizer.chat_template is None:
-            examples_prompt = self._format_examples_legacy(examples)
-            user_prompt = f"{examples_prompt}\n{user_prompt}"
-            encoded_prompt = self._tokenizer(
-                f"{system_prompt}\n{user_prompt}",
-                truncation=True,
-                max_length=max_length,
-            )
-        else:
-            conversation: list[dict[str, str]] = [
-                {"role": "system", "content": system_prompt}
-            ]
-
-            conversation.extend(self._format_examples_template(examples))
-            conversation.append({"role": "user", "content": user_prompt})
-
-            encoded_prompt = self._tokenizer.apply_chat_template(
-                conversation,
-                truncation=True,
-                return_dict=True,
-                max_length=max_length,
-                add_generation_prompt=self._arch != "encoder",
-            )
-
-        return cast("BatchEncoding[list[int]]", encoded_prompt)
-
-    def _encode_answer(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        tag_id: int,
-        max_length: int | None,
-        examples: list[EvalExample],
-    ) -> BatchEncoding[list[int]]:
-        """Encode the prompt together with the gold label."""
-        if self._tokenizer.chat_template is None:
-            examples_prompt = self._format_examples_legacy(examples)
-            user_prompt = f"{examples_prompt}\n{user_prompt}"
-            encoded_answer = self._tokenizer(
-                f"{system_prompt}\n{user_prompt} {self.id2label[tag_id]}",
-                truncation=True,
-                max_length=max_length,
-            )
-        else:
-            conversation: list[dict[str, str]] = [
-                {"role": "system", "content": system_prompt}
-            ]
-
-            conversation.extend(self._format_examples_template(examples))
-            conversation.append({"role": "user", "content": user_prompt})
-            conversation.append({"role": "assistant", "content": self.id2label[tag_id]})
-
-            encoded_answer = self._tokenizer.apply_chat_template(
-                conversation,
-                truncation=True,
-                max_length=max_length,
-                return_dict=True,
-            )
-
-        return cast("BatchEncoding[list[int]]", encoded_answer)
-
-    def _tokenize_batch(
-        self,
-        batch: _Batch,
-        examples: list[EvalExample],
+        data: Dataset,
+        tokenizer: PreTrainedTokenizerFast,
+        arch: Architecture,
+        n_shot: int = 0,
         n_virtual: int = 0,
-    ) -> _TokBatch:
-        all_ids: list[list[int]] = []
-        all_attn: list[list[int]] = []
-        all_labels: list[int | list[int]] = []
-        all_truncated: list[bool] = []
-        max_length = get_max_length(self._tokenizer, n_virtual)
+    ) -> None:
+        """Store one split with its tokenization settings."""
+        self._data = data
+        self._tokenizer = tokenizer
+        self._arch = arch
+        self._n_shot = n_shot
+        self._n_virtual = n_virtual
 
-        system_prompt = self.system_prompt
-        token_tags = zip(batch["tokens"], batch["ner_tags"], strict=True)
-        for tokens, raw_tag_ids in token_tags:
+    def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
+        """Yield tokenized samples for the split."""
+        for row in self._unpack_row():
+            encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
+            yield cast("dict[str, list[int] | bool | int]", dict(encoded))
+
+    def samples(self) -> Iterator[FewShot]:
+        """Yield one decoder prompt and label pair per entity."""
+        for idx, row in enumerate(self._unpack_row()):
+            yield FewShot(
+                user=self._format_user_prompt(row["sentence"], row["entity"]),
+                label=row["label"],
+                id=idx,
+            )
+
+    def tokenize(
+        self,
+        row: MultinerdRow,
+        tokenizer: PreTrainedTokenizerFast,
+        n_shot: int = 0,
+        n_virtual: int = 0,
+    ) -> BatchEncoding[list[int]]:
+        """Tokenize one sample with few-shot context."""
+        if n_shot > len(self.few_shots):
+            msg = "requested more few shot examples than defined"
+            raise ValueError(msg)
+
+        if self._arch == "encoder":
+            sep = self._tokenizer.sep_token
+            user_prompt = f"{row['sentence']}{sep}{row['entity']}"
+        else:
+            user_prompt = self._format_user_prompt(row["sentence"], row["entity"])
+
+        few_shots = self.few_shots[:n_shot]
+        label = row["label"]
+
+        return self._encode_example(
+            arch=self._arch,
+            tokenizer=tokenizer,
+            user_prompt=user_prompt,
+            label=label,
+            few_shots=few_shots,
+            n_virtual=n_virtual,
+        )
+
+    def _unpack_row(self) -> Iterator[MultinerdRow]:
+        """Yield one sample per entity in the split."""
+        for sample in self._data:
+            tokens = cast("list[str]", sample["tokens"])
+            raw_tag_ids = cast("list[int]", sample["ner_tags"])
             sentence = " ".join(tokens)
             entities, tag_ids = self._join_spans(tokens, raw_tag_ids)
 
@@ -416,106 +339,24 @@ class Multinerd(DatasetProtocol):
                 if tag_id == -1:
                     continue
 
-                user_prompt = self._build_user_prompt(sentence, entity)
-                encoded_prompt = self._encode_prompt(
-                    system_prompt,
-                    user_prompt,
-                    max_length,
-                    examples,
+                yield MultinerdRow(
+                    sentence=sentence,
+                    entity=entity,
+                    label=self.id2label[tag_id],
                 )
-
-                prompt_len = len(encoded_prompt["input_ids"])
-                is_truncated = max_length is not None and prompt_len >= max_length
-
-                if self._arch == "encoder":
-                    all_ids.append(encoded_prompt["input_ids"])
-                    all_attn.append(encoded_prompt["attention_mask"])
-                    all_labels.append(tag_id)
-                    all_truncated.append(is_truncated)
-                    continue
-
-                encoded_answer = self._encode_answer(
-                    system_prompt,
-                    user_prompt,
-                    tag_id,
-                    max_length,
-                    examples,
-                )
-
-                encoded_labels = encoded_answer["input_ids"].copy()
-                is_truncated = is_truncated or (
-                    max_length is not None and len(encoded_labels) >= max_length
-                )
-
-                if self._arch == "decoder":
-                    encoded_labels[:prompt_len] = [SENTINEL_TOKEN] * prompt_len
-
-                    all_ids.append(encoded_answer["input_ids"])
-                    all_attn.append(encoded_answer["attention_mask"])
-                    all_labels.append(encoded_labels)
-                    all_truncated.append(is_truncated)
-                    continue
-
-                if self._arch == "encoder-decoder":
-                    idx = prompt_len - int(
-                        encoded_labels[-1] == self._tokenizer.eos_token_id
-                    )
-
-                    all_ids.append(encoded_prompt["input_ids"])
-                    all_attn.append(encoded_prompt["attention_mask"])
-                    all_labels.append(encoded_labels[idx:])
-                    all_truncated.append(is_truncated)
-                    continue
-
-        return _TokBatch(
-            input_ids=all_ids,
-            attention_mask=all_attn,
-            labels=all_labels,
-            truncated=all_truncated,
-        )
-
-    def few_shot_examples(self, n_shot: int) -> list[EvalExample]:
-        """Sample prompt and label pairs from the train split."""
-        if n_shot == 0:
-            return []
-
-        examples: list[EvalExample] = []
-        for sample in self.raw_data["train"]:
-            tokens = cast("list[str]", sample["tokens"])
-            raw_tag_ids = cast("list[int]", sample["ner_tags"])
-            sentence = " ".join(tokens)
-            entities, tag_ids = Multinerd._join_spans(tokens, raw_tag_ids)
-
-            for entity, tag_id in zip(entities, tag_ids, strict=True):
-                if tag_id == -1:
-                    continue
-
-                example = EvalExample(
-                    user=self._build_user_prompt(sentence, entity),
-                    label=Multinerd.id2label[tag_id],
-                )
-
-                examples.append(example)
-                break
-
-            if len(examples) == n_shot:
-                return examples
-
-        msg = f"requested more than {len(examples)} examples"
-        raise ValueError(msg)
 
     @staticmethod
     def _join_spans(
         tokens: list[str],
         tag_ids: list[int],
     ) -> tuple[list[str], list[int]]:
-        out_ids = []
-        out_tokens = []
+        out_ids: list[int] = []
+        out_tokens: list[str] = []
         for token, tag_id in zip(tokens, tag_ids, strict=True):
-            tag = Multinerd._id2label_bio[tag_id]
+            tag = Multinerd.id2label_bio[tag_id]
 
             if tag.startswith("B-"):
-                tag = cast("_Tag", tag[2:])
+                tag = cast("MultinerdTag", tag[2:])
                 out_ids.append(Multinerd.label2id[tag])
                 out_tokens.append(token)
             elif tag.startswith("I-"):
@@ -524,12 +365,37 @@ class Multinerd(DatasetProtocol):
                 out_ids.append(-1)
                 out_tokens.append(token)
             else:
-                tag = cast("_Tag", tag)
+                tag = cast("MultinerdTag", tag)
                 out_ids.append(Multinerd.label2id[tag])
                 out_tokens.append(token)
 
         return out_tokens, out_ids
 
-    @staticmethod
-    def _filter_english(batch: _Batch) -> list[bool]:
-        return [lang == "en" for lang in batch["lang"]]
+
+def _filter_english(batch: _Batch) -> list[bool]:
+    return [lang == "en" for lang in batch["lang"]]
+
+
+def load_multinerd(
+    tokenizer: PreTrainedTokenizerFast,
+    arch: Architecture,
+    n_shot: int = 0,
+    n_virtual: int = 0,
+) -> DataSplits:
+    """Load english MultiNERD splits as per-split tokenized streaming datasets."""
+    logger.debug("loading raw multinerd dataset")
+    data = load_dataset(
+        "Babelscape/multinerd",
+        verification_mode=VerificationMode.NO_CHECKS,
+    )
+
+    logger.info("using english only multinerd subset")
+    train: Dataset = data["train"].filter(_filter_english, batched=True)
+    eval_: Dataset = data["validation"].filter(_filter_english, batched=True)
+    test: Dataset = data["test"].filter(_filter_english, batched=True)
+
+    return DataSplits(
+        Multinerd(train, tokenizer, arch, n_shot, n_virtual),
+        Multinerd(eval_, tokenizer, arch, n_shot, n_virtual),
+        Multinerd(test, tokenizer, arch, n_shot, n_virtual),
+    )

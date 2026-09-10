@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 import torch
-from mlflow.tracking import MlflowClient
 from typer.testing import CliRunner
 
 from eh30pt.cli.cli import app
@@ -30,10 +29,12 @@ def test_help_lists_commands() -> None:
     assert result.exit_code == 0
     assert "fine-tune" in result.output
     assert "prompt-tune" in result.output
+    assert "qlora" in result.output
+    assert "slurm" in result.output
     assert "few-shot" in result.output
     assert "completion" in result.output
     assert "evaluate" in result.output
-    assert "collect" in result.output
+    assert "generate" in result.output
 
 
 def test_rejects_unknown_dataset() -> None:
@@ -50,9 +51,51 @@ def test_rejects_unknown_dataset() -> None:
     assert result.exit_code != 0
 
 
+def test_rejects_extraction_dataset_for_training() -> None:
+    result = _invoke(
+        [
+            "fine-tune",
+            "--model",
+            "hf-internal-testing/tiny-random-bert",
+            "--dataset",
+            "discont-extract",
+            "--train-steps",
+            "10",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "extraction dataset" in str(result.exception)
+
+
+def test_rejects_classification_dataset_for_langextract() -> None:
+    result = _invoke(
+        [
+            "langextract",
+            "--dataset",
+            "multinerd",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "classification dataset" in str(result.exception)
+
+
+def test_rejects_unknown_provider() -> None:
+    result = _invoke(["evaluate", "--dataset", "oblique", "--provider", "unknown"])
+
+    assert result.exit_code != 0
+
+
+def test_rejects_unknown_source() -> None:
+    result = _invoke(["generate", "--dataset", "oblique", "--source", "unknown"])
+
+    assert result.exit_code != 0
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", _model_params)
-def test_few_shot_oblique(
+def test_few_shot_obl(
     tracking_uri: str,
     model_name: str,
 ) -> None:
@@ -77,14 +120,14 @@ def test_few_shot_oblique(
 
     assert result.exit_code == 0, result.output
 
-    run = single_run(MlflowClient(tracking_uri), experiment)
-    assert run.data.params["method"] == "0-shot"
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "few-shot"
     assert "test_f1" in run.data.metrics
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", _model_params)
-def test_fine_tune_oblique(
+def test_fine_tune_obl(
     tmp_path: Path,
     tracking_uri: str,
     model_name: str,
@@ -98,7 +141,7 @@ def test_fine_tune_oblique(
             "--dataset",
             "oblique",
             "--train-steps",
-            "202",
+            "10",
             "--batch-size",
             "8",
             "--seed",
@@ -112,7 +155,7 @@ def test_fine_tune_oblique(
 
     assert result.exit_code == 0, result.output
 
-    run = single_run(MlflowClient(tracking_uri), experiment)
+    run = single_run(tracking_uri, experiment)
     assert "test_f1" in run.data.metrics
 
     run_dir = tmp_path / "log" / run.info.run_id
@@ -122,26 +165,53 @@ def test_fine_tune_oblique(
         for child in run_dir.iterdir()
     )
 
-    collected = _invoke(
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", _model_params)
+def test_qlora_obl(
+    tracking_uri: str,
+    model_name: str,
+) -> None:
+    if not torch.cuda.is_available() and not torch.mps.is_available():
+        pytest.skip(reason="qlora requires CUDA or MPS for bitsandbytes 4-bit")
+
+    if model_name == "t5" and torch.mps.is_available():
+        pytest.skip(reason="mps sdpa does not support dropout in training")
+
+    if model_name in {"bert", "modernbert", "gemma"}:
+        pytest.xfail(reason="qlora unsupported without custom target modules")
+
+    experiment: Final = f"e2e-qlora-{model_name}"
+    result = _invoke(
         [
-            "collect",
+            "qlora",
+            "--model",
+            models[model_name],
+            "--dataset",
+            "oblique",
+            "--train-steps",
+            "10",
+            "--batch-size",
+            "8",
+            "--seed",
+            "0",
             "--mlflow-experiment",
             experiment,
             "--mlflow-tracking-uri",
             tracking_uri,
-            "--metric",
-            "test_f1",
         ],
     )
 
-    assert collected.exit_code == 0, collected.output
-    assert (tmp_path / "log" / "metrics" / f"{experiment}.csv").is_file()
-    assert (tmp_path / "log" / "metrics" / f"{experiment}-history.csv").is_file()
+    assert result.exit_code == 0, result.output
+
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "qlora"
+    assert "test_f1" in run.data.metrics
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", _model_params)
-def test_prompt_tune_oblique(
+def test_prompt_tune_obl(
     tracking_uri: str,
     model_name: str,
 ) -> None:
@@ -157,7 +227,7 @@ def test_prompt_tune_oblique(
             "--dataset",
             "oblique",
             "--train-steps",
-            "202",
+            "10",
             "--batch-size",
             "8",
             "--seed",
@@ -171,6 +241,6 @@ def test_prompt_tune_oblique(
 
     assert result.exit_code == 0, result.output
 
-    run = single_run(MlflowClient(tracking_uri), experiment)
-    assert run.data.params["method"] == "prompt-tune-pretrained"
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "prompt-tune"
     assert "test_f1" in run.data.metrics

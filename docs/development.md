@@ -12,14 +12,14 @@ just sync
 ```
 
 The package installs a command line interface into the virtualenv.
-Run it with `uv run cli --help` to see the available commands.
+Run it with `uv run eh30pt --help` to see the available commands.
 
 ## Services
 
 Local development uses a Postgres database running as a Docker service.
 
 ```bash
-just up [--detach]
+just up   [--detach]
 just down [--volumes]
 ```
 
@@ -29,8 +29,8 @@ All code changes must pass the pre-commit checks and tests.
 See the [tests](./tests.md) document for the test layout, fixtures, and options.
 
 ```bash
-just check  # pre-commit checks such as formatter, linter and typechecker
-just test   # test suite
+just prek  # pre-commit
+just test  # test suite
 ```
 
 ## Notebooks
@@ -38,14 +38,14 @@ just test   # test suite
 Exploratory analysis lives in the notebooks directory as marimo notebooks.
 
 ```bash
-just marimo  # run marimo server
+just marimo  # marimo server
 ```
 
 ## Remote Machines
 
-The working tree can be uploaded to a remote host or the app can be packaged into a wheel.
+The working tree can be uploaded to a remote host or a wheel to object storage.
 
 ```bash
-just rsync [--host ...] [--commit]  # upload working tree to a remote host   (HPC)
-just wheel                          # package into a wheel for manual upload (SAPU)
+just rsync [--host ...]  [--commit]      # upload working tree to remote host
+just msync [--alias ...] [--prefix ...]  # upload wheel to minio object storage
 ```

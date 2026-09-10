@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch import Tensor
+from tqdm import tqdm
 from transformers import EvalPrediction  # noqa: TC002
 
 from eh30pt.constants import SENTINEL_TOKEN
@@ -19,17 +20,7 @@ if TYPE_CHECKING:
 
 
 class MetricsAccumulator(Callable):
-    """
-    Collect per-batch eval outputs and computes metrics on the final call.
-
-    Parameters
-    ----------
-    tokenizer : PreTrainedTokenizerFast
-        Tokenizer used to decode generated ids (unused for encoders).
-    arch : Architecture
-        Model architecture, selecting the accumulation format.
-
-    """
+    """Collect per-batch eval outputs and computes metrics on the final call."""
 
     def __init__(self, tokenizer: PreTrainedTokenizerFast, arch: Architecture) -> None:
         """Store the tokenizer and architecture."""
@@ -37,6 +28,7 @@ class MetricsAccumulator(Callable):
         self._arch = arch
         self._labels: list[np.ndarray] = []
         self._preds: list[np.ndarray] = []
+        self._bar: tqdm | None = None
 
     def __call__(
         self,
@@ -45,7 +37,14 @@ class MetricsAccumulator(Callable):
         compute_result: bool = True,
     ) -> dict[str, float]:
         """Accumulate one batch, computing metrics when `compute_result`."""
+        collected = len(self._labels)
         self._extend(eval_pred)
+
+        if self._bar is None:
+            self._bar = tqdm(desc="evaluating", unit="samples")
+
+        self._bar.update(len(self._labels) - collected)
+
         if not compute_result:
             return {}
 
@@ -58,6 +57,9 @@ class MetricsAccumulator(Callable):
         """Drop all accumulated batches."""
         self._labels.clear()
         self._preds.clear()
+        if self._bar is not None:
+            self._bar.close()
+            self._bar = None
 
     def _extend(self, eval_pred: EvalPrediction) -> None:
         if self._arch == "encoder-decoder":
@@ -96,7 +98,7 @@ class MetricsAccumulator(Callable):
             logger.debug("labels: %s", format_counts(_labels_count))
             logger.debug("predictions: %s", format_counts(_preds_count))
 
-            return _compute_classification_metrics(all_labels[mask], all_preds[mask])
+            return compute_classification_metrics(all_labels[mask], all_preds[mask])
 
         labels = []
         preds = []
@@ -127,7 +129,62 @@ class MetricsAccumulator(Callable):
         logger.debug("references: %s", format_counts(_refs_count))
         logger.debug("predictions: %s", format_counts(_preds_count))
 
-        return _compute_classification_metrics(references, predictions)
+        return compute_classification_metrics(references, predictions)
+
+
+class StreamingClassificationMetrics:
+    """Accumulate per-pair counts and derive metrics."""
+
+    def __init__(self) -> None:
+        """Initialize empty pair counts."""
+        self._pair_counts: Counter[tuple[str, str]] = Counter()
+        self._total: int = 0
+        self._correct: int = 0
+
+    def update(self, label: str, prediction: str) -> None:
+        """Count one gold label and prediction pair."""
+        self._pair_counts[(label, prediction)] += 1
+        self._total += 1
+
+        if label == prediction:
+            self._correct += 1
+
+    def finalize(self) -> dict[str, float]:
+        """Derive accuracy and macro precision, recall, and f1."""
+        if self._total == 0:
+            return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+        classes = sorted(
+            {label for label, _ in self._pair_counts}
+            | {prediction for _, prediction in self._pair_counts},
+        )
+
+        label_totals: Counter[str] = Counter()
+        pred_totals: Counter[str] = Counter()
+        for (label, prediction), count in self._pair_counts.items():
+            label_totals[label] += count
+            pred_totals[prediction] += count
+
+        precisions: list[float] = []
+        recalls: list[float] = []
+        f1s: list[float] = []
+        for cls in classes:
+            true_positive = self._pair_counts.get((cls, cls), 0)
+            predicted = pred_totals.get(cls, 0)
+            actual = label_totals.get(cls, 0)
+
+            precisions.append(true_positive / predicted if predicted else 0.0)
+            recalls.append(true_positive / actual if actual else 0.0)
+
+            denom = actual + predicted
+            f1s.append(2 * true_positive / denom if denom else 0.0)
+
+        return {
+            "accuracy": self._correct / self._total,
+            "precision": float(np.mean(precisions)),
+            "recall": float(np.mean(recalls)),
+            "f1": float(np.mean(f1s)),
+        }
 
 
 def _batch_to_numpy(eval_pred: EvalPrediction) -> tuple[np.ndarray, np.ndarray]:
@@ -154,10 +211,11 @@ def _filter_other(references: list[str], predictions: list[str]) -> list[str]:
     return [pred if pred in refset else "other" for pred in predictions]
 
 
-def _compute_classification_metrics(
+def compute_classification_metrics(
     labels: np.ndarray | list,
     preds: np.ndarray | list,
 ) -> dict[str, float]:
+    """Compute accuracy and macro-averaged precision, recall, and f1."""
     logger.debug("computing classification metrics")
 
     accuracy = accuracy_score(labels, preds)

@@ -3,7 +3,7 @@ name: ci
 on:
   push:
     branches:
-      - master
+      - main
 
   pull_request:
     branches:
@@ -29,5 +29,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface/hub
+          key: huggingface-hub-cache-${{ hashFiles('test/integration/conftest.py') }}
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface/datasets
+          key: huggingface-datasets-cache-${{ hashFiles('**/datasets/*.py') }}
+
       - run: uv sync --frozen
-      - run: uv run --no-sync pytest --run-slow
+      - run: uv run --no-sync pytest --verbose --run-slow --cov --durations 10000 --durations-min 5

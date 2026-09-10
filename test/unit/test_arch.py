@@ -2,7 +2,7 @@
 
 from transformers import BertConfig, GPT2Config, T5Config
 
-from eh30pt.modeling.arch import infer_architecture
+from eh30pt.modeling.arch import get_pipeline_task, infer_architecture
 
 
 def test_get_arch_override_short_circuits() -> None:
@@ -19,3 +19,9 @@ def test_get_arch_encoder() -> None:
 
 def test_get_arch_decoder() -> None:
     assert infer_architecture(GPT2Config()) == "decoder"
+
+
+def test_get_pipeline_task_maps_architectures() -> None:
+    assert get_pipeline_task("encoder") == "text-classification"
+    assert get_pipeline_task("decoder") == "text-generation"
+    assert get_pipeline_task("encoder-decoder") == "text-generation"

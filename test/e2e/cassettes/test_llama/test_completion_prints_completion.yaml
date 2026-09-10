@@ -34,12 +34,12 @@ interactions:
     uri: http://localhost:8080/models
   response:
     body:
-      string: '{"models":[{"name":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","aliases":["/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"],"tags":[],"object":"model","created":1788962100,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":262144,"n_ctx":262144,"n_ctx_train":262144,"n_embd":3840,"n_params":11907350576,"size":6700531904,"ftype":"Q4_0"}}]}'
+      string: '{"models":[{"name":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","aliases":["/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"],"tags":[],"object":"model","created":1790057963,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":128256,"n_ctx":8192,"n_ctx_train":131072,"n_embd":2048,"n_params":1235814432,"size":1313251456,"ftype":"Q8_0"}}]}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '764'
+      - '749'
       content-type:
       - application/json; charset=utf-8
       keep-alive:
@@ -51,7 +51,7 @@ interactions:
       message: OK
 - request:
     body: '{"messages":[{"role":"system","content":"You are a terse calculator, answer
-      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf"}'
+      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"}'
     headers:
       accept:
       - application/json
@@ -60,7 +60,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '221'
+      - '218'
       content-type:
       - application/json
       host:
@@ -89,15 +89,12 @@ interactions:
     uri: http://localhost:8080/chat/completions
   response:
     body:
-      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4","reasoning_content":"The
-        user is asking for the sum of 2 + 2.\nThe user wants the answer in one word.\nThe
-        system instruction says \"You are a terse calculator, answer with the number.\"\nThe
-        sum is 4.\n\nResponse: 4."}}],"created":1788962102,"model":"/Users/mart/models/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf","system_fingerprint":"b10872-b31b71f3a","object":"chat.completion","usage":{"completion_tokens":60,"prompt_tokens":39,"total_tokens":99,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-DT6lq3K6HYk3mIE7ceuy7nL1x8mp488k","timings":{"cache_n":0,"prompt_n":39,"prompt_ms":606.625,"prompt_per_token_ms":15.554487179487179,"prompt_per_second":64.29012981660829,"predicted_n":60,"predicted_ms":1902.541,"predicted_per_token_ms":32.246457627118644,"predicted_per_second":31.011158235223316,"draft_n":32,"draft_n_accepted":28}}'
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4"}}],"created":1790057963,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b11028-972d2313b","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":58,"total_tokens":60,"prompt_tokens_details":{"cached_tokens":57}},"id":"chatcmpl-MSHFKWJUhHsTiqoCMYn4VWjSnGvNmlVj","timings":{"cache_n":57,"prompt_n":1,"prompt_ms":18.033,"prompt_per_token_ms":18.033,"prompt_per_second":55.453890090389834,"predicted_n":2,"predicted_ms":10.683,"predicted_per_token_ms":10.683,"predicted_per_second":93.60666479453337}}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '926'
+      - '641'
       content-type:
       - application/json; charset=utf-8
       keep-alive:

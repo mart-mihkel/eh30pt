@@ -1,11 +1,14 @@
 """Global constants."""
 
+import os
 from pathlib import Path
 from typing import Final
 
-LOGDIR: Final = Path("log")
+LOGDIR: Final = Path(os.environ.get("EH30PT_LOGDIR", "log"))
 """
-Destination for logs and model checkpoints.
+Destination for logs and model checkpoints, overridable with EH30PT_LOGDIR.
+
+Relative paths resolve against the working directory where training runs.
 """
 
 SENTINEL_TOKEN: Final = -100
@@ -22,9 +25,4 @@ UNSET_MAX_LENGTH: Final = int(1e15)
 """
 Tokenizers without a real length limit report a ~1e30 sentinel.
 Treat anything at or above this threshold as no limit configured.
-"""
-
-MLFLOW_ARTIFACT_PATH: Final = "model"
-"""
-MLflow artifact path.
 """

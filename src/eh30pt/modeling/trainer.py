@@ -23,14 +23,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from datasets.arrow_dataset import Dataset as HFDataset
-    from datasets.dataset_dict import DatasetDict
+    from datasets.iterable_dataset import IterableDataset as HFIterableDataset
     from peft import PeftModel
     from torch.nn import Module
-    from torch.utils.data import Dataset
+    from torch.utils.data import IterableDataset as TorchIterableDataset
     from transformers import PreTrainedModel, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, ComputeMetricsFn
+    from eh30pt.types import Architecture, ComputeMetricsFn, DataSplits
+
+
+_no_epoch_cap: Final = 0
 
 
 class _Spec(NamedTuple):
@@ -38,8 +40,8 @@ class _Spec(NamedTuple):
 
     model: Module
     tokenizer: PreTrainedTokenizerFast
-    train_dataset: HFDataset | None
-    eval_dataset: Dataset
+    train_dataset: TorchIterableDataset | None
+    eval_dataset: TorchIterableDataset
     collate_fn: DataCollator
     metrics_fn: Callable
     output_dir: str
@@ -55,13 +57,10 @@ class _Spec(NamedTuple):
     optim: str
     eval_strategy: str
     save_strategy: str
+    save_steps: int
     load_best: bool
     have_accel: bool
     label_completions: tuple[tuple[int, ...], ...]
-
-
-# Epochs only tick eval/save; the step budget governs total training.
-_NO_EPOCH_CAP: Final = 0
 
 
 class ConstrainedSFTTrainer(SFTTrainer):
@@ -70,28 +69,6 @@ class ConstrainedSFTTrainer(SFTTrainer):
 
     Each row's argmax is forced to its most likely legal completion, scored
     by teacher-forced likelihood over same-length candidates.
-
-    Parameters
-    ----------
-    model : PreTrainedModel | PeftModel
-        Causal model to train or evaluate.
-    args : SFTConfig
-        SFT configuration.
-    data_collator : DataCollator
-        Data collator batching tokenized examples.
-    train_dataset : HFDataset | None
-        Training split, if present.
-    eval_dataset : HFDataset | None
-        Evaluation split, if present.
-    processing_class : PreTrainedTokenizerFast
-        Tokenizer used for padding.
-    compute_metrics : Callable
-        Metric function scoring evaluation predictions.
-    callbacks : list[TrainerCallback]
-        Extra Trainer callbacks.
-    label_completions : tuple[tuple[int, ...], ...]
-        Distinct legal completion token sequences observed in the data.
-
     """
 
     def __init__(
@@ -100,8 +77,8 @@ class ConstrainedSFTTrainer(SFTTrainer):
         model: PreTrainedModel | PeftModel,
         args: SFTConfig,
         data_collator: DataCollator,
-        train_dataset: HFDataset | None,
-        eval_dataset: HFDataset | None,
+        train_dataset: TorchIterableDataset | None,
+        eval_dataset: TorchIterableDataset | None,
         processing_class: PreTrainedTokenizerFast,
         compute_metrics: Callable,
         callbacks: list[TrainerCallback],
@@ -112,8 +89,8 @@ class ConstrainedSFTTrainer(SFTTrainer):
             model=model,
             args=args,
             data_collator=data_collator,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
+            train_dataset=cast("HFIterableDataset | None", train_dataset),
+            eval_dataset=cast("HFIterableDataset | None", eval_dataset),
             processing_class=processing_class,
             compute_metrics=compute_metrics,
             callbacks=callbacks,
@@ -124,8 +101,8 @@ class ConstrainedSFTTrainer(SFTTrainer):
     def prediction_step(
         self,
         model: Module,
-        inputs: dict[str, torch.Tensor | Any],
-        prediction_loss_only: bool,  # noqa: FBT001 - mirrors Trainer.prediction_step
+        inputs: dict[str, torch.Tensor],
+        prediction_loss_only: bool,  # noqa: FBT001
         ignore_keys: list[str] | None = None,
     ) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
         """Constrain eval logits to legal label continuations."""
@@ -139,6 +116,9 @@ class ConstrainedSFTTrainer(SFTTrainer):
         if prediction_loss_only or logits is None or labels is None:
             return loss, logits, labels
 
+        if isinstance(logits, tuple):
+            logits = logits[0]
+
         return loss, _constrain_eval_logits(logits, labels, self._completions), labels
 
 
@@ -150,6 +130,7 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         report_to=spec.report_to,
         output_dir=spec.output_dir,
         save_strategy=spec.save_strategy,
+        save_steps=spec.save_steps,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
         eval_steps=spec.eval_steps,
@@ -162,7 +143,7 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=_NO_EPOCH_CAP,
+        num_train_epochs=_no_epoch_cap,
         max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
@@ -190,6 +171,7 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         report_to=spec.report_to,
         output_dir=spec.output_dir,
         save_strategy=spec.save_strategy,
+        save_steps=spec.save_steps,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
         eval_steps=spec.eval_steps,
@@ -202,7 +184,7 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=_NO_EPOCH_CAP,
+        num_train_epochs=_no_epoch_cap,
         max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
@@ -214,19 +196,17 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         loss_type="nll",
     )
 
-    trainer = ConstrainedSFTTrainer(
+    return ConstrainedSFTTrainer(
         model=cast("PreTrainedModel | PeftModel", spec.model),
         args=args,
         data_collator=spec.collate_fn,
         train_dataset=spec.train_dataset,
-        eval_dataset=cast("HFDataset | None", spec.eval_dataset),
+        eval_dataset=spec.eval_dataset,
         processing_class=spec.tokenizer,
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,
         label_completions=spec.label_completions,
     )
-
-    return cast("Trainer", trainer)
 
 
 class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
@@ -235,28 +215,6 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
 
     Generation is masked through `PrefixConstrainedLogitsProcessor` to tokens
     continuing the decoded prefix toward a legal label.
-
-    Parameters
-    ----------
-    model : Module
-        Encoder-decoder model to train or evaluate.
-    args : Seq2SeqTrainingArguments
-        Seq2seq configuration.
-    data_collator : DataCollator
-        Data collator batching tokenized examples.
-    train_dataset : HFDataset | None
-        Training split, if present.
-    eval_dataset : Dataset
-        Evaluation split.
-    compute_metrics : Callable
-        Metric function scoring evaluation predictions.
-    callbacks : list[TrainerCallback]
-        Extra Trainer callbacks.
-    label_completions : tuple[tuple[int, ...], ...]
-        Distinct legal completion token sequences observed in the data.
-    pad_token_id : int
-        Token generated once no completion continues the prefix.
-
     """
 
     def __init__(
@@ -265,8 +223,8 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
         model: Module,
         args: Seq2SeqTrainingArguments,
         data_collator: DataCollator,
-        train_dataset: HFDataset | None,
-        eval_dataset: Dataset,
+        train_dataset: TorchIterableDataset | None,
+        eval_dataset: TorchIterableDataset,
         compute_metrics: Callable,
         callbacks: list[TrainerCallback],
         label_completions: tuple[tuple[int, ...], ...],
@@ -296,10 +254,10 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
     def prediction_step(
         self,
         model: Module,
-        inputs: dict[str, torch.Tensor | Any],
-        prediction_loss_only: bool,  # noqa: FBT001 - mirrors base signature
+        inputs: dict[str, torch.Tensor],
+        prediction_loss_only: bool,  # noqa: FBT001
         ignore_keys: list[str] | None = None,
-        **gen_kwargs: Any,  # noqa: ANN401 - mirrors base signature
+        **gen_kwargs: Any,  # noqa: ANN401
     ) -> tuple[float | None, torch.Tensor | None, torch.Tensor | None]:
         """Generate with the label-constraining logits processor injected."""
         inputs = {k: v for k, v in inputs.items() if k != "truncated"}
@@ -323,6 +281,7 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         report_to=spec.report_to,
         output_dir=spec.output_dir,
         save_strategy=spec.save_strategy,
+        save_steps=spec.save_steps,
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
         eval_steps=spec.eval_steps,
@@ -335,7 +294,7 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,
         optim=spec.optim,
-        num_train_epochs=_NO_EPOCH_CAP,
+        num_train_epochs=_no_epoch_cap,
         max_steps=spec.train_steps,
         per_device_train_batch_size=spec.batch_size,
         per_device_eval_batch_size=spec.batch_size,
@@ -363,7 +322,7 @@ def _build_spec(
     model: Module,
     *,
     tokenizer: PreTrainedTokenizerFast,
-    data: DatasetDict,
+    data: DataSplits,
     arch: Architecture,
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
@@ -387,8 +346,8 @@ def _build_spec(
     return _Spec(
         model=model,
         tokenizer=tokenizer,
-        train_dataset=data.get("train"),
-        eval_dataset=cast("Dataset", data.get("validation")),
+        train_dataset=data.train,
+        eval_dataset=data.eval,
         collate_fn=collate_fn,
         metrics_fn=cast("Callable", metrics_fn),
         output_dir=str(output_dir),
@@ -403,7 +362,8 @@ def _build_spec(
         callbacks=list(callbacks),
         optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
         eval_strategy="steps" if eval_steps > 0 else "no",
-        save_strategy="epoch" if checkpoints else "no",
+        save_strategy="steps" if do_checkpoints else ("epoch" if checkpoints else "no"),
+        save_steps=eval_steps if eval_steps > 0 else 500,
         load_best=do_checkpoints,
         have_accel=have_accel,
         label_completions=_label_completions(data, eos_token_id=tokenizer.eos_token_id)
@@ -416,7 +376,7 @@ def get_trainer(
     model: Module,
     *,
     tokenizer: PreTrainedTokenizerFast,
-    data: DatasetDict,
+    data: DataSplits,
     arch: Architecture,
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
@@ -433,55 +393,7 @@ def get_trainer(
     checkpoints: bool = False,
     callbacks: tuple[TrainerCallback, ...] = (),
 ) -> Trainer:
-    """
-    Build a Trainer for the architecture, adding early stopping if requested.
-
-    Parameters
-    ----------
-    model : Module
-        Model to train or evaluate.
-    tokenizer : PreTrainedTokenizerFast
-        Tokenizer passed as the SFT processing class for decoders.
-    data : DatasetDict
-        Tokenized dataset splits (`train`, `validation`).
-    arch : Architecture
-        Model architecture, selecting regular, seq2seq, or SFT Trainer.
-    collate_fn : DataCollator
-        Data collator batching tokenized examples.
-    metrics_fn : ComputeMetricsFn
-        Metric function scoring evaluation predictions.
-    output_dir : Path | str
-        Directory for checkpoints and trainer state.
-    eval_steps : int
-        Evaluate every N training steps, 0 disables evaluation.
-    patience : int
-        Evals without improvement before stopping, 0 disables.
-    tolerance : float
-        Minimum eval improvement resetting the patience counter.
-    train_steps : int
-        Training step budget, 0 trains nothing (eval-only default).
-    learning_rate : float
-        Optimizer learning rate.
-    batch_size : int
-        Training and evaluation batch size.
-    warmup_ratio : float
-        Fraction of training steps for learning rate warmup, forwarded as
-        `warmup_steps` (transformers 5 accepts ratios there).
-    run_name : str
-        Display name reported to trackers.
-    report_to : str
-        Tracker integrations enabled on the Trainer.
-    checkpoints : bool
-        Save epoch checkpoints (also required to restore the best model).
-    callbacks : tuple[TrainerCallback, ...]
-        Extra Trainer callbacks.
-
-    Returns
-    -------
-    Trainer
-        Configured Trainer for the architecture.
-
-    """
+    """Build a Trainer for the architecture, adding early stopping if requested."""
     spec = _build_spec(
         model,
         tokenizer=tokenizer,
@@ -559,24 +471,20 @@ def _allowed_next(
 
 
 def _label_completions(
-    data: DatasetDict,
+    data: DataSplits,
     *,
     eos_token_id: int | None = None,
 ) -> tuple[tuple[int, ...], ...]:
-    """Collect distinct completion token sequences from masked label columns."""
+    """Collect distinct completion token sequences from the eval stream."""
     seen: list[tuple[int, ...]] = []
-    for split in ("train", "validation", "test"):
-        if split not in data:
+    for row in data.eval:
+        labels = cast("list[int]", row["labels"])
+        completion = tuple(token for token in labels if token != SENTINEL_TOKEN)
+        if not completion or completion == (eos_token_id,):
             continue
 
-        rows: list[list[int]] = data[split]["labels"]
-        for row in rows:
-            completion = tuple(token for token in row if token != SENTINEL_TOKEN)
-            if not completion or completion == (eos_token_id,):
-                continue
-
-            if completion not in seen:
-                seen.append(completion)
+        if completion not in seen:
+            seen.append(completion)
 
     return tuple(seen)
 
@@ -601,9 +509,12 @@ def _constrain_eval_logits(
             continue
 
         cands = [c for c in completions if len(c) == len(pos)]
+        if not cands:
+            continue
+
         cand_ids = torch.tensor(cands, dtype=torch.long, device=masked.device)
 
-        scores = masked[b, force_at].gather(1, cand_ids).sum(1)
+        scores = masked[b, force_at].gather(1, cand_ids.t()).sum(0)
         winner = cands[int(torch.argmax(scores))]
         forced = torch.tensor(winner, dtype=torch.long, device=masked.device)
 

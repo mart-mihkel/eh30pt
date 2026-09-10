@@ -9,24 +9,34 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 
+from eh30pt.datasets.registry import assert_classification, get_labels
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
     from torch.nn import Module
-    from transformers import PreTrainedModel, PreTrainedTokenizerFast
+    from transformers import (
+        BitsAndBytesConfig,
+        PreTrainedModel,
+        PreTrainedTokenizerFast,
+    )
 
-    from eh30pt.types import Architecture, DatasetProtocol
+    from eh30pt.types import Architecture, DatasetName
 
 
 def load_model(
     tokenizer: PreTrainedTokenizerFast,
     model_path: str,
-    data: DatasetProtocol,
+    dataset: DatasetName,
     arch: Architecture,
     *,
     head_only: bool,
+    quantization_config: BitsAndBytesConfig | None = None,
 ) -> PreTrainedModel:
     """Load a pretrained model for the architecture, optionally freezing the base."""
+    assert_classification(dataset, "model heads need labels")
+
+    logger.info("loading '%s'", model_path)
+
     have_cuda = torch.cuda.is_available()
     have_mps = not have_cuda and torch.mps.is_available()
     if have_cuda:
@@ -44,16 +54,20 @@ def load_model(
 
     skip_freeze = None
     if arch == "encoder":
+        labels = get_labels(dataset)
+        id2label = dict(enumerate(labels))
+        label2id = {label: index for index, label in id2label.items()}
         logger.debug("loading '%s' for sequence classification", model_path)
         model, loading_info = AutoModelForSequenceClassification.from_pretrained(
             model_path,
             output_loading_info=True,
             ignore_mismatched_sizes=True,
-            num_labels=len(data.id2label),
-            id2label=data.id2label,
-            label2id=data.label2id,
+            num_labels=len(id2label),
+            id2label=id2label,
+            label2id=label2id,
             device_map=device_map,
             dtype=dtype,
+            quantization_config=quantization_config,
         )
 
         skip_freeze = loading_info["missing_keys"]
@@ -63,6 +77,7 @@ def load_model(
             model_path,
             device_map=device_map,
             dtype=dtype,
+            quantization_config=quantization_config,
         )
     elif arch == "encoder-decoder":
         logger.debug("loading '%s' for sequence to sequence", model_path)
@@ -70,6 +85,7 @@ def load_model(
             model_path,
             device_map=device_map,
             dtype=dtype,
+            quantization_config=quantization_config,
         )
 
     if have_mps:

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
         _LazyAutoMapping,
     )
 
-    from eh30pt.types import Architecture
+    from eh30pt.types import Architecture, PipelineTask
 
 
 def _registered_for(cls: type, auto_cls: type[_BaseAutoModelClass]) -> bool:
@@ -44,6 +44,18 @@ def infer_architecture(
     return arch
 
 
+def get_pipeline_task(arch: Architecture) -> PipelineTask:
+    """Map architecture to its HuggingFace pipeline task."""
+    if arch == "encoder":
+        return "text-classification"
+
+    if arch in {"decoder", "encoder-decoder"}:
+        return "text-generation"
+
+    msg = f"invalid architecture {arch}"
+    raise ValueError(msg)
+
+
 def get_task_type(arch: Architecture) -> TaskType:
     """Map architecture to peft task."""
     if arch == "encoder":
@@ -52,4 +64,8 @@ def get_task_type(arch: Architecture) -> TaskType:
     if arch == "decoder":
         return TaskType.CAUSAL_LM
 
-    return TaskType.SEQ_2_SEQ_LM
+    if arch == "encoder-decoder":
+        return TaskType.SEQ_2_SEQ_LM
+
+    msg = f"invalid architecture {arch}"
+    raise ValueError(msg)

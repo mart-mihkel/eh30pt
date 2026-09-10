@@ -1,9 +1,10 @@
 """Prompt-tuning model construction: virtual token counting and PEFT wrapping."""
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from peft import PeftModel, PromptTuningConfig, get_peft_model
 
+from eh30pt.datasets.registry import get_sys_prompt
 from eh30pt.logging import logger
 from eh30pt.modeling.arch import get_task_type
 from eh30pt.modeling.loader import load_model
@@ -17,10 +18,18 @@ if TYPE_CHECKING:
         T5Gemma2TextConfig,
     )
 
-    from eh30pt.types import Architecture, DatasetProtocol, PrefixInit
+    from eh30pt.types import Architecture, DatasetName, PrefixInit
 
 
-def _distiblert_prompt_tuning_kwargs(model: DistilBertModel) -> dict[str, Any]:
+class PromptTuningKwargs(TypedDict, total=False):
+    """Arch-specific extras for PromptTuningConfig."""
+
+    token_dim: int
+    num_layers: int
+    num_attention_heads: int
+
+
+def _distiblert_prompt_tuning_kwargs(model: DistilBertModel) -> PromptTuningKwargs:
     logger.debug("get prompt tuning args for distilbert")
 
     cfg = model.config
@@ -31,7 +40,7 @@ def _distiblert_prompt_tuning_kwargs(model: DistilBertModel) -> dict[str, Any]:
     }
 
 
-def _t5gemma2_prompt_tuning_kwargs(model: T5Gemma2Model) -> dict[str, Any]:
+def _t5gemma2_prompt_tuning_kwargs(model: T5Gemma2Model) -> PromptTuningKwargs:
     logger.debug("get prompt tuning args for t5gemma-2")
 
     cfg = cast("T5Gemma2EncoderConfig", model.config.encoder)
@@ -62,13 +71,18 @@ def prepare_pt_model(
     tokenizer: PreTrainedTokenizerFast,
     model_path: str,
     arch: Architecture,
-    data: DatasetProtocol,
+    dataset: DatasetName,
 ) -> PeftModel:
     """Load a pretrained model wrapped for prompt tuning."""
-    logger.debug("preparing peft model for '%s'", model_path)
-    sys_prompt = data.system_prompt
+    logger.info(
+        "preparing prompt tuning model for '%s' with %s prefix initialization",
+        model_path,
+        prefix_init,
+    )
+
+    sys_prompt = get_sys_prompt(dataset)
     n_virtual = get_n_virtual(tokenizer, sys_prompt)
-    base = load_model(tokenizer, model_path, data, arch, head_only=False)
+    base = load_model(tokenizer, model_path, dataset, arch, head_only=False)
     task_type = get_task_type(arch)
 
     if prefix_init == "pretrained":
@@ -76,7 +90,7 @@ def prepare_pt_model(
     elif prefix_init == "random":
         init = "RANDOM"
 
-    special_kwargs = {}
+    special_kwargs: PromptTuningKwargs = {}
     if "distilbert" in model_path:
         base = cast("DistilBertModel", base)
         special_kwargs = _distiblert_prompt_tuning_kwargs(base)

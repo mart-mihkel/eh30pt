@@ -57,11 +57,12 @@ def setup_logging() -> None:
         category=UserWarning,
     )
 
-    handler = RichHandler(
-        console=Console(file=cast("TextIO", _TqdmSafeStream(sys.stderr))),
-        show_path=False,
-        show_time=False,
+    console = Console(
+        file=cast("TextIO", _TqdmSafeStream(sys.stderr)),
+        width=80,
     )
+
+    handler = RichHandler(console=console, show_path=False, show_time=False)
 
     rich.traceback.install(suppress=[rich, tqdm])
     logging.basicConfig(format="%(message)s", handlers=[handler])

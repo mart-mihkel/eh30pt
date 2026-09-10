@@ -4,122 +4,93 @@ from typing import TYPE_CHECKING
 
 from transformers import AutoConfig
 
-from eh30pt.cli.scripts.common import log_prompt_version, train_and_evaluate
-from eh30pt.datasets.registry import load_data
+from eh30pt.datasets.registry import (
+    assert_classification,
+    get_sys_prompt,
+    load_data,
+)
 from eh30pt.logging import logger
 from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
 from eh30pt.modeling.loader import load_model
 from eh30pt.modeling.metrics import MetricsAccumulator
 from eh30pt.modeling.tokenizer import cap_tokenizer_length, load_tokenizer
-from eh30pt.tracking import build_run_name, open_run
+from eh30pt.tracking.context import RunContext
+from eh30pt.tracking.resume import build_run_name
 
 if TYPE_CHECKING:
-    from eh30pt.types import Architecture, DatasetName, FineTuneRunConfig
+    from eh30pt.settings import CommonSettings, MlflowSettings, TrainingSettings
+    from eh30pt.types import FineTuneRunConfig, Method
 
 
 def main(
-    model_path: str,
-    dataset: DatasetName,
-    n_shot: int,
+    common: CommonSettings,
     *,
-    arch: Architecture | None = None,
     head_only: bool,
-    eval_steps: int,
-    patience: int,
-    tolerance: float,
-    resume: bool = True,
-    train_steps: int,
-    batch_size: int,
-    learning_rate: float,
-    warmup_ratio: float,
-    mlflow_experiment: str,
-    mlflow_run_name: str | None,
-    mlflow_tracking_uri: str,
-    seed: int | None = None,
+    training: TrainingSettings,
+    mlflow: MlflowSettings,
 ) -> None:
     """Fine-tune `model_path` on `dataset` and evaluate on the test split."""
-    logger.info("loading config for '%s'", model_path)
-    config = AutoConfig.from_pretrained(model_path)
-    arch = infer_architecture(config, arch)
+    assert_classification(common.dataset, "training needs labels")
 
-    tokenizer = load_tokenizer(model_path)
+    logger.info("loading config for '%s'", common.model)
+    config = AutoConfig.from_pretrained(common.model)
+    arch = infer_architecture(config, common.arch)
+
+    tokenizer = load_tokenizer(common.model)
     cap_tokenizer_length(tokenizer, config)
 
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
-    data = load_data(
-        tokenizer,
-        dataset,
-        arch,
-        n_shot=n_shot,
+    splits = load_data(tokenizer, common.dataset, arch, n_shot=common.n_shot)
+    sys_prompt = get_sys_prompt(common.dataset)
+    model = load_model(
+        tokenizer, common.model, common.dataset, arch, head_only=head_only
     )
-
-    tokenized = data.data
-
-    if dataset in {"boolq", "wic"}:
-        logger.warning("using superglue validation data for test, labels are private")
-        tokenized["test"] = tokenized["validation"]
-
-    logger.info("loading '%s'", model_path)
-    model = load_model(tokenizer, model_path, data, arch, head_only=head_only)
 
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    method = "cls-head" if head_only else "fine-tune"
-    if mlflow_run_name is None:
-        mlflow_run_name = build_run_name(dataset, model_path, method, None)
+    method: Method = "cls-head" if head_only else "fine-tune"
+    if mlflow.run_name is None:
+        mlflow.run_name = build_run_name(common.model, method)
 
     logger.info("total parameters %d", total)
     logger.info("trainable parameters %d", trainable)
-    logger.info("tracking '%s' of experiment '%s'", mlflow_run_name, mlflow_experiment)
+    logger.info(
+        "tracking '%s' of experiment '%s'",
+        mlflow.run_name,
+        mlflow.experiment,
+    )
 
-    run_config: FineTuneRunConfig = {
+    config: FineTuneRunConfig = {
         "method": method,
-        "dataset": dataset,
+        "dataset": common.dataset,
         "architecture": arch,
-        "base_model": model_path,
+        "base_model": common.model,
         "head_only": head_only,
-        "n_shot": n_shot,
-        "eval_steps": eval_steps,
-        "patience": patience,
-        "tolerance": tolerance,
-        "train_steps": train_steps,
-        "batch_size": batch_size,
-        "learning_rate": learning_rate,
-        "warmup_ratio": warmup_ratio,
-        "seed": seed,
-        "system_prompt": data.system_prompt,
-        "train_samples": len(tokenized["train"]),
-        "validation_samples": len(tokenized["validation"]) if eval_steps > 0 else 0,
-        "test_samples": len(tokenized["test"]),
+        "n_shot": common.n_shot,
+        "eval_steps": training.eval_steps,
+        "patience": training.patience,
+        "tolerance": training.tolerance,
+        "train_steps": training.train_steps,
+        "batch_size": training.batch_size,
+        "learning_rate": training.learning_rate,
+        "warmup_ratio": training.warmup_ratio,
+        "system_prompt": sys_prompt,
         "total_parameters": total,
         "trainable_parameters": trainable,
     }
 
-    with open_run(
-        mlflow_experiment,
-        mlflow_run_name,
-        mlflow_tracking_uri,
-        resume=resume,
-        config=run_config,
-    ) as ctx:
-        log_prompt_version(ctx, dataset, arch, data.system_prompt)
-        train_and_evaluate(
-            ctx,
-            model,
+    with RunContext(mlflow, config) as ctx:
+        ctx.log_prompt_version(common.dataset, arch, sys_prompt)
+        ctx.train_and_evaluate(
+            model=model,
             tokenizer=tokenizer,
-            data=tokenized,
+            data=splits,
             arch=arch,
             collate_fn=collate_fn,
             metrics_fn=metrics_fn,
-            registered_name=f"{mlflow_experiment}-{dataset}-{arch}-{method}",
-            eval_steps=eval_steps,
-            patience=patience,
-            tolerance=tolerance,
-            train_steps=train_steps,
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-            warmup_ratio=warmup_ratio,
+            registered_name=f"{mlflow.experiment}-{common.dataset}-{arch}-{method}",
+            training=training,
         )

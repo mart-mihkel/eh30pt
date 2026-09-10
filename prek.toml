@@ -27,5 +27,4 @@ language = "system"
 entry = "uv run --no-sync ty check --fix"
 types_or = ["python", "pyi", "jupyter"]
 pass_filenames = false
-always_run = true
 require_serial = true

@@ -1,44 +1,99 @@
 """Types and stubs."""
 
+from collections.abc import Callable
+from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Literal,
     NamedTuple,
+    NotRequired,
     Protocol,
     TypedDict,
-    runtime_checkable,
 )
 
+from returns.result import Failure, Result, Success
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Awaitable, Callable
+    from pathlib import Path
 
-    from datasets.dataset_dict import DatasetDict
-    from datasets.splits import Split
+    from torch.utils.data import IterableDataset as TorchIterableDataset
     from transformers import EvalPrediction
+    from ty_extensions import Intersection
 
-type LogLevel = Literal["debug", "info", "warning", "error"]
-type Architecture = Literal["encoder", "decoder", "encoder-decoder"]
-type DatasetName = Literal["multinerd", "oblique"]
-type PrefixInit = Literal["pretrained", "random"]
+    from eh30pt.datasets.mixin import DatasetMixin
+
+type LogLevel = Literal[
+    "debug",
+    "info",
+    "warning",
+    "error",
+]
+
+type Architecture = Literal[
+    "encoder",
+    "decoder",
+    "encoder-decoder",
+]
+
+type DatasetName = Literal[
+    "multinerd",
+    "oblique",
+    "discont-classifier",
+    "discont-decider",
+    "discont-extract",
+]
+
+type Method = Literal[
+    "fine-tune",
+    "cls-head",
+    "prompt-tune",
+    "qlora",
+    "few-shot",
+    "langextract",
+]
+
+type DatasetTask = Literal[
+    "classification",
+    "extraction",
+]
+
+type DataSource = Literal[
+    "observed",
+    "trigger",
+    "dg",
+]
+
+type PipelineTask = Literal[
+    "text-classification",
+    "text-generation",
+]
+
+type Provider = Literal[
+    "llama",
+    "vllm",
+]
+
+type PrefixInit = Literal[
+    "pretrained",
+    "random",
+]
+
 type ComputeMetricsFn = Callable[[EvalPrediction], dict[str, float]]
 
 
 class RunConfig(TypedDict):
-    """Full run configuration: resume key, logged params, and identity."""
+    """Full run configuration: run identity plus optional provenance."""
 
-    method: str
+    method: Method
     dataset: DatasetName
     architecture: Architecture
     base_model: str
     n_shot: int
     batch_size: int
-    seed: int | None
-    system_prompt: str
-    train_samples: int
-    validation_samples: int
-    test_samples: int
-    total_parameters: int
-    trainable_parameters: int
+    system_prompt: NotRequired[str]
+    total_parameters: NotRequired[int]
+    trainable_parameters: NotRequired[int]
 
 
 class TrainingRunConfig(RunConfig):
@@ -65,61 +120,80 @@ class PromptTuneRunConfig(TrainingRunConfig):
     n_virtual: int
 
 
+class QLoRaRunConfig(TrainingRunConfig):
+    """Run configuration for QLoRA tuning."""
+
+    lora_r: int
+    lora_alpha: int
+    lora_dropout: float
+
+
 class FewShotRunConfig(RunConfig):
     """Run configuration for few-shot evaluation."""
 
-    one_conv: bool
 
-
-class EvalExample(NamedTuple):
-    """User prompt and gold label for API-side evaluation."""
+class FewShot(NamedTuple):
+    """User prompt paired with its gold label and optional dataset row id."""
 
     user: str
     label: str
+    id: int | None = None
 
 
-@runtime_checkable
-class DatasetProtocol(Protocol):
-    """Common trait implemented by dataset loaders."""
+class ExtractShot(NamedTuple):
+    """Example extraction pairing input text with field spans."""
 
-    @property
-    def system_prompt(self) -> str:
-        """Return the system prompt for the configured architecture."""
-        ...
+    user: str
+    extractions: dict[str, str]
 
-    @property
-    def id2label(self) -> Mapping[int, str]:
-        """Return the label id to label name mapping."""
-        ...
 
-    @property
-    def label2id(self) -> Mapping[str, int]:
-        """Return the label name to label id mapping."""
-        ...
+class GenerateRecord(NamedTuple):
+    """One llama prediction row keyed by dataset row id."""
 
-    @property
-    def data(self) -> DatasetDict:
-        """Return the loaded dataset splits."""
-        ...
+    id: int
+    user: str
+    prediction: str
 
-    def load(
+
+class DataSplits(NamedTuple):
+    """Per-split streaming datasets for training."""
+
+    train: Intersection[TorchIterableDataset, DatasetMixin]
+    eval: Intersection[TorchIterableDataset, DatasetMixin]
+    test: Intersection[TorchIterableDataset, DatasetMixin]
+
+
+class ArtifactLogger(Protocol):
+    """Minimal run context surface needed to persist prediction shards."""
+
+    def log_artifact(
         self,
-        *,
-        n_shot: int = 0,
-        n_virtual: int = 0,
-        split: Split | None = None,
+        local_path: str | Path,
+        artifact_path: str | None = None,
     ) -> None:
-        """Load the dataset into instance state."""
-        ...
+        """Log a local file as a run artifact."""
 
-    def load_raw(self) -> None:
-        """Load raw dataset splits without tokenizing."""
-        ...
 
-    def few_shot_examples(self, n_shot: int) -> list[EvalExample]:
-        """Sample `n_shot` prompt and label pairs from the train split."""
-        ...
+class Predictor[ItemT, ResultT](Protocol):
+    """Async single-item predictor for bounded-concurrency streaming."""
 
-    def eval_samples(self) -> list[EvalExample]:
-        """Build prompt and label pairs for the test split."""
-        ...
+    async def predict(self, item: ItemT, /) -> ResultT:
+        """Predict one result for item."""
+
+
+def asafe[**P, T](
+    fn: Callable[P, Awaitable[T]],
+) -> Callable[P, Awaitable[Result[T, Exception]]]:
+    """Make async function safe."""
+
+    @wraps(fn)
+    async def wrapper(
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Result[T, Exception]:
+        try:
+            return Success(await fn(*args, **kwargs))
+        except Exception as exc:  # noqa: BLE001
+            return Failure(exc)
+
+    return wrapper

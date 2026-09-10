@@ -1,7 +1,10 @@
 """Forward-pass integration tests across architectures."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Final, NamedTuple, TypedDict
 
+import pytest
 import torch
 
 from eh30pt.constants import PAD_MULTIPLE, SENTINEL_TOKEN
@@ -12,7 +15,7 @@ if TYPE_CHECKING:
     from transformers import PreTrainedModel
 
     from eh30pt.types import Architecture
-    from test.conftest import ModelSetup
+    from test.integration.conftest import ModelSetup
 
 _batch_size: Final = 4
 
@@ -33,15 +36,6 @@ class _Inputs(NamedTuple):
     model_vocab_size: int
 
 
-def _model_device(model: PreTrainedModel) -> torch.device:
-    return next(model.parameters()).device
-
-
-def _to_device(value: object, device: torch.device) -> torch.Tensor:
-    assert isinstance(value, torch.Tensor)
-    return value.to(device)
-
-
 def _model_vocab_size(model: PreTrainedModel) -> int:
     output = model.get_output_embeddings()
     if output is not None:
@@ -54,34 +48,40 @@ def _model_vocab_size(model: PreTrainedModel) -> int:
     return int(config.vocab_size)
 
 
-def _collate(model_setup: ModelSetup) -> _Inputs:
+@pytest.fixture
+def collated_inputs(model_setup: ModelSetup) -> _Inputs:
+    """Collate one device-ready batch from the real training split."""
     arch = infer_architecture(model_setup.config)
 
-    rows = model_setup.dataset.data["train"].select(range(_batch_size)).to_list()
+    rows = []
+    for row in model_setup.splits.train:
+        rows.append(row)
+        if len(rows) == _batch_size:
+            break
+
     raw = get_collator(model_setup.tokenizer, arch)(rows)
 
-    device = _model_device(model_setup.model)
+    device = next(model_setup.model.parameters()).device
     batch = _Batch(
-        input_ids=_to_device(raw["input_ids"], device),
-        attention_mask=_to_device(raw["attention_mask"], device),
-        labels=_to_device(raw["labels"], device),
-        truncated=_to_device(raw["truncated"], device),
+        input_ids=raw["input_ids"].to(device),
+        attention_mask=raw["attention_mask"].to(device),
+        labels=raw["labels"].to(device),
+        truncated=raw["truncated"].to(device),
     )
 
     return _Inputs(
         arch=arch,
         model=model_setup.model,
         batch=batch,
-        n_labels=len(model_setup.dataset.id2label),
+        n_labels=len(model_setup.splits.train.id2label),
         tokenizer_vocab_size=len(model_setup.tokenizer),
         model_vocab_size=_model_vocab_size(model_setup.model),
     )
 
 
-def test_collated_batch(model_setup: ModelSetup) -> None:
-    inputs = _collate(model_setup)
-    batch = inputs.batch
-    device = _model_device(inputs.model)
+def test_collated_batch(collated_inputs: _Inputs) -> None:
+    batch = collated_inputs.batch
+    device = next(collated_inputs.model.parameters()).device
 
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
@@ -97,11 +97,13 @@ def test_collated_batch(model_setup: ModelSetup) -> None:
     assert labels.device == device
 
     assert set(attention_mask.unique().tolist()) <= {0, 1}
-    assert bool(((input_ids >= 0) & (input_ids < inputs.tokenizer_vocab_size)).all())
+    assert bool(
+        ((input_ids >= 0) & (input_ids < collated_inputs.tokenizer_vocab_size)).all()
+    )
 
-    if inputs.arch == "encoder":
+    if collated_inputs.arch == "encoder":
         assert tuple(labels.shape) == (_batch_size,)
-        assert bool(((labels >= 0) & (labels < inputs.n_labels)).all())
+        assert bool(((labels >= 0) & (labels < collated_inputs.n_labels)).all())
     else:
         label_rows, _ = labels.shape
         assert label_rows == _batch_size
@@ -109,15 +111,17 @@ def test_collated_batch(model_setup: ModelSetup) -> None:
         valid = labels != SENTINEL_TOKEN
         assert bool(valid.any())
         assert bool(
-            ((labels[valid] >= 0) & (labels[valid] < inputs.tokenizer_vocab_size)).all()
+            (
+                (labels[valid] >= 0)
+                & (labels[valid] < collated_inputs.tokenizer_vocab_size)
+            ).all()
         )
 
 
-def test_forward(model_setup: ModelSetup) -> None:
-    inputs = _collate(model_setup)
-    inputs.model.eval()
+def test_forward(collated_inputs: _Inputs) -> None:
+    collated_inputs.model.eval()
     with torch.inference_mode():
-        output = inputs.model(**inputs.batch)
+        output = collated_inputs.model(**collated_inputs.batch)
 
     loss = output.loss
     assert loss is not None
@@ -128,17 +132,21 @@ def test_forward(model_setup: ModelSetup) -> None:
     assert isinstance(logits, torch.Tensor)
     assert bool(torch.isfinite(logits).all())
 
-    input_ids = inputs.batch["input_ids"]
-    label_ids = inputs.batch["labels"]
+    input_ids = collated_inputs.batch["input_ids"]
+    label_ids = collated_inputs.batch["labels"]
     batch_size, seq_len = input_ids.shape
 
-    if inputs.arch == "encoder":
-        assert tuple(logits.shape) == (batch_size, inputs.n_labels)
-    elif inputs.arch == "decoder":
-        assert tuple(logits.shape) == (batch_size, seq_len, inputs.model_vocab_size)
-    elif inputs.arch == "encoder-decoder":
+    if collated_inputs.arch == "encoder":
+        assert tuple(logits.shape) == (batch_size, collated_inputs.n_labels)
+    elif collated_inputs.arch == "decoder":
+        assert tuple(logits.shape) == (
+            batch_size,
+            seq_len,
+            collated_inputs.model_vocab_size,
+        )
+    elif collated_inputs.arch == "encoder-decoder":
         assert tuple(logits.shape) == (
             batch_size,
             label_ids.shape[1],
-            inputs.model_vocab_size,
+            collated_inputs.model_vocab_size,
         )

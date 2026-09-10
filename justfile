@@ -4,7 +4,7 @@ set dotenv-load
 [group('meta')]
 [private]
 @info:
-    just --list
+    just --list --unsorted
 
 [doc('sync virtualenv')]
 [group('build')]
@@ -14,9 +14,9 @@ set dotenv-load
 
 [arg('host', long, short, help='remote host and target dir')]
 [arg('commit', long, short, pattern='true|false', value='true', help='no dry run')]
-[doc('upload to remote host')]
+[doc('upload tree to remote host')]
 [group('build')]
-rsync commit='false' host=env('REMOTE'):
+rsync commit='false' host=env('RSYNC_HOST'):
     rsync --verbose --archive --delete \
         {{ if commit == 'true' { '' } else { '--dry-run' } }} \
         --exclude-from .gitignore \
@@ -25,15 +25,28 @@ rsync commit='false' host=env('REMOTE'):
         --exclude .git \
         . {{ host }}
 
-[doc('build wheel')]
+[arg('alias', long, short, help='minio client host alias')]
+[arg('prefix', long, short, help='object storage target path')]
+[doc('upload wheel to object storage')]
 [group('build')]
-wheel:
-    uv build --wheel
+msync alias=env('MSYNC_ALIAS') prefix=env('MSYNC_PREFIX'):
+    @uv build --wheel --clear
+    mc cp dist/*.whl "{{ alias }}/{{ prefix }}"
 
 [doc('serve marimo')]
 [group('dev')]
 marimo *args='--watch':
-    uv run --no-sync marimo edit notebooks {{ args }}
+    uv run --no-sync marimo edit {{ args }}
+
+[doc('run pre-commit')]
+[group('dev')]
+@prek:
+    uv run --no-sync prek run --all-files
+
+[doc('run test suite')]
+[group('dev')]
+@test *args='--quiet --numprocesses 4':
+    COLUMNS=80 uv run --no-sync pytest {{ args }}
 
 [doc('build docker services')]
 [group('docker')]
@@ -49,14 +62,3 @@ marimo *args='--watch':
 [group('docker')]
 @down *args:
     docker compose down {{ args }}
-
-[arg('staged', long, short, pattern='true|false', value='true', help='only check staged files')]
-[doc('run pre-commit checks')]
-[group('test')]
-@check staged='false':
-    prek run {{ if staged == 'true' { '' } else { '--all-files' } }} 
-
-[doc('run test suite')]
-[group('test')]
-@test *args='--quiet':
-    uv run --no-sync pytest {{ args }}
