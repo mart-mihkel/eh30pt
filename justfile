@@ -32,8 +32,8 @@ wheel:
 
 [doc('serve marimo')]
 [group('dev')]
-marimo *args='notebooks':
-    uv run --no-sync marimo edit {{ args }}
+marimo *args='--watch':
+    uv run --no-sync marimo edit notebooks {{ args }}
 
 [doc('build docker services')]
 [group('docker')]
@@ -50,8 +50,8 @@ marimo *args='notebooks':
 @down *args:
     docker compose down {{ args }}
 
-[doc('run pre-commit checks')]
 [arg('staged', long, short, pattern='true|false', value='true', help='only check staged files')]
+[doc('run pre-commit checks')]
 [group('test')]
 @check staged='false':
     prek run {{ if staged == 'true' { '' } else { '--all-files' } }} 

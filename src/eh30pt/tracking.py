@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 
 _conf_hash_tag = "eh30pt.config_hash"
 _articaft_path = "model"
-_page_size = 500
 
 
 class _Collected(NamedTuple):
@@ -544,7 +543,11 @@ def _train_runtime(client: MlflowClient, run_id: str) -> float:
     return sum(metric.value for metric in history)
 
 
-def _search_runs(client: MlflowClient, experiment: str) -> list[Run]:
+def _search_runs(
+    client: MlflowClient,
+    experiment: str,
+    page_size: int = 500,
+) -> list[Run]:
     """Find every run of experiment, erroring if the experiment is missing."""
     logger.info("finding experiment %s", experiment)
     exp = client.get_experiment_by_name(experiment)
@@ -559,7 +562,7 @@ def _search_runs(client: MlflowClient, experiment: str) -> list[Run]:
         page = client.search_runs(
             [exp.experiment_id],
             "",
-            max_results=_page_size,
+            max_results=page_size,
             page_token=page_token,
         )
 

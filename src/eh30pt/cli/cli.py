@@ -364,11 +364,11 @@ def evaluate(
     dataset: DatasetOption,
     n_shot: NShotOption = 0,
     one_conv: OneConvOption = False,
-    seed: SeedOption = None,
     mlflow_run_name: RunNameOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
     log_level: LogLevelOption = "info",
+    seed: SeedOption = None,
 ) -> None:
     """Run few-shot test evaluation against a llama server."""
     from eh30pt.cli.scripts.evaluate import main

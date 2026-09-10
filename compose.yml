@@ -3,23 +3,20 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-eh30pt}
-      POSTGRES_USER: ${POSTGRES_USER:-eh30pt}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eh30pt}
+      POSTGRES_DB: ${POSTGRES_DB:-dev}
+      POSTGRES_USER: ${POSTGRES_USER:-dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-eh30pt} -d ${POSTGRES_DB:-eh30pt}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dev}"]
+      start_period: 10s
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 10s
 
 volumes:
   postgres-data:
