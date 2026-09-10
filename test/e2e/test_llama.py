@@ -12,7 +12,7 @@ from test.e2e.conftest import single_run
 if TYPE_CHECKING:
     from typer.testing import Result
 
-    from eh30pt.cli.scripts.inference import EvalData
+    from eh30pt.cli.scripts.evaluate import EvalData
     from eh30pt.types import DatasetName
 
 
@@ -32,7 +32,7 @@ def _invoke(args: list[str]) -> Result:
 
 
 def _stub_eval_data(dataset: DatasetName, n_shot: int) -> EvalData:
-    from eh30pt.cli.scripts.inference import EvalData
+    from eh30pt.cli.scripts.evaluate import EvalData
     from eh30pt.datasets.registry import get_labels
     from eh30pt.types import EvalExample
 
@@ -64,7 +64,7 @@ def test_help_lists_commands() -> None:
 
     assert result.exit_code == 0
     assert "completion" in result.output
-    assert "inference" in result.output
+    assert "evaluate" in result.output
 
 
 def test_rejects_unknown_dataset() -> None:
@@ -117,19 +117,19 @@ def test_completion_dataset_prints_label(
 
 
 @pytest.mark.vcr
-def test_inference_one_conv(
+def test_evaluate_one_conv(
     monkeypatch: pytest.MonkeyPatch,
     tracking_uri: str,
 ) -> None:
     monkeypatch.setattr(
-        "eh30pt.cli.scripts.inference.load_eval_data",
+        "eh30pt.cli.scripts.evaluate.load_eval_data",
         _stub_eval_data,
     )
 
-    experiment: Final = "e2e-inference-one-conv-multinerd"
+    experiment: Final = "e2e-evaluate-one-conv-multinerd"
     result = _invoke(
         [
-            "inference",
+            "evaluate",
             "--system",
             "Classify the text.",
             "--dataset",

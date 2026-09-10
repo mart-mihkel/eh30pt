@@ -357,7 +357,7 @@ def completion(
 
 
 @app.command(help="Run few-shot test evaluation against a llama server")
-def inference(
+def evaluate(
     *,
     system_prompt: SystemOption,
     base_url: BaseUrlOption = "http://localhost:8080",
@@ -371,7 +371,7 @@ def inference(
     log_level: LogLevelOption = "info",
 ) -> None:
     """Run few-shot test evaluation against a llama server."""
-    from eh30pt.cli.scripts.inference import main
+    from eh30pt.cli.scripts.evaluate import main
     from eh30pt.logging import logger
 
     logger.setLevel(log_level.upper())

@@ -32,7 +32,7 @@ def test_help_lists_commands() -> None:
     assert "prompt-tune" in result.output
     assert "few-shot" in result.output
     assert "completion" in result.output
-    assert "inference" in result.output
+    assert "evaluate" in result.output
     assert "collect" in result.output
 
 
