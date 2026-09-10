@@ -8,37 +8,32 @@ eh30pt (prompt tuning on Est-Health 30) is a single-package Python project for p
 src/eh30pt/           # the package, installed as `cli`
   constants.py          # shared paths (e.g. LOGDIR)
   logging.py            # rich-backed shared logger, tqdm-safe
-  tracking.py           # MLflow run management, config-hash resume
   types.py              # shared Literals, TypedDicts, Protocols
   datasets/             # per-dataset pipelines + registry + truncation
+  esthealth/            # esthalth database orm schemas and queries
   modeling/             # arch detection, loading, tokenization, collation, metrics, trainer, tuning
+  tracking/             # MLflow run management, config-hash resume
   cli/                  # command line interfaces
     cli.py                # Typer app, thin option definitions only
-    eh.py                 # Est-Health workflows
     scripts/              # command implementations: finetune, ptune, fewshot, export
 test/                 # tests, lint-relaxed
   unit/                 # fast pure-logic tests, no models or network
   integration/          # dataset loading and forward passes on tiny-random models
   e2e/                  # cli tests
 notebooks/            # exploratory marimo notebook analysis, lint-relaxed
+sql/                  # initdb seed scripts for the dev database
 justfile              # project commands
 pyproject.toml        # project metadata, ruff and pytest config
 prek.toml             # ruff-format, ruff-check, ty-check hooks
 compose.yml           # postgres service for local development
-sql/                  # initdb seed scripts for the dev database
 ```
 
 ## Commands
 
 ```bash
-just sync                                   # uv sync virtualenv, install prek hooks
-just check                                  # prek checks, all files by default
-just test [flags]                           # pytest with flag/varitaic passthrough
-
-uv run --no-sync pytest [--run-slow] [path]          # run pytest directly
-uv run --no-sync ruff format                         # format Python
-uv run --no-sync ruff check --output-format concise  # lint Python
-uv run --no-sync ty check --output-format concise    # type-check Python
+just sync          # uv sync virtualenv, install prek hooks
+just check         # prek checks, all files by default
+just test [flags]  # pytest with flag/varitaic passthrough
 ```
 
 ## Conventions
@@ -53,6 +48,7 @@ uv run --no-sync ty check --output-format concise    # type-check Python
 - Tests are split between unit, integration and end to end.
 - Pytest raises warnings as errors, so new warnings fail the suite rather than accumulating silently.
 - The `notebooks` dependency group is dev-only and never imported outside of notebooks.
+- Use tqdm for loading bars.
 
 ## Guidelines
 

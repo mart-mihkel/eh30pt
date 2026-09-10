@@ -23,3 +23,8 @@ UNSET_MAX_LENGTH: Final = int(1e15)
 Tokenizers without a real length limit report a ~1e30 sentinel.
 Treat anything at or above this threshold as no limit configured.
 """
+
+MLFLOW_ARTIFACT_PATH: Final = "model"
+"""
+MLflow artifact path.
+"""
