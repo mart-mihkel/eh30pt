@@ -2,12 +2,16 @@
 
 from typing import TYPE_CHECKING
 
-from eh30pt.datasets.discontinuation import (
+from eh30pt.datasets.discontinuation.classifier import (
     DiscontClassifier,
-    DiscontDecider,
-    DiscontExtract,
     load_discont_classifier,
+)
+from eh30pt.datasets.discontinuation.decider import (
+    DiscontDecider,
     load_discont_decider,
+)
+from eh30pt.datasets.discontinuation.extract import (
+    DiscontExtract,
     load_discont_extract,
 )
 from eh30pt.datasets.multinerd import Multinerd, load_multinerd

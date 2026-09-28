@@ -7,12 +7,9 @@ from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 
-from eh30pt.datasets.discontinuation import (
-    DeciderRow,
-    DiscontClassifier,
-    DiscontDecider,
-    DiscontExtract,
-)
+from eh30pt.datasets.discontinuation.classifier import DiscontClassifier
+from eh30pt.datasets.discontinuation.decider import DeciderRow, DiscontDecider
+from eh30pt.datasets.discontinuation.extract import DiscontExtract
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Obl
 from eh30pt.datasets.registry import (
@@ -367,11 +364,9 @@ def test_mixin_base_methods_raise() -> None:
 
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:
-    from eh30pt.datasets.discontinuation import (
-        DiscontClassifier,
-        DiscontDecider,
-        DiscontExtract,
-    )
+    from eh30pt.datasets.discontinuation.classifier import DiscontClassifier
+    from eh30pt.datasets.discontinuation.decider import DiscontDecider
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
@@ -406,7 +401,7 @@ def test_multinerd_tokenize_rejects_too_many_shots() -> None:
 
 
 def test_select_source_rejects_invalid() -> None:
-    from eh30pt.datasets.discontinuation import _select_source
+    from eh30pt.datasets.discontinuation.streaming import _select_source
 
     with pytest.raises(ValueError, match="invalid discontinuation data source"):
         _select_source(
@@ -418,11 +413,9 @@ def test_select_source_rejects_invalid() -> None:
 
 
 def test_no_row_factories_are_empty() -> None:
-    from eh30pt.datasets.discontinuation import (
-        _no_cls_rows,
-        _no_decider_rows,
-        _no_extract_rows,
-    )
+    from eh30pt.datasets.discontinuation.classifier import _no_cls_rows
+    from eh30pt.datasets.discontinuation.decider import _no_decider_rows
+    from eh30pt.datasets.discontinuation.extract import _no_extract_rows
 
     assert list(_no_cls_rows()) == []
     assert list(_no_decider_rows()) == []
