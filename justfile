@@ -43,10 +43,15 @@ marimo *args='--watch':
 @prek:
     uv run --no-sync prek run --all-files
 
-[doc('run test suite')]
+[doc('run all tests')]
 [group('dev')]
-@test *args='--quiet --numprocesses 4':
+@test *args='--quiet -n 4':
     COLUMNS=80 uv run --no-sync pytest {{ args }}
+
+[doc('run e2e tests')]
+[group('dev')]
+@e2e *args='--quiet -n 2':
+    COLUMNS=80 uv run --no-sync pytest test/e2e --run-slow {{ args }}
 
 [doc('build docker services')]
 [group('docker')]

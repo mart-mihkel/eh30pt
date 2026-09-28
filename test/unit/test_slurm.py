@@ -141,3 +141,91 @@ def test_main_dry_run_writes_script_and_prints(
     out = capsys.readouterr().out
     assert out == path.read_text()
     assert "uv run --no-sync eh30pt fine-tune --model some-model" in out
+
+
+def test_main_without_sbatch_raises(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    with pytest.raises(RuntimeError, match="sbatch executable not found"):
+        main(
+            "fine-tune",
+            ["--model", "some-model"],
+            job_name=_job,
+            output=_output,
+            partition="gpu",
+            gres="gpu:1",
+            cpus=8,
+            mem="64G",
+            time="12:00:00",
+            dry_run=False,
+        )
+
+
+def test_main_submits_and_logs_job_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import os
+    import stat
+
+    monkeypatch.chdir(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    sbatch = bin_dir / "sbatch"
+    sbatch.write_text('#!/usr/bin/env bash\necho "Submitted batch job 123"\n')
+    sbatch.chmod(sbatch.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    with caplog.at_level("INFO", logger="eh30pt"):
+        main(
+            "fine-tune",
+            ["--model", "some-model"],
+            job_name=_job,
+            output=_output,
+            partition="gpu",
+            gres="gpu:1",
+            cpus=8,
+            mem="64G",
+            time="12:00:00",
+            dry_run=False,
+        )
+
+    assert "submitted slurm job 123" in caplog.text
+
+
+def test_main_submit_without_job_id_logs_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import os
+    import stat
+
+    monkeypatch.chdir(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    sbatch = bin_dir / "sbatch"
+    sbatch.write_text('#!/usr/bin/env bash\necho "ok"\n')
+    sbatch.chmod(sbatch.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    with caplog.at_level("INFO", logger="eh30pt"):
+        main(
+            "fine-tune",
+            ["--model", "some-model"],
+            job_name=_job,
+            output=_output,
+            partition="gpu",
+            gres="gpu:1",
+            cpus=8,
+            mem="64G",
+            time="12:00:00",
+            dry_run=False,
+        )
+
+    assert "sbatch:" in caplog.text

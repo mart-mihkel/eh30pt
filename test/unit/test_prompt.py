@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 
@@ -29,9 +29,11 @@ from eh30pt.datasets.registry import (
 )
 
 if TYPE_CHECKING:
+    from datasets.arrow_dataset import Dataset
+    from sqlalchemy.orm import Session
     from transformers import PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, DatasetName
+    from eh30pt.types import Architecture, DatasetName, DataSource
 
 
 def test_oblique_format_user_prompt() -> None:
@@ -133,6 +135,7 @@ def test_registry() -> None:
     assert get_sys_prompt("multinerd") == Multinerd.system_prompt
     assert get_sys_prompt("discont-classifier") == DiscontClassifier.system_prompt
     assert get_sys_prompt("discont-decider") == DiscontDecider.system_prompt
+    assert get_sys_prompt("discont-extract") == DiscontExtract.system_prompt
 
     assert len(get_few_shots("oblique", 5)) == _obl_fewshots
 
@@ -285,3 +288,142 @@ def test_load_data_rejects_non_decoder_arch_for_extract(arch: Architecture) -> N
 
     with pytest.raises(ValueError, match="not supported"):
         load_data(tokenizer, "discont-extract", arch)
+
+
+def test_get_labels_rejects_invalid_dataset() -> None:
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_labels(cast("DatasetName", "unknown"))
+
+
+def test_get_sys_prompt_rejects_invalid_dataset() -> None:
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_sys_prompt(cast("DatasetName", "unknown"))
+
+
+def test_get_few_shots_rejects_invalid_dataset() -> None:
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_few_shots(cast("DatasetName", "unknown"), 1)
+
+
+def test_get_few_shots_covers_discont_datasets() -> None:
+    _n_shots: Final = 2
+
+    assert len(get_few_shots("discont-classifier", _n_shots)) == _n_shots
+    assert len(get_few_shots("discont-decider", _n_shots)) == _n_shots
+    assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
+
+    with pytest.raises(ValueError, match="only 7 defined"):
+        get_few_shots("discont-classifier", len(DiscontClassifier.few_shots) + 1)
+
+
+def test_dataset_sources_cover_discont_tables() -> None:
+    from mlflow.data.code_dataset_source import CodeDatasetSource
+
+    from eh30pt.tracking.datasets import dataset_input, dataset_source
+
+    assert isinstance(dataset_source("discont-classifier"), CodeDatasetSource)
+    assert isinstance(dataset_source("discont-decider"), CodeDatasetSource)
+    assert dataset_input("oblique").profile is None
+
+
+def test_load_data_rejects_invalid_dataset() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        load_data(tokenizer, cast("DatasetName", "unknown"), "decoder")
+
+
+def test_dataset_input_rejects_invalid_dataset() -> None:
+    from eh30pt.tracking.datasets import dataset_input, dataset_source
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        dataset_source(cast("DatasetName", "unknown"))
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        dataset_input(cast("DatasetName", "unknown"))
+
+
+def test_dataset_input_covers_extract_dataset() -> None:
+    from eh30pt.tracking.datasets import dataset_input
+
+    assert dataset_input("discont-extract").name == "discont-extract"
+
+
+def test_mixin_base_methods_raise() -> None:
+    from eh30pt.datasets.mixin import DatasetMixin
+
+    mixin = DatasetMixin[None]()
+
+    with pytest.raises(NotImplementedError):
+        mixin.tokenize(None, cast("PreTrainedTokenizerFast", None))
+
+    with pytest.raises(NotImplementedError):
+        list(mixin.samples())
+
+    with pytest.raises(TypeError, match="iterate instead"):
+        mixin["train"]
+
+    assert mixin.set_epoch(3) is None
+
+
+def test_discont_tokenize_rejects_too_many_shots() -> None:
+    from eh30pt.datasets.discontinuation import (
+        DiscontClassifier,
+        DiscontDecider,
+        DiscontExtract,
+    )
+
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    with pytest.raises(ValueError, match="more few shot examples"):
+        DiscontClassifier(lambda: iter([]), tokenizer, "decoder").tokenize(
+            {"id": 1, "text": "x"}, tokenizer, n_shot=100
+        )
+
+    with pytest.raises(ValueError, match="more few shot examples"):
+        DiscontDecider(lambda: iter([]), tokenizer, "decoder").tokenize(
+            {"id": 1, "text": "x"}, tokenizer, n_shot=100
+        )
+
+    with pytest.raises(ValueError, match="more few shot examples"):
+        DiscontExtract(lambda: iter([]), tokenizer, "decoder").tokenize(
+            {"id": 1, "text": "x"}, tokenizer, n_shot=100
+        )
+
+
+def test_multinerd_tokenize_rejects_too_many_shots() -> None:
+    from eh30pt.datasets.multinerd import Multinerd
+
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    split = Multinerd(cast("Dataset", None), tokenizer, "decoder")
+
+    with pytest.raises(ValueError, match="more few shot examples"):
+        split.tokenize(
+            {"sentence": "Hi", "entity": "Hi", "label": "PER"},
+            tokenizer,
+            n_shot=1000,
+        )
+
+
+def test_select_source_rejects_invalid() -> None:
+    from eh30pt.datasets.discontinuation import _select_source
+
+    with pytest.raises(ValueError, match="invalid discontinuation data source"):
+        _select_source(
+            cast("DataSource", "unknown"),
+            cast("Session", None),
+            page_size=10,
+            start_after=None,
+        )
+
+
+def test_no_row_factories_are_empty() -> None:
+    from eh30pt.datasets.discontinuation import (
+        _no_cls_rows,
+        _no_decider_rows,
+        _no_extract_rows,
+    )
+
+    assert list(_no_cls_rows()) == []
+    assert list(_no_decider_rows()) == []
+    assert list(_no_extract_rows()) == []

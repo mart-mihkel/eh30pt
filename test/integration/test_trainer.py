@@ -15,7 +15,12 @@ from eh30pt.modeling.trainer import _build_spec, _label_completions
 from eh30pt.types import DataSplits
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerFast
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from transformers import PreTrainedTokenizerFast, Trainer
+
+    from eh30pt.modeling.trainer import _Spec
 
 _default_warmup: Final = 0.06
 _custom_warmup: Final = 0.1
@@ -132,3 +137,145 @@ def test_label_completions_skips_fully_masked() -> None:
     splits = DataSplits(train=split, eval=split, test=split)
 
     assert _label_completions(splits) == ()
+
+
+def test_get_trainer_builds_per_architecture(
+    oblique_splits: DataSplits,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from transformers import Trainer
+
+    import eh30pt.modeling.trainer as trainer_mod
+    from eh30pt.modeling.trainer import get_trainer
+
+    out = str(tmp_path)
+    seen: list[str] = []
+
+    def _metrics(_pred: object, *, compute_result: bool = True) -> dict[str, float]:
+        return {"computed": 1.0} if compute_result else {}
+
+    real_encoder = trainer_mod._encoder_trainer
+    real_decoder = trainer_mod._decoder_trainer
+    real_seq2seq = trainer_mod._seq2seq_trainer
+
+    def _record(
+        kind: str, fn: Callable[[_Spec], Trainer]
+    ) -> Callable[[_Spec], Trainer]:
+        def _wrap(spec: _Spec) -> Trainer:
+            seen.append(kind)
+            return fn(spec)
+
+        return _wrap
+
+    monkeypatch.setattr(
+        trainer_mod, "_encoder_trainer", _record("encoder", real_encoder)
+    )
+    monkeypatch.setattr(
+        trainer_mod, "_decoder_trainer", _record("decoder", real_decoder)
+    )
+    monkeypatch.setattr(
+        trainer_mod, "_seq2seq_trainer", _record("seq2seq", real_seq2seq)
+    )
+
+    encoder = get_trainer(
+        model=torch.nn.Linear(2, 2),
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="encoder",
+        collate_fn=get_collator(gpt2_tokenizer, "encoder"),
+        metrics_fn=_metrics,
+        output_dir=out,
+        eval_steps=0,
+        train_steps=10,
+    )
+
+    assert type(encoder) is Trainer
+    assert seen == ["encoder"]
+
+    sentinel_decoder = object()
+    sentinel_seq2seq = object()
+    monkeypatch.setattr(trainer_mod, "_decoder_trainer", lambda _spec: sentinel_decoder)
+    monkeypatch.setattr(trainer_mod, "_seq2seq_trainer", lambda _spec: sentinel_seq2seq)
+
+    assert (
+        get_trainer(
+            model=torch.nn.Linear(2, 2),
+            tokenizer=gpt2_tokenizer,
+            data=oblique_splits,
+            arch="decoder",
+            collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+            metrics_fn=_metrics,
+            output_dir=out,
+            eval_steps=0,
+            train_steps=10,
+        )
+        is sentinel_decoder
+    )
+
+    assert (
+        get_trainer(
+            model=torch.nn.Linear(2, 2),
+            tokenizer=gpt2_tokenizer,
+            data=oblique_splits,
+            arch="encoder-decoder",
+            collate_fn=get_collator(gpt2_tokenizer, "encoder-decoder"),
+            metrics_fn=_metrics,
+            output_dir=out,
+            eval_steps=0,
+            train_steps=10,
+        )
+        is sentinel_seq2seq
+    )
+
+
+def test_maybe_add_early_stopping_branches(
+    oblique_splits: DataSplits,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from transformers import EarlyStoppingCallback
+
+    from eh30pt.modeling.trainer import get_trainer
+
+    out = str(tmp_path)
+
+    def _metrics(_pred: object, *, compute_result: bool = True) -> dict[str, float]:
+        return {"computed": 1.0} if compute_result else {}
+
+    with caplog.at_level("WARNING", logger="eh30pt"):
+        get_trainer(
+            model=torch.nn.Linear(2, 2),
+            tokenizer=gpt2_tokenizer,
+            data=oblique_splits,
+            arch="encoder",
+            collate_fn=get_collator(gpt2_tokenizer, "encoder"),
+            metrics_fn=_metrics,
+            output_dir=out,
+            eval_steps=0,
+            train_steps=10,
+            patience=2,
+        )
+
+    assert "not using early stopping" in caplog.text
+    caplog.clear()
+
+    trainer = get_trainer(
+        model=torch.nn.Linear(2, 2),
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="encoder",
+        collate_fn=get_collator(gpt2_tokenizer, "encoder"),
+        metrics_fn=_metrics,
+        output_dir=out,
+        eval_steps=_eval_steps,
+        train_steps=10,
+        patience=2,
+    )
+
+    assert any(
+        isinstance(cb, EarlyStoppingCallback)
+        for cb in trainer.callback_handler.callbacks
+    )

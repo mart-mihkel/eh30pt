@@ -176,3 +176,23 @@ def test_log_summary_without_shards(caplog: pytest.LogCaptureFixture) -> None:
 
     assert "evaluated 4 samples (0 invalid)" in caplog.text
     assert "across" not in caplog.text
+
+
+def test_asafe_wraps_success_and_failure() -> None:
+    import asyncio
+
+    from returns.result import Failure, Success
+
+    from eh30pt.types import asafe
+
+    @asafe
+    async def _ok(value: int) -> int:
+        return value
+
+    @asafe
+    async def _boom() -> int:
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    assert asyncio.run(_ok(3)) == Success(3)
+    assert isinstance(asyncio.run(_boom()), Failure)

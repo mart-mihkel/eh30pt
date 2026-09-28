@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from eh30pt.esthealth.models import CdaEvent
 from eh30pt.esthealth.queries import (
+    select_dg_events,
     select_observed_events,
     select_trigger_events,
 )
@@ -113,3 +114,60 @@ def test_select_sampled_events_paging_is_consistent(session: Session) -> None:
     narrow = [event.id for event in select_observed_events(session, page_size=7)]
 
     assert wide == narrow
+
+
+def test_select_rejects_non_positive_page_size(session: Session) -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="page_size must be positive"):
+        list(select_trigger_events(session, page_size=0))
+
+    with pytest.raises(ValueError, match="page_size must be positive"):
+        list(select_observed_events(session, page_size=0))
+
+
+def test_select_respects_limit_and_start_after(session: Session) -> None:
+    all_ids = [event.id for event in select_trigger_events(session, page_size=100)]
+
+    assert all_ids
+    limited = list(select_trigger_events(session, page_size=100, limit=5))
+
+    assert [event.id for event in limited] == all_ids[:5]
+
+    restarted = list(
+        select_trigger_events(session, page_size=100, start_after=all_ids[0])
+    )
+
+    assert [event.id for event in restarted] == all_ids[1:]
+
+    observed_ids = [
+        event.id for event in select_observed_events(session, page_size=100)
+    ]
+
+    assert observed_ids
+    assert [
+        event.id for event in select_observed_events(session, page_size=100, limit=3)
+    ] == observed_ids[:3]
+    assert [
+        event.id
+        for event in select_observed_events(
+            session, page_size=100, start_after=observed_ids[0]
+        )
+    ] == observed_ids[1:]
+
+
+def test_select_dg_events_returns_rows(session: Session) -> None:
+    import pytest
+
+    rows = select_dg_events(session)
+
+    assert rows
+    assert [row.id for row in rows] == sorted(row.id for row in rows)
+
+    first = rows[0].id
+    rest = select_dg_events(session, start_after=first)
+
+    assert all(row.id > first for row in rest)
+
+    with pytest.raises(ValueError, match="per_type must be positive"):
+        select_dg_events(session, per_type=0)

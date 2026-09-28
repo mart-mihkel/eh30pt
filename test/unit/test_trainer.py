@@ -49,3 +49,27 @@ def test_constrain_empty_completions_returns_logits() -> None:
     logits = torch.zeros(1, 2, 5)
     labels = torch.tensor([[-100, 0]])
     assert torch.equal(_constrain_eval_logits(logits, labels, ()), logits)
+
+
+def test_constrain_skips_rows_without_label_span() -> None:
+    logits = torch.zeros(1, 3, 4)
+    labels = torch.tensor([[-100, -100, -100]])
+    completions = ((1, 2),)
+
+    assert torch.equal(_constrain_eval_logits(logits, labels, completions), logits)
+
+
+def test_constrain_skips_negative_force_position() -> None:
+    logits = torch.zeros(1, 2, 4)
+    labels = torch.tensor([[0, -100]])
+    completions = ((1,),)
+
+    assert torch.equal(_constrain_eval_logits(logits, labels, completions), logits)
+
+
+def test_constrain_skips_length_mismatched_candidates() -> None:
+    logits = torch.zeros(1, 3, 4)
+    labels = torch.tensor([[-100, 1, 2]])
+    completions = ((1, 2, 3),)
+
+    assert torch.equal(_constrain_eval_logits(logits, labels, completions), logits)

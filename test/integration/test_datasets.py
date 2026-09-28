@@ -16,6 +16,11 @@ from eh30pt.modeling.arch import infer_architecture
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
+    from eh30pt.datasets.discontinuation import (
+        DeciderRow,
+        DiscontClassifierRow,
+        DiscontExtractRow,
+    )
     from test.integration.conftest import ModelSetup
 
 
@@ -90,3 +95,62 @@ def test_discont_classifier_streams_sample_source(database: None) -> None:
 
     assert samples
     assert all(isinstance(sample.id, int) for sample in samples)
+
+
+def test_discont_splits_iterate_tokenized_rows(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Classifier, decider, and extract splits tokenize in-memory rows."""
+    from eh30pt.datasets.discontinuation import (
+        DiscontClassifier,
+        DiscontDecider,
+        DiscontExtract,
+    )
+
+    classifier = DiscontClassifier(
+        lambda: iter([{"id": 1, "text": "tekkis iiveldus"}]),
+        gpt2_tokenizer,
+        "decoder",
+    )
+    decider = DiscontDecider(
+        lambda: iter([{"id": 2, "text": "katkestas"}]), gpt2_tokenizer, "decoder"
+    )
+    extract = DiscontExtract(
+        lambda: iter([{"id": 3, "text": "jäeti ravim ära"}]),
+        gpt2_tokenizer,
+        "decoder",
+    )
+
+    for split in (classifier, decider, extract):
+        rows = list(iter(split))
+
+        assert rows
+        assert set(rows[0]) >= {"input_ids", "labels"}
+
+    assert [sample.id for sample in classifier.samples()] == [1]
+    assert [sample.id for sample in decider.samples()] == [2]
+    assert [sample.id for sample in extract.samples()] == [3]
+    assert extract.response_format()["json_schema"]["name"] == "extraction"
+
+    cls_row: DiscontClassifierRow = {"id": 1, "text": "tekkis iiveldus"}
+    dec_row: DeciderRow = {"id": 1, "text": "tekkis iiveldus"}
+    ext_row: DiscontExtractRow = {"id": 1, "text": "tekkis iiveldus"}
+    assert classifier.tokenize(cls_row, gpt2_tokenizer)["input_ids"]
+    assert decider.tokenize(dec_row, gpt2_tokenizer)["input_ids"]
+    assert extract.tokenize(ext_row, gpt2_tokenizer)["input_ids"]
+
+
+def test_join_spans_handles_plain_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-prefixed tags fall through to the plain-label branch."""
+    from eh30pt.datasets.multinerd import Multinerd
+
+    bio = dict(Multinerd.id2label_bio)
+    bio[99] = "PER"
+    monkeypatch.setattr(Multinerd, "id2label_bio", bio)
+
+    tokens, tag_ids = Multinerd._join_spans(["Tallinn"], [99])
+
+    assert tokens == ["Tallinn"]
+    assert tag_ids == [Multinerd.label2id["PER"]]

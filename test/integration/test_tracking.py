@@ -27,9 +27,14 @@ from eh30pt.types import GenerateRecord
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from transformers import PreTrainedTokenizerFast
+    from transformers import (
+        DataCollator,
+        PreTrainedModel,
+        PreTrainedTokenizerFast,
+    )
 
-    from eh30pt.types import RunConfig
+    from eh30pt.settings import TrainingSettings
+    from eh30pt.types import ComputeMetricsFn, DataSplits, RunConfig
 
 
 _winning_f1: Final = 0.7
@@ -597,3 +602,212 @@ def test_run_context_reattaches_to_finished_run(
         ctx.record_from_id(200)
 
     assert mlflow.get_run(run_id).data.tags["eh30pt.from_id"] == "100,200"
+
+
+def test_unopened_context_has_no_run_id(run_config: RunConfig) -> None:
+    ctx = RunContext(MlflowSettings(experiment="unopened-exp"), config=run_config)
+
+    with pytest.raises(RuntimeError, match="before use"):
+        _ = ctx.run_id
+
+
+def test_helpers_require_run_name(
+    mlflow_client: MlflowClient, run_config: RunConfig
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("noname-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="noname-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        ctx.settings.run_name = None
+
+        with pytest.raises(ValueError, match="no mlflow run name"):
+            ctx.log_prompt_version("oblique", "decoder", "prompt")
+
+        with pytest.raises(ValueError, match="no mlflow run name"):
+            ctx.evaluate_and_log(
+                model=cast("PreTrainedModel", None),
+                tokenizer=cast("PreTrainedTokenizerFast", None),
+                data=cast("DataSplits", None),
+                arch="decoder",
+                collate_fn=cast("DataCollator", None),
+                metrics_fn=cast("ComputeMetricsFn", None),
+                batch_size=8,
+            )
+
+        with pytest.raises(ValueError, match="no mlflow run name"):
+            ctx.train_and_evaluate(
+                model=cast("PreTrainedModel", None),
+                tokenizer=cast("PreTrainedTokenizerFast", None),
+                data=cast("DataSplits", None),
+                arch="decoder",
+                collate_fn=cast("DataCollator", None),
+                metrics_fn=cast("ComputeMetricsFn", None),
+                registered_name="name",
+                training=cast("TrainingSettings", None),
+            )
+
+
+def test_finish_training_logs_registers_model(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("finish-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="finish-exp"
+    )
+    seen: dict[str, object] = {}
+    with RunContext(settings, config=run_config) as ctx:
+        monkeypatch.setattr(
+            ctx,
+            "log_model_artifacts",
+            lambda *args, **kwargs: seen.setdefault("model", (args, kwargs)),
+        )
+        version = ctx.register_best_model("finish-model", {"test_f1": 0.8})
+
+        ctx.finish_training(
+            "finish-model",
+            model=cast("PreTrainedModel", None),
+            tokenizer=cast("PreTrainedTokenizerFast", None),
+            task="text-classification",
+            test_metrics={"test_f1": 0.8},
+        )
+
+    assert "model" in seen
+    assert version == 1
+
+
+def test_get_experiment_id_rejects_missing(
+    mlflow_client: MlflowClient,
+) -> None:
+    from eh30pt.tracking.resume import _get_experiment_id
+
+    with pytest.raises(RuntimeError, match="not found after activation"):
+        _get_experiment_id(mlflow_client, "definitely-missing-exp")
+
+
+def test_next_shard_index_skips_unrelated_artifacts(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    tmp_path: Path,
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("shard-skip-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="shard-skip-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        note = tmp_path / "notes.txt"
+        note.write_text("hi", encoding="utf-8")
+        ctx.log_artifact(note, artifact_path="predictions")
+
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        (subdir / "file.txt").write_text("x", encoding="utf-8")
+        mlflow.log_artifacts(str(subdir), artifact_path="predictions/subdir")
+
+        assert ctx.next_shard_index() == 0
+
+
+def test_existing_max_step_tracks_logged_metrics(
+    mlflow_client: MlflowClient, run_config: RunConfig
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("max-step-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="max-step-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        assert ctx.existing_max_step() == 0
+
+        _later, _earlier = 5, 3
+        ctx.log_metrics({"a": 1.0}, step=_later)
+        ctx.log_metrics({"b": 2.0}, step=_earlier)
+
+        assert ctx.existing_max_step() == _later
+
+
+def test_register_prompt_version_reuses_unchanged_template(
+    mlflow_client: MlflowClient, run_config: RunConfig
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("prompt-reuse-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="prompt-reuse-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        first = ctx.register_prompt_version("reused", "template", "first")
+        second = ctx.register_prompt_version("reused", "template", "second")
+
+        assert first.version == second.version
+
+
+def test_checkpoint_names_empty_without_directory(
+    run_config: RunConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    ctx = RunContext(MlflowSettings(run_id="missing-run"), config=run_config)
+
+    assert ctx._checkpoint_names() == []
+
+
+def test_artifact_uri_without_location_raises(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    _ = mlflow_client
+    mlflow.set_experiment("nouri-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="nouri-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        monkeypatch.setattr(
+            ctx._client,
+            "get_run",
+            lambda _run_id: SimpleNamespace(info=SimpleNamespace(artifact_uri=None)),
+        )
+
+        with pytest.raises(RuntimeError, match="no artifact location"):
+            _ = ctx.artifact_uri
+
+
+def test_reattach_without_prior_log_succeeds(
+    mlflow_client: MlflowClient, run_config: RunConfig
+) -> None:
+    run_id = _stored_run(mlflow_client, run_config)
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="experiment",
+        run_id=run_id,
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        assert ctx.resumed is True
+
+
+def test_enter_without_active_run_raises(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("noactive-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="noactive-exp"
+    )
+    monkeypatch.setattr(mlflow, "active_run", lambda: None)
+
+    with (
+        pytest.raises(RuntimeError, match="no active mlflow run"),
+        RunContext(settings, config=run_config),
+    ):
+        pass
+
+    monkeypatch.undo()
+    if mlflow.active_run() is not None:
+        mlflow.end_run()

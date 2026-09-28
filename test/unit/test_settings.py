@@ -210,6 +210,14 @@ def test_server_resolves_provider_default() -> None:
     assert ServerSettings(provider="vllm").base_url == "http://localhost:8000"
 
 
+def test_server_rejects_invalid_provider() -> None:
+    settings = ServerSettings(provider="llama")
+    settings.provider = "unknown"  # ty: ignore[invalid-assignment]
+
+    with pytest.raises(ValueError, match="invalid provider"):
+        _ = settings.base_url
+
+
 def test_common_defaults() -> None:
     settings = CommonSettings(model="some-model", dataset="oblique")
 
