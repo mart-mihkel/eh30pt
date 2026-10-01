@@ -111,7 +111,7 @@ class CompletionClient:
         )
 
         elapsed = perf_counter() - start
-        logger.debug("received '%s' in %.4fs", completion.id, elapsed)
+        logger.debug("received '%s' in %.0f ms", completion.id, 1000 * elapsed)
 
         content = self._extract_content(completion)
         if self._fmt is not omit:

@@ -343,9 +343,10 @@ def test_stream_evaluate_consumes_windows(
         assert (n_seen, invalid) == (3, 1)
 
 
-def test_export_concats_shards_to_csv(
+def test_export_writes_label_studio_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
+    from eh30pt.cli.scripts.export import _locate_span
     from eh30pt.cli.scripts.export import main as export_main
 
     _ = mlflow_client
@@ -353,19 +354,50 @@ def test_export_concats_shards_to_csv(
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-exp"
     )
-    output = tmp_path / "out" / "predictions.csv"
+    output = tmp_path / "out" / "tasks.json"
+    user = "Patsient katkestas Nebileti, vererõhk normaliseerus."
+    phrase = "katkestas Nebileti"
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         batch = [
             GenerateRecord(
                 id=0,
-                user="a",
-                prediction=json.dumps({"phrase": "p1", "reason": "r1", "drug": "d1"}),
+                user=user,
+                prediction=json.dumps(
+                    {
+                        "phrase": phrase,
+                        "reason": "vererõhk normaliseerus",
+                        "drug": "Nebilet",
+                    }
+                ),
             ),
             GenerateRecord(
                 id=1,
-                user="b",
+                user="kaebusi ei ole",
                 prediction=json.dumps({"phrase": "", "reason": "", "drug": ""}),
+            ),
+            GenerateRecord(
+                id=2,
+                user="Teine tekst katkestas Nebileti.",
+                prediction=json.dumps({"phrase": phrase, "reason": "x", "drug": "y"}),
+            ),
+            GenerateRecord(
+                id=3,
+                user="Arst jättis statiini ära.",
+                prediction=json.dumps(
+                    {
+                        "phrase": "Arst jättis statiini ära.",
+                        "reason": "",
+                        "drug": "statiin",
+                    }
+                ),
+            ),
+            GenerateRecord(
+                id=4,
+                user="Täiesti tavaline tekst.",
+                prediction=json.dumps(
+                    {"phrase": "olematu fraas", "reason": "r", "drug": "d"}
+                ),
             ),
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
@@ -376,10 +408,232 @@ def test_export_concats_shards_to_csv(
     )
 
     assert output.is_file()
-    text = output.read_text(encoding="utf-8")
+    tasks = json.loads(output.read_text(encoding="utf-8"))
 
-    assert "r1" in text
-    assert "p1" in text
+    assert len(tasks) == 1
+    assert tasks[0]["data"] == {
+        "text": user,
+        "phrase": phrase,
+        "reason": "vererõhk normaliseerus",
+        "drug": "Nebilet",
+    }
+
+    start, end = user.index(phrase), user.index(phrase) + len(phrase)
+    drug_start = user.index("Nebilet")
+    assert _locate_span(user, phrase) == (start, end)
+    assert _locate_span(user, "") is None
+    assert _locate_span(user, "puudub") is None
+    assert tasks[0]["predictions"] == [
+        {
+            "result": [
+                {
+                    "from_name": "span",
+                    "to_name": "text",
+                    "type": "labels",
+                    "readonly": True,
+                    "hidden": False,
+                    "value": {
+                        "start": start,
+                        "end": end,
+                        "text": phrase,
+                        "labels": ["phrase"],
+                    },
+                },
+                {
+                    "from_name": "span",
+                    "to_name": "text",
+                    "type": "labels",
+                    "readonly": True,
+                    "hidden": False,
+                    "value": {
+                        "start": drug_start,
+                        "end": drug_start + len("Nebilet"),
+                        "text": "Nebilet",
+                        "labels": ["drug"],
+                    },
+                },
+            ],
+            "model_version": run_id,
+        }
+    ]
+
+    config_path = output.with_suffix(".xml")
+    assert config_path.is_file()
+
+    config = config_path.read_text(encoding="utf-8")
+
+    assert '<Text name="text" value="$text" />' in config
+    assert '<View style="display: none">' in config
+    assert '<Labels name="span" toName="text">' in config
+    assert '<Label value="phrase" />' not in config
+    assert '<Label value="drug" />' not in config
+    assert 'value="phrase" background="#ffe08a"' in config
+    assert 'value="drug" background="#a8e6a3"' in config
+    assert config.index("<Choices ") < config.index('<View style="display: none">')
+
+    assert '<Header value="Esimese taseme märgendid" />' in config
+    assert '<Header value="Drug discontinuation alamliigid" />' in config
+    assert '<Header value="Metamärgendused fraasi kvaliteedi kohta" />' in config
+
+    assert (
+        '<Choices name="label" toName="text" choice="multiple" showInLine="true">'
+        in config
+    )
+    assert (
+        '<Choices name="dd_subtype" toName="text" choice="multiple" showInLine="true">'
+        in config
+    )
+    assert (
+        '<Choices name="quality" toName="text" choice="multiple" showInLine="true">'
+        in config
+    )
+
+    first_level = (
+        "Adverse reactions (ADR)",
+        "Drug discontinuation (DD)",
+        "Dosage change (DC)",
+        "Incorrect phrase",
+    )
+    subtypes = (
+        "Treatment success",
+        "Treatment inefficacy",
+        "Contraindication",
+    )
+    quality = (
+        "Incomplete phrase",
+        "Complex fact",
+        "Incorrect phrase",
+    )
+    for label in (*first_level, *subtypes, *quality):
+        assert f'value="{label}"' in config
+        assert f'value="{label}" hint=' in config
+
+    for label in ("Non-medical reasons", "Other", "Indeterminate"):
+        assert f'value="{label}"' not in config
+
+
+def test_export_reads_struct_predictions(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.export import main as export_main
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-struct-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-struct-exp"
+    )
+    output = tmp_path / "out" / "tasks.json"
+    user = "Tekkis köha, enalapriil ära jäeti."
+    phrase = "enalapriil"
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+        log_shard(
+            ctx,
+            tmp_path,
+            MlflowSettings.predictions_path,
+            0,
+            [
+                {
+                    "id": 0,
+                    "user": user,
+                    "prediction": {
+                        "phrase": phrase,
+                        "reason": "tekkis köha",
+                        "drug": "enalapriil",
+                    },
+                },
+                {
+                    "id": 1,
+                    "user": "kaebusi ei ole",
+                    "prediction": {"phrase": "", "reason": "", "drug": ""},
+                },
+            ],
+        )
+
+    export_main(
+        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        output=output,
+    )
+
+    tasks = json.loads(output.read_text(encoding="utf-8"))
+
+    assert len(tasks) == 1
+    assert tasks[0]["data"]["text"] == user
+
+    start = user.index(phrase)
+    span = tasks[0]["predictions"][0]["result"][0]["value"]
+    assert (span["start"], span["end"]) == (start, start + len(phrase))
+    assert tasks[0]["predictions"][0]["model_version"] == run_id
+
+
+def test_export_rejects_non_extraction_predictions(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.export import main as export_main
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-plain-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-plain-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+        batch = [GenerateRecord(id=0, user="a", prediction="Adverse reactions")]
+        log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
+
+    with pytest.raises(ValueError, match="not extraction JSON"):
+        export_main(
+            settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri, run_id=run_id
+            ),
+            output=tmp_path / "out.json",
+        )
+
+
+def test_export_rejects_non_object_predictions(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.export import main as export_main
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-number-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-number-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+        batch = [GenerateRecord(id=0, user="a", prediction="123")]
+        log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
+
+    with pytest.raises(ValueError, match="not extraction JSON"):
+        export_main(
+            settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri, run_id=run_id
+            ),
+            output=tmp_path / "out.json",
+        )
+
+
+def test_export_writes_empty_list_without_shards(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.export import main as export_main
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-empty-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-empty-exp"
+    )
+    output = tmp_path / "out" / "tasks.json"
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+
+    export_main(
+        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        output=output,
+    )
+
+    assert json.loads(output.read_text(encoding="utf-8")) == []
 
 
 def test_export_without_run_id_raises(tmp_path: Path) -> None:

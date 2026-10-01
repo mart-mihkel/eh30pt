@@ -571,7 +571,7 @@ def langextract(
     )
 
 
-@app.command(help="Concat prediction shards into a Label Studio CSV")
+@app.command(help="Export prediction shards as Label Studio tasks")
 def export(
     *,
     mlflow_run_id: ExportRunOption,
@@ -579,13 +579,13 @@ def export(
     output: OutputOption = None,
     log_level: LogLevelOption = "info",
 ) -> None:
-    """Concat prediction shards into a Label Studio CSV."""
+    """Export prediction shards as Label Studio classification tasks."""
     from eh30pt.cli.scripts.export import main
 
     logger.setLevel(log_level.upper())
 
     if output is None:
-        output = LOGDIR / f"predictions-{mlflow_run_id}.csv"
+        output = LOGDIR / f"task-{mlflow_run_id}.json"
         logger.debug("inferred output dir '%s'", output)
 
     mlflow = MlflowSettings(tracking_uri=mlflow_tracking_uri, run_id=mlflow_run_id)

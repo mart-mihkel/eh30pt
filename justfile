@@ -67,3 +67,9 @@ marimo *args='--watch':
 [group('docker')]
 @down *args:
     docker compose down {{ args }}
+
+vllm:
+    uvx -w vllm-gguf-plugin vllm serve ~/models/Llama-3.2-1B-Instruct-Q8_0.gguf \
+      --tokenizer meta-llama/Llama-3.2-1B-Instruct \
+      --max-model-len 16384 \
+      --max-num-seqs 43
