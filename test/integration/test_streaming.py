@@ -346,8 +346,8 @@ def test_stream_evaluate_consumes_windows(
 def test_export_writes_label_studio_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import _locate_span
     from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.labeling.extract import _locate_span
 
     _ = mlflow_client
     mlflow.set_experiment("export-exp")
@@ -404,6 +404,7 @@ def test_export_writes_label_studio_tasks(
 
     export_main(
         settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        dataset="discont-extract",
         output=output,
     )
 
@@ -512,6 +513,70 @@ def test_export_writes_label_studio_tasks(
         assert f'value="{label}"' not in config
 
 
+def test_export_writes_choice_tasks_for_classification_dataset(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.export import main as export_main
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-oblique-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-oblique-exp"
+    )
+    output = tmp_path / "out" / "tasks.json"
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+        batch = [
+            GenerateRecord(id=0, user="Ta ei ole seotud", prediction="vaba"),
+            GenerateRecord(id=1, user="Ta on seotud", prediction="seotud"),
+            GenerateRecord(id=2, user="Vastus puudub", prediction="hallucinated"),
+        ]
+        log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
+
+    export_main(
+        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        dataset="oblique",
+        output=output,
+    )
+
+    tasks = json.loads(output.read_text(encoding="utf-8"))
+
+    _exported = 2
+    assert len(tasks) == _exported
+    assert tasks[0] == {
+        "data": {"text": "Ta ei ole seotud"},
+        "predictions": [
+            {
+                "result": [
+                    {
+                        "from_name": "label",
+                        "to_name": "text",
+                        "type": "choices",
+                        "readonly": True,
+                        "hidden": False,
+                        "value": {"choices": ["vaba"]},
+                    }
+                ],
+                "model_version": run_id,
+            }
+        ],
+    }
+    assert tasks[1]["predictions"][0]["result"][0]["value"]["choices"] == ["seotud"]
+
+    config = output.with_suffix(".xml").read_text(encoding="utf-8")
+
+    assert '<Text name="text" value="$text" />' in config
+    assert (
+        '<Choices name="label" toName="text" choice="single" showInLine="true">'
+        in config
+    )
+    for label in ("seotud", "ebaloomulik", "liigne koma", "vaba", "kaheldav"):
+        assert f'<Choice value="{label}" />' in config
+
+    assert 'value="phrase" background="#ffe08a"' not in config
+    assert '<View style="display: none">' not in config
+
+
 def test_export_reads_struct_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
@@ -552,6 +617,7 @@ def test_export_reads_struct_predictions(
 
     export_main(
         settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        dataset="discont-extract",
         output=output,
     )
 
@@ -586,6 +652,7 @@ def test_export_rejects_non_extraction_predictions(
             settings=MlflowSettings(
                 tracking_uri=mlflow_client.tracking_uri, run_id=run_id
             ),
+            dataset="discont-extract",
             output=tmp_path / "out.json",
         )
 
@@ -610,6 +677,7 @@ def test_export_rejects_non_object_predictions(
             settings=MlflowSettings(
                 tracking_uri=mlflow_client.tracking_uri, run_id=run_id
             ),
+            dataset="discont-extract",
             output=tmp_path / "out.json",
         )
 
@@ -630,6 +698,7 @@ def test_export_writes_empty_list_without_shards(
 
     export_main(
         settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+        dataset="discont-extract",
         output=output,
     )
 
@@ -642,6 +711,7 @@ def test_export_without_run_id_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="no mlflow run id"):
         export_main(
             settings=MlflowSettings(tracking_uri="sqlite:///mlflow.db"),
+            dataset="discont-extract",
             output=tmp_path / "out.csv",
         )
 

@@ -22,11 +22,6 @@ create table if not exists cda_fact_extraction_202603.events (
   specialty_code text
 );
 
--- Synthetic development seed, 5000 rows generated deterministically.
--- Document rows cycle through generic note templates, anamnesis rows through
--- discontinuation templates that contain trigger words, so the derived
--- observed and trigger event tables stay non-empty. A few rows carry null or
--- empty values to exercise edge cases in the query tests.
 insert into cda_fact_extraction_202603.events (
   data,
   hidden,

@@ -571,15 +571,16 @@ def langextract(
     )
 
 
-@app.command(help="Export prediction shards as Label Studio tasks")
-def export(
+@app.command(help="Export predictions as Label Studio tasks")
+def export_task(
     *,
     mlflow_run_id: ExportRunOption,
+    dataset: DatasetOption,
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
     output: OutputOption = None,
     log_level: LogLevelOption = "info",
 ) -> None:
-    """Export prediction shards as Label Studio classification tasks."""
+    """Export prediction shards as Label Studio tasks and a labeling config."""
     from eh30pt.cli.scripts.export import main
 
     logger.setLevel(log_level.upper())
@@ -590,7 +591,7 @@ def export(
 
     mlflow = MlflowSettings(tracking_uri=mlflow_tracking_uri, run_id=mlflow_run_id)
 
-    main(settings=mlflow, output=output)
+    main(settings=mlflow, dataset=dataset, output=output)
 
 
 if __name__ == "__main__":

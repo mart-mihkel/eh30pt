@@ -9,10 +9,6 @@ create table if not exists user_mart_mihkel.cda_trigger_words (
 
 comment on table user_mart_mihkel.cda_trigger_words is 'Trigger words for drug discontinuation';
 
--- Synthetic development seed, 1120 rows generated deterministically.
--- Verb stems are crossed with a shared inflection paradigm and nominalized
--- stems with case endings. The base forms appear in the discontinuation
--- templates of the events seed, so the trigger event join stays non-empty.
 insert into user_mart_mihkel.cda_trigger_words (word, subtype)
 select stem || ending, 'verb'
 from
