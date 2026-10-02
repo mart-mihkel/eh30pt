@@ -9,12 +9,12 @@ import pytest
 from datasets import Dataset
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classifier import (
+from eh30pt.datasets.discontinuation.classify import (
     DiscontClassifier,
     DiscontClassifierRow,
     load_discont_classifier,
 )
-from eh30pt.datasets.discontinuation.decider import (
+from eh30pt.datasets.discontinuation.decide import (
     DeciderRow,
     DiscontDecider,
     load_discont_decider,

@@ -42,6 +42,7 @@ type DatasetName = Literal[
     "discont-classifier",
     "discont-decider",
     "discont-extract",
+    "discont-multiple",
 ]
 
 type Method = Literal[
@@ -61,7 +62,7 @@ type DatasetTask = Literal[
 type DataSource = Literal[
     "observed",
     "trigger",
-    "dg",
+    "drug-group",
 ]
 
 type PipelineTask = Literal[

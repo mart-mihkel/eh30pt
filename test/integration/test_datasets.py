@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classifier import load_discont_classifier
+from eh30pt.datasets.discontinuation.classify import load_discont_classifier
 from eh30pt.datasets.discontinuation.extract import load_discont_extract
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.modeling.arch import infer_architecture
@@ -14,8 +14,8 @@ from eh30pt.modeling.arch import infer_architecture
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
-    from eh30pt.datasets.discontinuation.classifier import DiscontClassifierRow
-    from eh30pt.datasets.discontinuation.decider import DeciderRow
+    from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
+    from eh30pt.datasets.discontinuation.decide import DeciderRow
     from eh30pt.datasets.discontinuation.extract import DiscontExtractRow
     from test.integration.conftest import ModelSetup
 
@@ -97,8 +97,8 @@ def test_discont_splits_iterate_tokenized_rows(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     """Classifier, decider, and extract splits tokenize in-memory rows."""
-    from eh30pt.datasets.discontinuation.classifier import DiscontClassifier
-    from eh30pt.datasets.discontinuation.decider import DiscontDecider
+    from eh30pt.datasets.discontinuation.classify import DiscontClassifier
+    from eh30pt.datasets.discontinuation.decide import DiscontDecider
     from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     classifier = DiscontClassifier(

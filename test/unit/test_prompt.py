@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 
-from eh30pt.datasets.discontinuation.classifier import DiscontClassifier
-from eh30pt.datasets.discontinuation.decider import DeciderRow, DiscontDecider
+from eh30pt.datasets.discontinuation.classify import DiscontClassifier
+from eh30pt.datasets.discontinuation.decide import DeciderRow, DiscontDecider
 from eh30pt.datasets.discontinuation.extract import DiscontExtract
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Obl
@@ -364,8 +364,8 @@ def test_mixin_base_methods_raise() -> None:
 
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:
-    from eh30pt.datasets.discontinuation.classifier import DiscontClassifier
-    from eh30pt.datasets.discontinuation.decider import DiscontDecider
+    from eh30pt.datasets.discontinuation.classify import DiscontClassifier
+    from eh30pt.datasets.discontinuation.decide import DiscontDecider
     from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     tokenizer = cast("PreTrainedTokenizerFast", None)
@@ -413,8 +413,8 @@ def test_select_source_rejects_invalid() -> None:
 
 
 def test_no_row_factories_are_empty() -> None:
-    from eh30pt.datasets.discontinuation.classifier import _no_cls_rows
-    from eh30pt.datasets.discontinuation.decider import _no_decider_rows
+    from eh30pt.datasets.discontinuation.classify import _no_cls_rows
+    from eh30pt.datasets.discontinuation.decide import _no_decider_rows
     from eh30pt.datasets.discontinuation.extract import _no_extract_rows
 
     assert list(_no_cls_rows()) == []

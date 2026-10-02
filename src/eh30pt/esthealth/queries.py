@@ -30,7 +30,7 @@ def _assert_page_size(page_size: int) -> None:
 def select_observed_events(
     session: Session,
     *,
-    page_size: int = 10000,
+    page_size: int = 100_000,
     limit: int | None = None,
     start_after: int | None = None,
 ) -> Iterator[EventTextRow]:
@@ -111,7 +111,7 @@ def select_dg_events(
 def select_trigger_events(
     session: Session,
     *,
-    page_size: int = 10000,
+    page_size: int = 100_000,
     limit: int | None = None,
     start_after: int | None = None,
 ) -> Iterator[EventTextRow]:

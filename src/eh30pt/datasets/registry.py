@@ -2,17 +2,21 @@
 
 from typing import TYPE_CHECKING
 
-from eh30pt.datasets.discontinuation.classifier import (
+from eh30pt.datasets.discontinuation.classify import (
     DiscontClassifier,
     load_discont_classifier,
 )
-from eh30pt.datasets.discontinuation.decider import (
+from eh30pt.datasets.discontinuation.decide import (
     DiscontDecider,
     load_discont_decider,
 )
 from eh30pt.datasets.discontinuation.extract import (
     DiscontExtract,
     load_discont_extract,
+)
+from eh30pt.datasets.discontinuation.multiple import (
+    DiscontMultiple,
+    load_discont_multiple,
 )
 from eh30pt.datasets.multinerd import Multinerd, load_multinerd
 from eh30pt.datasets.oblique import Obl, load_obl
@@ -48,6 +52,9 @@ def get_task(dataset: DatasetName) -> DatasetTask:
 
     if dataset == "discont-extract":
         return DiscontExtract.task
+
+    if dataset == "discont-multiple":
+        return DiscontMultiple.task
 
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)
@@ -85,6 +92,12 @@ def get_labels(dataset: DatasetName) -> tuple[str, ...]:
     if dataset == "discont-decider":
         return tuple(DiscontDecider.id2label.values())
 
+    if dataset == "discont-extract":
+        return tuple(DiscontExtract.id2label.values())
+
+    if dataset == "discont-multiple":
+        return tuple(DiscontMultiple.id2label.values())
+
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)
 
@@ -105,6 +118,9 @@ def get_sys_prompt(dataset: DatasetName) -> str:
 
     if dataset == "discont-extract":
         return DiscontExtract.system_prompt
+
+    if dataset == "discont-multiple":
+        return DiscontMultiple.system_prompt
 
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)
@@ -127,6 +143,9 @@ def get_response_schema(dataset: DatasetName) -> ResponseFormatJSONSchema:
     if dataset == "discont-extract":
         return DiscontExtract.response_format()
 
+    if dataset == "discont-multiple":
+        return DiscontMultiple.response_format()
+
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)
 
@@ -143,6 +162,8 @@ def get_few_shots(dataset: DatasetName, n_shot: int) -> list[FewShot]:
         shots = DiscontExtract.few_shots
     elif dataset == "oblique":
         shots = Obl.few_shots
+    elif dataset == "discont-multiple":
+        shots = DiscontMultiple.few_shots
     else:
         msg = f"invalid dataset {dataset}"
         raise ValueError(msg)
@@ -199,7 +220,12 @@ def load_data(
     source: DataSource = "trigger",
 ) -> DataSplits:
     """Load dataset splits, streaming only rows with id above start_after."""
-    _with_offset = ("discont-classifier", "discont-decider", "discont-extract")
+    _with_offset = (
+        "discont-classifier",
+        "discont-decider",
+        "discont-extract",
+        "discont-multiple",
+    )
     if start_after is not None and dataset not in _with_offset:
         msg = f"start_after is only supported for discont datasets, got {dataset}"
         raise ValueError(msg)
@@ -236,6 +262,16 @@ def load_data(
 
     if dataset == "discont-extract":
         return load_discont_extract(
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            source=source,
+            start_after=start_after,
+        )
+
+    if dataset == "discont-multiple":
+        return load_discont_multiple(
             tokenizer,
             arch,
             n_shot,

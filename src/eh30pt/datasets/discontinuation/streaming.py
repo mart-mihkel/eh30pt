@@ -27,7 +27,7 @@ def _select_source(
     start_after: int | None,
 ) -> Iterator[EventTextRow]:
     """Yield (id, text) rows from the dg, trigger filter, or random sample."""
-    if source == "dg":
+    if source == "drug-group":
         return iter(select_dg_events(session, start_after=start_after))
 
     if source == "observed":
