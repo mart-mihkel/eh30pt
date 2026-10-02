@@ -12,8 +12,8 @@ set dotenv-load
     uv sync --compile-bytecode
     uv run --no-sync prek install
 
-[arg('host', long, short, help='remote host and target dir')]
-[arg('commit', long, short, pattern='true|false', value='true', help='no dry run')]
+[arg('host', long, help='remote host and target dir')]
+[arg('commit', long, pattern='true|false', value='true', help='no dry run')]
 [doc('upload tree to remote host')]
 [group('build')]
 rsync commit='false' host=env('RSYNC_HOST'):
@@ -25,8 +25,8 @@ rsync commit='false' host=env('RSYNC_HOST'):
         --exclude .git \
         . {{ host }}
 
-[arg('alias', long, short, help='minio client host alias')]
-[arg('prefix', long, short, help='object storage target path')]
+[arg('alias', long, help='minio client host alias')]
+[arg('prefix', long, help='object storage target path')]
 [doc('upload wheel to object storage')]
 [group('build')]
 msync alias=env('MSYNC_ALIAS') prefix=env('MSYNC_PREFIX'):
@@ -67,9 +67,3 @@ marimo *args='--watch':
 [group('docker')]
 @down *args:
     docker compose down {{ args }}
-
-vllm:
-    uvx -w vllm-gguf-plugin vllm serve ~/models/Llama-3.2-1B-Instruct-Q8_0.gguf \
-      --tokenizer meta-llama/Llama-3.2-1B-Instruct \
-      --max-model-len 16384 \
-      --max-num-seqs 43

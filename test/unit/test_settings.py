@@ -203,7 +203,7 @@ def test_server_defaults() -> None:
 
     assert settings.provider == "llama"
     assert settings.api_key == "no-auth"
-    assert settings.base_url == "http://localhost:8080"
+    assert settings.base_url == "http://localhost:9931"
 
 
 def test_server_resolves_provider_default() -> None:

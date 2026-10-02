@@ -240,16 +240,19 @@ def _to_task(
     drug: str,
     run_id: str,
 ) -> ClassificationTask | None:
-    """Build a task with phrase and drug highlighted, or None without a phrase."""
+    """Build a task with phrase and drug highlighted, or None without both."""
     phrase_span = _locate_span(user, phrase)
     if phrase_span is None:
         return None
 
-    results = [_span_result("phrase", user, phrase_span)]
-
     drug_span = _locate_span(user, drug)
-    if drug_span is not None:
-        results.append(_span_result("drug", user, drug_span))
+    if drug_span is None:
+        return None
+
+    results = [
+        _span_result("phrase", user, phrase_span),
+        _span_result("drug", user, drug_span),
+    ]
 
     data: TaskData = {"text": user, "phrase": phrase, "reason": reason, "drug": drug}
 
@@ -302,7 +305,7 @@ def main(*, settings: MlflowSettings, output: Path) -> None:
 
         deduped = df.unique("phrase", maintain_order=True)
         if dupes := df.height - deduped.height:
-            logger.info("dropped %d duplicate phrases", dupes)
+            logger.warning("dropped %d duplicate phrases", dupes)
 
         rows = deduped.select("user", "phrase", "reason", "drug")
         for user, phrase, reason, drug in rows.iter_rows():
@@ -314,7 +317,7 @@ def main(*, settings: MlflowSettings, output: Path) -> None:
             tasks.append(task)
 
     if skipped:
-        logger.warning("skipped %d rows without a locatable phrase", skipped)
+        logger.warning("dropped %d rows without a locatable phrase or drug", skipped)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")

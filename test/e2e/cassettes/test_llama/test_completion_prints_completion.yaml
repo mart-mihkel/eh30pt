@@ -9,7 +9,7 @@ interactions:
       connection:
       - keep-alive
       host:
-      - localhost:8080
+      - localhost:9931
       user-agent:
       - AsyncOpenAI/Python 3.10.0
       x-stainless-arch:
@@ -31,15 +31,15 @@ interactions:
       x-stainless-runtime-version:
       - 3.14.7
     method: GET
-    uri: http://localhost:8080/models
+    uri: http://localhost:9931/models
   response:
     body:
-      string: '{"models":[{"name":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","aliases":["/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"],"tags":[],"object":"model","created":1790057963,"owned_by":"llamacpp","meta":{"vocab_type":true,"n_vocab":128256,"n_ctx":8192,"n_ctx_train":131072,"n_embd":2048,"n_params":1235814432,"size":1313251456,"ftype":"Q8_0"}}]}'
+      string: '{"models":[{"name":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","aliases":["/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"],"tags":[],"object":"model","created":1790926520,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":128256,"n_ctx":16384,"n_ctx_train":131072,"n_embd":2048,"n_params":1235814432,"size":1313251456,"ftype":"Q8_0"}}]}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '749'
+      - '747'
       content-type:
       - application/json; charset=utf-8
       keep-alive:
@@ -51,7 +51,7 @@ interactions:
       message: OK
 - request:
     body: '{"messages":[{"role":"system","content":"You are a terse calculator, answer
-      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"}'
+      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"Llama-3.2-1B-Instruct-Q8_0.gguf","seed":null}'
     headers:
       accept:
       - application/json
@@ -60,11 +60,11 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '218'
+      - '211'
       content-type:
       - application/json
       host:
-      - localhost:8080
+      - localhost:9931
       user-agent:
       - AsyncOpenAI/Python 3.10.0
       x-stainless-arch:
@@ -86,15 +86,15 @@ interactions:
       x-stainless-runtime-version:
       - 3.14.7
     method: POST
-    uri: http://localhost:8080/chat/completions
+    uri: http://localhost:9931/chat/completions
   response:
     body:
-      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4"}}],"created":1790057963,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b11028-972d2313b","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":58,"total_tokens":60,"prompt_tokens_details":{"cached_tokens":57}},"id":"chatcmpl-MSHFKWJUhHsTiqoCMYn4VWjSnGvNmlVj","timings":{"cache_n":57,"prompt_n":1,"prompt_ms":18.033,"prompt_per_token_ms":18.033,"prompt_per_second":55.453890090389834,"predicted_n":2,"predicted_ms":10.683,"predicted_per_token_ms":10.683,"predicted_per_second":93.60666479453337}}'
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4"}}],"created":1790926522,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b11349-fb4b2737a","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":58,"total_tokens":60,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-pebqyy4wjYIo2OhmYivTme47tIHNozVL","timings":{"cache_n":0,"prompt_n":58,"prompt_ms":1745.014,"prompt_per_token_ms":30.086448275862068,"prompt_per_second":33.237555687232316,"predicted_n":2,"predicted_ms":12.159,"predicted_per_token_ms":12.159,"predicted_per_second":82.24360555966773}}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '641'
+      - '654'
       content-type:
       - application/json; charset=utf-8
       keep-alive:

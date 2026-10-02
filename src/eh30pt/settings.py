@@ -94,7 +94,7 @@ class ServerSettings(BaseModel):
             return "http://localhost:8000"
 
         if self.provider == "llama":
-            return "http://localhost:8080"
+            return "http://localhost:9931"
 
         msg = f"invalid provider {self.provider}"
         raise ValueError(msg)
