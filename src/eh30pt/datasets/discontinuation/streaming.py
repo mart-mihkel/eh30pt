@@ -26,9 +26,23 @@ def _select_source(
     page_size: int,
     start_after: int | None,
 ) -> Iterator[EventTextRow]:
-    """Yield (id, text) rows from the dg, trigger filter, or random sample."""
-    if source == "drug-group":
-        return iter(select_dg_events(session, start_after=start_after))
+    """Yield (id, text) rows from a dg event type, trigger filter, or sample."""
+    if source == "discont":
+        return iter(
+            select_dg_events(
+                session, event_type="discontinuation", start_after=start_after
+            )
+        )
+
+    if source == "switch":
+        return iter(
+            select_dg_events(session, event_type="switch", start_after=start_after)
+        )
+
+    if source == "usage-gap":
+        return iter(
+            select_dg_events(session, event_type="usage_gap", start_after=start_after)
+        )
 
     if source == "observed":
         return select_observed_events(

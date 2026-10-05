@@ -20,6 +20,8 @@ from eh30pt.settings import PostgresSettings
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from eh30pt.types import DgEventType
+
 
 @pytest.fixture
 def session(database: None) -> Iterator[Session]:
@@ -157,17 +159,30 @@ def test_select_respects_limit_and_start_after(session: Session) -> None:
 
 
 def test_select_dg_events_returns_rows(session: Session) -> None:
-    import pytest
+    from eh30pt.esthealth.models import CdaDgEvent
 
-    rows = select_dg_events(session)
+    event_types: tuple[DgEventType, ...] = (
+        "discontinuation",
+        "switch",
+        "usage_gap",
+    )
 
-    assert rows
-    assert [row.id for row in rows] == sorted(row.id for row in rows)
+    for event_type in event_types:
+        rows = select_dg_events(session, event_type=event_type)
 
-    first = rows[0].id
-    rest = select_dg_events(session, start_after=first)
+        assert rows
+        assert [row.id for row in rows] == sorted(row.id for row in rows)
 
-    assert all(row.id > first for row in rest)
+        stored = session.scalars(
+            select(CdaDgEvent.event_type).where(
+                CdaDgEvent.id.in_([row.id for row in rows])
+            )
+        ).all()
 
-    with pytest.raises(ValueError, match="per_type must be positive"):
-        select_dg_events(session, per_type=0)
+        assert stored
+        assert all(item == event_type for item in stored)
+
+        first = rows[0].id
+        rest = select_dg_events(session, event_type=event_type, start_after=first)
+
+        assert all(row.id > first for row in rest)

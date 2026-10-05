@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from eh30pt.esthealth.models import CdaDgEvent, CdaObservedEvent, CdaTriggerEvent
 from eh30pt.logging import logger
@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from sqlalchemy.orm import Session
+
+    from eh30pt.types import DgEventType
 
 
 class EventTextRow(NamedTuple):
@@ -76,30 +78,21 @@ def select_observed_events(
 def select_dg_events(
     session: Session,
     *,
-    per_type: int = 80_000,
+    event_type: DgEventType,
     start_after: int | None = None,
 ) -> list[EventTextRow]:
-    """Return up to per_type (id, text) rows for each event type."""
-    if per_type < 1:
-        msg = f"per_type must be positive, got {per_type}"
-        raise ValueError(msg)
+    """Return (id, text) rows of one dg event type with id above start_after."""
+    logger.debug("querying %s dg events", event_type)
 
-    logger.debug("querying dg events (%d per type)", per_type)
-    ranked = (
-        func.row_number()
-        .over(
-            partition_by=CdaDgEvent.event_type,
-            order_by=CdaDgEvent.id,
-        )
-        .label("rn")
+    stmt = (
+        select(CdaDgEvent.id, CdaDgEvent.text)
+        .where(CdaDgEvent.event_type == event_type)
+        .order_by(CdaDgEvent.id)
     )
 
-    inner = select(CdaDgEvent.id, CdaDgEvent.text, ranked)
     if start_after is not None:
-        inner = inner.where(CdaDgEvent.id > start_after)
+        stmt = stmt.where(CdaDgEvent.id > start_after)
 
-    sub = inner.subquery()
-    stmt = select(sub.c.id, sub.c.text).where(sub.c.rn <= per_type).order_by(sub.c.id)
     page = session.execute(stmt).all()
 
     return [

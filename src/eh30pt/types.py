@@ -59,10 +59,18 @@ type DatasetTask = Literal[
     "extraction",
 ]
 
+type DgEventType = Literal[
+    "discontinuation",
+    "switch",
+    "usage_gap",
+]
+
 type DataSource = Literal[
     "observed",
     "trigger",
-    "drug-group",
+    "discont",
+    "switch",
+    "usage-gap",
 ]
 
 type PipelineTask = Literal[
