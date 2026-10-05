@@ -1,7 +1,7 @@
 """Span tasks for extraction dataset predictions."""
 
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 import polars as pl
 
@@ -18,6 +18,25 @@ if TYPE_CHECKING:
         Task,
     )
     from eh30pt.types import DatasetName
+
+
+class _Choice(NamedTuple):
+    """One selectable label and the hint shown next to it."""
+
+    value: str
+    hint: str
+
+
+class _ChoiceBox(NamedTuple):
+    """A headed block of choices annotators pick from together."""
+
+    name: str
+    header: str
+    choices: tuple[_Choice, ...]
+
+
+_box_class: Final = "eh30pt-box"
+_title_class: Final = "eh30pt-title"
 
 
 def _locate_span(text: str, span: str) -> tuple[int, int] | None:
@@ -71,120 +90,137 @@ def _decoded(frame: pl.DataFrame) -> pl.DataFrame:
         raise ValueError(msg) from exc
 
 
+def _choices(row: ET.Element, box: _ChoiceBox) -> None:
+    """Append a box as its own flex column of the row."""
+    column = ET.SubElement(
+        row,
+        "View",
+        className=_box_class,
+        style="flex: 1; min-width: 240px",
+    )
+
+    title = ET.SubElement(column, "View", className=_title_class)
+    ET.SubElement(title, "Header", value=box.header)
+
+    control = ET.SubElement(
+        column,
+        "Choices",
+        name=box.name,
+        toName="text",
+        choice="multiple",
+        showInLine="false",
+    )
+
+    for choice in box.choices:
+        ET.SubElement(control, "Choice", value=choice.value, hint=choice.hint)
+
+
 def span_config() -> str:
     """Build the Label Studio interface for highlighting extracted spans."""
     view = ET.Element("View")
     ET.SubElement(view, "Text", name="text", value="$text")
 
-    ET.SubElement(view, "Header", value="Esimese taseme märgendid")
-    first_level: tuple[tuple[str, str], ...] = (
-        (
-            "Adverse reactions (ADR)",
-            (
-                "Adverse side effects, allergic reactions, or negative "
-                "interactions. May co-occur with DD or DC. "
-                "Alone does not imply discontinuation."
-            ),
-        ),
-        (
-            "Drug discontinuation (DD)",
-            (
-                "Interruption of at least 14 days; shorter breaks are not DD. "
-                "May co-occur with ADR. Subtype is optional."
-            ),
-        ),
-        (
-            "Dosage change (DC)",
-            (
-                "Increase or decrease of dosage. No justification or cause "
-                "is needed. May co-occur with ADR."
-            ),
-        ),
-        (
-            "Incorrect phrase",
-            (
-                "Extracted phrase is noise or a false positive; "
-                "any real description is elsewhere. Use only when obvious."
-            ),
-        ),
-    )
-    choices = ET.SubElement(
-        view,
-        "Choices",
-        name="label",
-        toName="text",
-        choice="multiple",
-        showInLine="true",
-    )
-    for value, hint in first_level:
-        ET.SubElement(choices, "Choice", value=value, hint=hint)
+    style = ET.SubElement(view, "Style")
+    style.text = f"""
+        .{_title_class} {{
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 2px 8px;
+            margin-bottom: 4px;
+        }}
 
-    ET.SubElement(view, "Header", value="Drug discontinuation alamliigid")
-    subtypes: tuple[tuple[str, str], ...] = (
-        (
-            "Treatment success",
-            "Discontinuation due to successful completion or sufficient improvement.",
-        ),
-        (
-            "Treatment inefficacy",
-            (
-                "Discontinuation due to perceived ineffectiveness "
-                "or loss of belief in efficacy."
-            ),
-        ),
-        (
-            "Contraindication",
-            (
-                "Discontinuation due to a condition or risk factor making "
-                "continued use unsafe or inappropriate."
-            ),
-        ),
-    )
-    sub_choices = ET.SubElement(
-        view,
-        "Choices",
-        name="dd_subtype",
-        toName="text",
-        choice="multiple",
-        showInLine="true",
-    )
-    for value, hint in subtypes:
-        ET.SubElement(sub_choices, "Choice", value=value, hint=hint)
+        .{_box_class}:has(input:checked) .{_title_class} {{
+            border-color: #1f9d55;
+        }}
+    """
 
-    ET.SubElement(view, "Header", value="Metamärgendused fraasi kvaliteedi kohta")
-    quality: tuple[tuple[str, str], ...] = (
-        (
-            "Incomplete phrase",
-            (
-                "Phrase too short to decide alone but decidable when expanded; "
-                "annotate the expanded phrase. Use only when obvious."
+    boxes: tuple[_ChoiceBox, ...] = (
+        _ChoiceBox(
+            name="discont",
+            header="Drug discontinuation",
+            choices=(
+                _Choice(
+                    "Treatment success",
+                    (
+                        "Treatment stopped because it worked, was completed, "
+                        "or the patient improved enough."
+                    ),
+                ),
+                _Choice(
+                    "Treatment inefficacy",
+                    "Treatment stopped because it was seen as ineffective.",
+                ),
+                _Choice(
+                    "Contraindication",
+                    (
+                        "Treatment stopped because a condition or risk factor "
+                        "made continuing it unsafe or inappropriate."
+                    ),
+                ),
+                _Choice(
+                    "Adverse reactions",
+                    (
+                        "Treatment stopped because of adverse side effects, "
+                        "allergic reactions, or negative interactions with "
+                        "other medications."
+                    ),
+                ),
+                _Choice("Other", "Treatment stopped for other or unknown reasons."),
             ),
         ),
-        (
-            "Complex fact",
-            (
-                "Phrase is relevant but the decision requires the whole text. "
-                "Use only when obvious."
+        _ChoiceBox(
+            name="other",
+            header="Other event",
+            choices=(
+                _Choice(
+                    "Adverse reaction without discontinuation",
+                    (
+                        "Adverse side effects, allergic reactions, or negative "
+                        "interactions where treatment continued or was not the "
+                        "reason it stopped."
+                    ),
+                ),
+                _Choice(
+                    "Dosage change",
+                    (
+                        "Dose was increased or decreased. No justification "
+                        "or cause is needed."
+                    ),
+                ),
             ),
         ),
-        (
-            "Incorrect phrase",
-            (
-                "Extracted phrase is noise or a false positive; "
-                "any real description is elsewhere. Use only when obvious."
+        _ChoiceBox(
+            name="meta",
+            header="Meta",
+            choices=(
+                _Choice(
+                    "Incomplete phrase",
+                    (
+                        "Phrase too short to decide alone but decidable when "
+                        "expanded; annotate the expanded phrase. "
+                        "Use only when obvious."
+                    ),
+                ),
+                _Choice(
+                    "Incorrect phrase",
+                    (
+                        "Extracted phrase is noise or a false positive; "
+                        "any real description is elsewhere. "
+                        "Use only when obvious."
+                    ),
+                ),
             ),
         ),
     )
-    quality_choices = ET.SubElement(
+
+    row = ET.SubElement(
         view,
-        "Choices",
-        name="quality",
-        toName="text",
-        choice="multiple",
-        showInLine="true",
+        "View",
+        style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start",
     )
-    for value, hint in quality:
-        ET.SubElement(quality_choices, "Choice", value=value, hint=hint)
+
+    for box in boxes:
+        _choices(row, box)
 
     hidden = ET.SubElement(view, "View", style="display: none")
     spans = ET.SubElement(hidden, "Labels", name="span", toName="text")

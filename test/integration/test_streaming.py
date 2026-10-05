@@ -472,44 +472,37 @@ def test_export_writes_label_studio_tasks(
     assert 'value="drug" background="#a8e6a3"' in config
     assert config.index("<Choices ") < config.index('<View style="display: none">')
 
-    assert '<Header value="Esimese taseme märgendid" />' in config
-    assert '<Header value="Drug discontinuation alamliigid" />' in config
-    assert '<Header value="Metamärgendused fraasi kvaliteedi kohta" />' in config
+    assert '<Header value="Drug discontinuation" />' in config
+    assert '<Header value="Other event" />' in config
+    assert '<Header value="Meta" />' in config
 
-    assert (
-        '<Choices name="label" toName="text" choice="multiple" showInLine="true">'
-        in config
-    )
-    assert (
-        '<Choices name="dd_subtype" toName="text" choice="multiple" showInLine="true">'
-        in config
-    )
-    assert (
-        '<Choices name="quality" toName="text" choice="multiple" showInLine="true">'
-        in config
-    )
+    for name in ("discont", "other", "meta"):
+        choices = f'<Choices name="{name}" toName="text" choice="multiple"'
+        assert f'{choices} showInLine="false">' in config
 
-    first_level = (
-        "Adverse reactions (ADR)",
-        "Drug discontinuation (DD)",
-        "Dosage change (DC)",
-        "Incorrect phrase",
-    )
-    subtypes = (
+    discontinuation = (
         "Treatment success",
         "Treatment inefficacy",
         "Contraindication",
+        "Adverse reactions",
+        "Other",
     )
-    quality = (
+
+    other = (
+        "Adverse reaction without discontinuation",
+        "Dosage change",
+    )
+
+    meta = (
         "Incomplete phrase",
-        "Complex fact",
         "Incorrect phrase",
     )
-    for label in (*first_level, *subtypes, *quality):
+
+    for label in (*discontinuation, *other, *meta):
         assert f'value="{label}"' in config
         assert f'value="{label}" hint=' in config
 
-    for label in ("Non-medical reasons", "Other", "Indeterminate"):
+    for label in ("Complex fact", "Non-medical reasons", "Indeterminate"):
         assert f'value="{label}"' not in config
 
 

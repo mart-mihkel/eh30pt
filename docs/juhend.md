@@ -42,19 +42,28 @@
 
 - Uimasustunne peale ravimite võtmist jätkub. RR ravim → ADR?
 - Tekkinud laigud....patsient saab imuunsupressiravi...
+- Arvan, et kas ei ole tegamist X kõrvaltoimega
+- ei talu ravimi X doosi tõstmist → ???
 
 **Treatment success**: Discontinuation due to successful treatment completion or sufficient improvement in health.
 
 **Drug discontinuation**. Ravi kakestamine eeldab katkestamist vähemalt 14 päevaks küik need juhud kus dokumenteeritakse lühemaid katkestiso ei ole DD:
 
 - katkestab ravi 3 päevaks kuni protseduurini X → NO
-- Põ
+- Marevan 10/5.1mg x1 k.p (ei tarvita)
+- Diureetiline ravi lõpetatud → YES
+- Tekkis udune nägemine.. patsient enem ravimit X ei võta → DD & ADR
+- Ravimi kasutamine kuni 08.12, paranemine, ... → ??
+- eelnevad nähud taanunud, hoolduseks määrati X → NO
+- ravimitest võtnud vaid üksikutel kordadel → YES
 
 **Treatment inefficacy**: Perceived ineffectiveness of the treatment or loss of belief in its efficacy.
 
 - ...kael pinges -- ibumetin, paratsetamol ei aita → Treatment inefficacy
 - ..hakkas glükosamiini tarvitama. Ei tööta
--
+- ..arvestades haiguse algest levikut ... ,siis on edasine ravi sümptomaatiline →??
+- ..kolesterool vajab endiselt langetamist ja siiani pole ravimi X tarvitamine eesmärkväärtust saavutanud, siis teeme YZ-ti → ??
+- ravi jäi pooleli, kuna X mõjub paremini → ??
 
 **Contraindication**: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
 
