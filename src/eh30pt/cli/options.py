@@ -31,8 +31,35 @@ NShotOption = Annotated[
 
 OutputOption = Annotated[
     Path | None,
-    Option("--output", "-o", help="CSV path for the Label Studio export"),
+    Option("--output", "-o", help="Path for the generated export"),
 ]
+
+LabelStudioUrlOption = Annotated[
+    str,
+    Option(
+        "--label-studio-url",
+        envvar="LABEL_STUDIO_URL",
+        help="Base URL of the Label Studio server",
+    ),
+]
+
+ProjectTitleOption = Annotated[
+    str | None,
+    Option(
+        "--title",
+        help="Project title, inferred from the dataset when omitted",
+    ),
+]
+
+InferredDatasetOption = Annotated[
+    DatasetName.__value__ | None,
+    Option(
+        "--dataset",
+        "-d",
+        help="Dataset name, inferred from the run when omitted",
+    ),
+]
+
 
 LangExtractNShotOption = Annotated[
     int,

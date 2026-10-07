@@ -12,7 +12,7 @@ src/eh30pt/           # the package, installed as `eh30pt` command line app
   cli/                  # command line interface and script implementations
   datasets/             # per-dataset pipelines, registry and common utils
   esthealth/            # esthalth database orm schemas and queries
-  labeling/             # label studio tasks and labeling configs, per task type
+  labeling/             # label studio tasks, configs and api client
   modeling/             # arch detection, loading, tokenization, collation, metrics, trainer, tuning
   openai/               # OpenAI API wrangling helpers
   tracking/             # MLflow run management, config-hash resume

@@ -173,10 +173,10 @@ def test_qlora_obl(
     model_name: str,
 ) -> None:
     if not torch.cuda.is_available() and not torch.mps.is_available():
-        pytest.skip(reason="qlora requires CUDA or MPS for bitsandbytes 4-bit")
+        pytest.xfail(reason="qlora requires CUDA or MPS for bitsandbytes 4-bit")
 
     if model_name == "t5" and torch.mps.is_available():
-        pytest.skip(reason="mps sdpa does not support dropout in training")
+        pytest.xfail(reason="mps sdpa does not support dropout in training")
 
     if model_name in {"bert", "modernbert", "gemma"}:
         pytest.xfail(reason="qlora unsupported without custom target modules")

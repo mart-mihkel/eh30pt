@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
     from returns.result import Result
 
+    from eh30pt.labeling.types import ChoiceValue, SpanValue
     from eh30pt.types import RunConfig
 
 
@@ -343,10 +344,10 @@ def test_stream_evaluate_consumes_windows(
         assert (n_seen, invalid) == (3, 1)
 
 
-def test_export_writes_label_studio_tasks(
+def test_run_labeling_builds_span_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
     from eh30pt.labeling.extract import _locate_span
 
     _ = mlflow_client
@@ -354,7 +355,6 @@ def test_export_writes_label_studio_tasks(
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-exp"
     )
-    output = tmp_path / "out" / "tasks.json"
     user = "Patsient katkestas Nebileti, vererõhk normaliseerus."
     phrase = "katkestas Nebileti"
     with RunContext(settings, config=run_config) as ctx:
@@ -402,14 +402,16 @@ def test_export_writes_label_studio_tasks(
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
-    export_main(
-        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+    labeling = run_labeling(
+        mlflow_settings=MlflowSettings(
+            tracking_uri=mlflow_client.tracking_uri,
+            run_id=run_id,
+        ),
         dataset="discont-extract",
-        output=output,
     )
 
-    assert output.is_file()
-    tasks = json.loads(output.read_text(encoding="utf-8"))
+    tasks = labeling.tasks
+    config = labeling.config
 
     assert len(tasks) == 1
     assert tasks[0]["data"] == {
@@ -420,6 +422,8 @@ def test_export_writes_label_studio_tasks(
     }
 
     start, end = user.index(phrase), user.index(phrase) + len(phrase)
+    reason = "vererõhk normaliseerus"
+    reason_start = user.index(reason)
     drug_start = user.index("Nebilet")
     assert _locate_span(user, phrase) == (start, end)
     assert _locate_span(user, "") is None
@@ -447,6 +451,19 @@ def test_export_writes_label_studio_tasks(
                     "readonly": True,
                     "hidden": False,
                     "value": {
+                        "start": reason_start,
+                        "end": reason_start + len(reason),
+                        "text": reason,
+                        "labels": ["reason"],
+                    },
+                },
+                {
+                    "from_name": "span",
+                    "to_name": "text",
+                    "type": "labels",
+                    "readonly": True,
+                    "hidden": False,
+                    "value": {
                         "start": drug_start,
                         "end": drug_start + len("Nebilet"),
                         "text": "Nebilet",
@@ -458,22 +475,19 @@ def test_export_writes_label_studio_tasks(
         }
     ]
 
-    config_path = output.with_suffix(".xml")
-    assert config_path.is_file()
-
-    config = config_path.read_text(encoding="utf-8")
-
     assert '<Text name="text" value="$text" />' in config
     assert '<View style="display: none">' in config
     assert '<Labels name="span" toName="text">' in config
     assert '<Label value="phrase" />' not in config
+    assert '<Label value="reason" />' not in config
     assert '<Label value="drug" />' not in config
     assert 'value="phrase" background="#ffe08a"' in config
+    assert 'value="reason" background="#a9c6ff"' in config
     assert 'value="drug" background="#a8e6a3"' in config
     assert config.index("<Choices ") < config.index('<View style="display: none">')
 
     assert '<Header value="Drug discontinuation" />' in config
-    assert '<Header value="Other event" />' in config
+    assert '<Header value="Not discontinuation" />' in config
     assert '<Header value="Meta" />' in config
 
     for name in ("discont", "other", "meta"):
@@ -483,7 +497,7 @@ def test_export_writes_label_studio_tasks(
     discontinuation = (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication",
+        "Contraindication/unsafe co-usage",
         "Adverse reactions",
         "Other",
     )
@@ -491,6 +505,7 @@ def test_export_writes_label_studio_tasks(
     other = (
         "Adverse reaction without discontinuation",
         "Dosage change",
+        "Other event",
     )
 
     meta = (
@@ -506,17 +521,16 @@ def test_export_writes_label_studio_tasks(
         assert f'value="{label}"' not in config
 
 
-def test_export_writes_choice_tasks_for_classification_dataset(
+def test_run_labeling_builds_choice_tasks_for_classification_dataset(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-oblique-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-oblique-exp"
     )
-    output = tmp_path / "out" / "tasks.json"
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         batch = [
@@ -526,13 +540,16 @@ def test_export_writes_choice_tasks_for_classification_dataset(
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
-    export_main(
-        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+    labeling = run_labeling(
+        mlflow_settings=MlflowSettings(
+            tracking_uri=mlflow_client.tracking_uri,
+            run_id=run_id,
+        ),
         dataset="oblique",
-        output=output,
     )
 
-    tasks = json.loads(output.read_text(encoding="utf-8"))
+    tasks = labeling.tasks
+    config = labeling.config
 
     _exported = 2
     assert len(tasks) == _exported
@@ -554,9 +571,8 @@ def test_export_writes_choice_tasks_for_classification_dataset(
             }
         ],
     }
-    assert tasks[1]["predictions"][0]["result"][0]["value"]["choices"] == ["seotud"]
-
-    config = output.with_suffix(".xml").read_text(encoding="utf-8")
+    chosen = tasks[1]["predictions"][0]["result"][0]["value"]
+    assert cast("ChoiceValue", chosen)["choices"] == ["seotud"]
 
     assert '<Text name="text" value="$text" />' in config
     assert (
@@ -570,17 +586,16 @@ def test_export_writes_choice_tasks_for_classification_dataset(
     assert '<View style="display: none">' not in config
 
 
-def test_export_reads_struct_predictions(
+def test_run_labeling_reads_struct_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-struct-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-struct-exp"
     )
-    output = tmp_path / "out" / "tasks.json"
     user = "Tekkis köha, enalapriil ära jäeti."
     phrase = "enalapriil"
     with RunContext(settings, config=run_config) as ctx:
@@ -596,7 +611,7 @@ def test_export_reads_struct_predictions(
                     "user": user,
                     "prediction": {
                         "phrase": phrase,
-                        "reason": "tekkis köha",
+                        "reason": "Tekkis köha",
                         "drug": "enalapriil",
                     },
                 },
@@ -608,27 +623,29 @@ def test_export_reads_struct_predictions(
             ],
         )
 
-    export_main(
-        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+    labeling = run_labeling(
+        mlflow_settings=MlflowSettings(
+            tracking_uri=mlflow_client.tracking_uri,
+            run_id=run_id,
+        ),
         dataset="discont-extract",
-        output=output,
     )
 
-    tasks = json.loads(output.read_text(encoding="utf-8"))
+    tasks = labeling.tasks
 
     assert len(tasks) == 1
     assert tasks[0]["data"]["text"] == user
 
     start = user.index(phrase)
-    span = tasks[0]["predictions"][0]["result"][0]["value"]
+    span = cast("SpanValue", tasks[0]["predictions"][0]["result"][0]["value"])
     assert (span["start"], span["end"]) == (start, start + len(phrase))
     assert tasks[0]["predictions"][0]["model_version"] == run_id
 
 
-def test_export_rejects_non_extraction_predictions(
+def test_run_labeling_rejects_non_extraction_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-plain-exp")
@@ -641,19 +658,19 @@ def test_export_rejects_non_extraction_predictions(
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
     with pytest.raises(ValueError, match="not extraction JSON"):
-        export_main(
-            settings=MlflowSettings(
-                tracking_uri=mlflow_client.tracking_uri, run_id=run_id
+        run_labeling(
+            mlflow_settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri,
+                run_id=run_id,
             ),
             dataset="discont-extract",
-            output=tmp_path / "out.json",
         )
 
 
-def test_export_rejects_non_object_predictions(
+def test_run_labeling_rejects_non_object_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-number-exp")
@@ -666,46 +683,96 @@ def test_export_rejects_non_object_predictions(
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
     with pytest.raises(ValueError, match="not extraction JSON"):
-        export_main(
-            settings=MlflowSettings(
-                tracking_uri=mlflow_client.tracking_uri, run_id=run_id
+        run_labeling(
+            mlflow_settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri,
+                run_id=run_id,
             ),
             dataset="discont-extract",
-            output=tmp_path / "out.json",
         )
 
 
-def test_export_writes_empty_list_without_shards(
-    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+def test_run_labeling_without_shards_is_empty(
+    mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-empty-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-empty-exp"
     )
-    output = tmp_path / "out" / "tasks.json"
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
 
-    export_main(
-        settings=MlflowSettings(tracking_uri=mlflow_client.tracking_uri, run_id=run_id),
+    labeling = run_labeling(
+        mlflow_settings=MlflowSettings(
+            tracking_uri=mlflow_client.tracking_uri,
+            run_id=run_id,
+        ),
         dataset="discont-extract",
-        output=output,
     )
 
-    assert json.loads(output.read_text(encoding="utf-8")) == []
+    assert labeling.tasks == []
 
 
-def test_export_without_run_id_raises(tmp_path: Path) -> None:
-    from eh30pt.cli.scripts.export import main as export_main
+def test_run_labeling_without_run_id_raises() -> None:
+    from eh30pt.cli.scripts.labeling import run_labeling
 
     with pytest.raises(ValueError, match="no mlflow run id"):
-        export_main(
-            settings=MlflowSettings(tracking_uri="sqlite:///mlflow.db"),
+        run_labeling(
+            mlflow_settings=MlflowSettings(tracking_uri="sqlite:///mlflow.db"),
             dataset="discont-extract",
-            output=tmp_path / "out.csv",
+        )
+
+
+def test_run_labeling_infers_dataset_from_run(
+    mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
+) -> None:
+    from eh30pt.cli.scripts.labeling import run_labeling
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-infer-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="export-infer-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        run_id = ctx.run_id
+        batch = [
+            GenerateRecord(id=0, user="Ta ei ole seotud", prediction="vaba"),
+            GenerateRecord(id=1, user="Ta on seotud", prediction="seotud"),
+        ]
+        log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
+
+    labeling = run_labeling(
+        mlflow_settings=MlflowSettings(
+            tracking_uri=mlflow_client.tracking_uri,
+            run_id=run_id,
+        ),
+    )
+
+    assert [task["data"] for task in labeling.tasks] == [
+        {"text": "Ta ei ole seotud"},
+        {"text": "Ta on seotud"},
+    ]
+
+
+def test_run_labeling_without_dataset_in_run_raises(
+    mlflow_client: MlflowClient,
+) -> None:
+    from eh30pt.cli.scripts.labeling import run_labeling
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-no-dataset-exp")
+    with mlflow.start_run() as run:
+        run_id = run.info.run_id
+
+    with pytest.raises(ValueError, match="records no dataset"):
+        run_labeling(
+            mlflow_settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri,
+                run_id=run_id,
+            ),
         )
 
 

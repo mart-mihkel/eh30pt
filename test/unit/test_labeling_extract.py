@@ -31,10 +31,11 @@ def test_every_extraction_dataset_is_exportable() -> None:
             pytest.fail(f"extraction dataset '{name}' is not exportable: {exc}")
 
 
-def test_span_config_highlights_phrase_and_drug() -> None:
+def test_span_config_highlights_phrase_reason_and_drug() -> None:
     config = span_config()
 
     assert 'value="phrase" background="#ffe08a"' in config
+    assert 'value="reason" background="#a9c6ff"' in config
     assert 'value="drug" background="#a8e6a3"' in config
     assert config.index("<Choices ") < config.index('<View style="display: none">')
 
@@ -43,7 +44,7 @@ def test_span_config_has_three_choice_boxes() -> None:
     config = span_config()
 
     assert '<Header value="Drug discontinuation" />' in config
-    assert '<Header value="Other event" />' in config
+    assert '<Header value="Not discontinuation" />' in config
     assert '<Header value="Meta" />' in config
 
     common = 'toName="text" choice="multiple" showInLine="false"'
@@ -53,9 +54,8 @@ def test_span_config_has_three_choice_boxes() -> None:
     for label in (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication",
+        "Contraindication/unsafe co-usage",
         "Adverse reactions",
-        "Other",
         "Adverse reaction without discontinuation",
         "Dosage change",
         "Incomplete phrase",
@@ -103,7 +103,7 @@ def test_span_config_highlights_the_header_of_a_used_box() -> None:
     assert config.count(f'className="{_title_cls}"') == _boxes
 
     title = f'<View className="{_title_cls}">'
-    for header in ("Drug discontinuation", "Other event", "Meta"):
+    for header in ("Drug discontinuation", "Not discontinuation", "Meta"):
         assert f'{title}\n        <Header value="{header}" />\n      </View>' in config
 
 

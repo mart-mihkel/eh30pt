@@ -79,6 +79,20 @@ class StreamSettings(BaseModel):
     from_id: int | None = Field(default=None, ge=0)
 
 
+class LabelStudioSettings(BaseSettings):
+    """Label Studio API connection settings."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="label_studio_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    url: str = "http://localhost:8080"
+    token: SecretStr
+    """Personal access token, exchanged for a short-lived access token."""
+
+
 class ServerSettings(BaseModel):
     """Server connection settings."""
 

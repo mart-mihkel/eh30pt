@@ -16,7 +16,9 @@ from eh30pt.cli.options import (
     ExportRunOption,
     FromIdOption,
     HeadOnlyOption,
+    InferredDatasetOption,
     InnerCommandArgument,
+    LabelStudioUrlOption,
     LangExtractNShotOption,
     LearningRateOption,
     LogIntervalOption,
@@ -26,9 +28,9 @@ from eh30pt.cli.options import (
     LoraRankOption,
     ModelOption,
     NShotOption,
-    OutputOption,
     PatienceOption,
     PrefixInitOption,
+    ProjectTitleOption,
     PromptArgument,
     ProviderOption,
     RunIdOption,
@@ -49,7 +51,6 @@ from eh30pt.cli.options import (
     TrainStepsOption,
     WarmupRatioOption,
 )
-from eh30pt.constants import LOGDIR
 from eh30pt.logging import logger, setup_logging
 from eh30pt.settings import (
     CommonSettings,
@@ -571,27 +572,35 @@ def langextract(
     )
 
 
-@app.command(help="Export predictions as Label Studio tasks")
-def export_task(
+@app.command(help="Create a Label Studio project from prediction shards")
+def create_task(
     *,
     mlflow_run_id: ExportRunOption,
-    dataset: DatasetOption,
+    dataset: InferredDatasetOption = None,
+    title: ProjectTitleOption = None,
+    label_studio_url: LabelStudioUrlOption = "http://localhost:8080",
     mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    output: OutputOption = None,
     log_level: LogLevelOption = "info",
 ) -> None:
-    """Export prediction shards as Label Studio tasks and a labeling config."""
-    from eh30pt.cli.scripts.export import main
+    """Create a Label Studio project and import the run's tasks into it."""
+    from eh30pt.cli.scripts.labeling import main
+    from eh30pt.settings import LabelStudioSettings
 
     logger.setLevel(log_level.upper())
 
-    if output is None:
-        output = LOGDIR / f"task-{mlflow_run_id}.json"
-        logger.debug("inferred output dir '%s'", output)
-
+    studio = LabelStudioSettings(url=label_studio_url)
     mlflow = MlflowSettings(tracking_uri=mlflow_tracking_uri, run_id=mlflow_run_id)
 
-    main(settings=mlflow, dataset=dataset, output=output)
+    project = main(
+        settings=studio,
+        mlflow_settings=mlflow,
+        dataset=dataset,
+        title=title,
+    )
+
+    logger.info(
+        "label studio project %d is ready at '%s'", project.id, label_studio_url
+    )
 
 
 if __name__ == "__main__":

@@ -88,7 +88,7 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
             },
         ),
         ExtractShot(
-            user="kaebusi ei ole",
+            user="kaebusi ei ole, TVL (töö võimetus leht) lõpetada",
             extractions={"phrase": "", "reason": "", "drug": ""},
         ),
     ]

@@ -151,7 +151,7 @@ def span_config() -> str:
                     "Treatment stopped because it was seen as ineffective.",
                 ),
                 _Choice(
-                    "Contraindication",
+                    "Contraindication/unsafe co-usage",
                     (
                         "Treatment stopped because a condition or risk factor "
                         "made continuing it unsafe or inappropriate."
@@ -170,7 +170,7 @@ def span_config() -> str:
         ),
         _ChoiceBox(
             name="other",
-            header="Other event",
+            header="Not discontinuation",
             choices=(
                 _Choice(
                     "Adverse reaction without discontinuation",
@@ -185,6 +185,13 @@ def span_config() -> str:
                     (
                         "Dose was increased or decreased. No justification "
                         "or cause is needed."
+                    ),
+                ),
+                _Choice(
+                    "Other event",
+                    (
+                        "An event that is neither a discontinuation nor any of "
+                        "the reasons listed here."
                     ),
                 ),
             ),
@@ -225,6 +232,7 @@ def span_config() -> str:
     hidden = ET.SubElement(view, "View", style="display: none")
     spans = ET.SubElement(hidden, "Labels", name="span", toName="text")
     ET.SubElement(spans, "Label", value="phrase", background="#ffe08a")
+    ET.SubElement(spans, "Label", value="reason", background="#a9c6ff")
     ET.SubElement(spans, "Label", value="drug", background="#a8e6a3")
 
     ET.indent(view)
@@ -238,9 +246,13 @@ def span_task(
     drug: str,
     run_id: str,
 ) -> ExtractionTask | None:
-    """Build a task with phrase and drug highlighted, or None without both."""
+    """Build a task with all three spans highlighted, or None without them."""
     phrase_span = _locate_span(user, phrase)
     if phrase_span is None:
+        return None
+
+    reason_span = _locate_span(user, reason)
+    if reason_span is None:
         return None
 
     drug_span = _locate_span(user, drug)
@@ -249,6 +261,7 @@ def span_task(
 
     results = [
         _span_result("phrase", user, phrase_span),
+        _span_result("reason", user, reason_span),
         _span_result("drug", user, drug_span),
     ]
 
@@ -269,9 +282,9 @@ def _assert_span_fields(dataset: DatasetName) -> None:
     """
     Raise when an extraction dataset does not match the exported span fields.
 
-    The span label config highlights a phrase and a drug, and every task shows
-    the reason next to them, so only a dataset extracting exactly those three
-    fields can be exported as span tasks.
+    The span label config highlights a phrase, a reason and a drug, so only
+    a dataset extracting exactly those three fields can be exported as span
+    tasks.
     """
     exported: tuple[str, ...] = ("phrase", "reason", "drug")
     declared = get_extract_fields(dataset)
@@ -320,6 +333,8 @@ def extraction_labeling(
         tasks.append(task)
 
     if skipped:
-        logger.warning("dropped %d rows without a locatable phrase or drug", skipped)
+        logger.warning(
+            "dropped %d rows without a locatable phrase, reason or drug", skipped
+        )
 
     return Labeling(tasks=tasks, config=span_config())
