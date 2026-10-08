@@ -22,6 +22,8 @@ from eh30pt.datasets.multinerd import Multinerd, load_multinerd
 from eh30pt.datasets.oblique import Obl, load_obl
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from openai.types.shared_params import ResponseFormatJSONSchema
     from transformers import PreTrainedTokenizerFast
 
@@ -76,10 +78,6 @@ def assert_extraction(dataset: DatasetName, action: str) -> None:
 
 def get_labels(dataset: DatasetName) -> tuple[str, ...]:
     """Return the label values of `dataset` in id order."""
-    if dataset == "discont-extract":
-        msg = f"dataset '{dataset}' is an extraction dataset and has no labels"
-        raise ValueError(msg)
-
     if dataset == "multinerd":
         return tuple(Multinerd.id2label.values())
 
@@ -93,7 +91,8 @@ def get_labels(dataset: DatasetName) -> tuple[str, ...]:
         return tuple(DiscontDecider.id2label.values())
 
     if dataset == "discont-extract":
-        return tuple(DiscontExtract.id2label.values())
+        msg = f"dataset '{dataset}' is an extraction dataset and has no labels"
+        raise ValueError(msg)
 
     if dataset == "discont-multiple":
         return tuple(DiscontMultiple.id2label.values())
@@ -209,6 +208,41 @@ def get_extract_fields(dataset: DatasetName) -> tuple[str, ...]:
     return tuple(field for field in required if isinstance(field, str))
 
 
+def _check_source(
+    dataset: DatasetName,
+    source: DataSource | None,
+    start_after: int | None,
+    labeling_projects: Sequence[int] | None,
+) -> None:
+    """Raise when the data origin does not fit the dataset."""
+    _with_offset = (
+        "discont-classifier",
+        "discont-decider",
+        "discont-extract",
+        "discont-multiple",
+    )
+
+    if start_after is not None and dataset not in _with_offset:
+        msg = f"start_after is only supported for discont datasets, got {dataset}"
+        raise ValueError(msg)
+
+    if source is not None and source != "trigger" and dataset not in _with_offset:
+        msg = f"source '{source}' is only supported for discont datasets, got {dataset}"
+        raise ValueError(msg)
+
+    if source == "extract-labels" and dataset != "discont-classifier":
+        msg = f"source '{source}' only trains 'discont-classifier', got '{dataset}'"
+        raise ValueError(msg)
+
+    if source == "extract-labels" and not labeling_projects:
+        msg = "source 'extract-labels' needs project ids"
+        raise ValueError(msg)
+
+    if source != "extract-labels" and labeling_projects is not None:
+        msg = f"project ids need source 'extract-labels', got '{source}'"
+        raise ValueError(msg)
+
+
 def load_data(
     tokenizer: PreTrainedTokenizerFast,
     dataset: DatasetName,
@@ -217,28 +251,21 @@ def load_data(
     n_shot: int = 0,
     n_virtual: int = 0,
     start_after: int | None = None,
-    source: DataSource = "trigger",
+    source: DataSource | None = None,
+    labeling_projects: Sequence[int] | None = None,
 ) -> DataSplits:
     """Load dataset splits, streaming only rows with id above start_after."""
-    _with_offset = (
-        "discont-classifier",
-        "discont-decider",
-        "discont-extract",
-        "discont-multiple",
-    )
-    if start_after is not None and dataset not in _with_offset:
-        msg = f"start_after is only supported for discont datasets, got {dataset}"
-        raise ValueError(msg)
-
-    if source != "trigger" and dataset not in _with_offset:
-        msg = f"source '{source}' is only supported for discont datasets, got {dataset}"
-        raise ValueError(msg)
+    _check_source(dataset, source, start_after, labeling_projects)
 
     if dataset == "multinerd":
         return load_multinerd(tokenizer, arch, n_shot, n_virtual)
 
     if dataset == "oblique":
         return load_obl(tokenizer, arch, n_shot, n_virtual)
+
+    if source is None:
+        msg = f"source is required for discont datasets, got '{dataset}'"
+        raise ValueError(msg)
 
     if dataset == "discont-classifier":
         return load_discont_classifier(
@@ -248,6 +275,7 @@ def load_data(
             n_virtual,
             source=source,
             start_after=start_after,
+            labeling_projects=labeling_projects,
         )
 
     if dataset == "discont-decider":

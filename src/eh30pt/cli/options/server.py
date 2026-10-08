@@ -47,7 +47,7 @@ ProviderOption = Annotated[
 ]
 
 SourceOption = Annotated[
-    DataSource.__value__,
+    DataSource.__value__ | None,
     Option("--source", help="Est-Health 30 query for discontinuation events"),
 ]
 

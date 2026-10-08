@@ -47,7 +47,15 @@ def main(
 
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
-    splits = load_data(tokenizer, common.dataset, arch, n_shot=common.n_shot)
+    splits = load_data(
+        tokenizer,
+        common.dataset,
+        arch,
+        n_shot=common.n_shot,
+        source=common.source,
+        labeling_projects=common.labeling_projects,
+    )
+
     sys_prompt = get_sys_prompt(common.dataset)
     model = prepare_lora_model(
         tokenizer,
@@ -75,6 +83,7 @@ def main(
     config: QLoRaRunConfig = {
         "method": method,
         "dataset": common.dataset,
+        "source": common.source,
         "architecture": arch,
         "base_model": common.model,
         "lora_r": lora.rank,

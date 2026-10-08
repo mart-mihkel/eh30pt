@@ -103,7 +103,7 @@ async def main(
     system_prompt: str | None,
     server: ServerSettings,
     dataset: DatasetName,
-    source: DataSource,
+    source: DataSource | None,
     n_shot: int,
     stream: StreamSettings,
     mlflow: MlflowSettings,
@@ -142,6 +142,7 @@ async def main(
     config: FewShotRunConfig = {
         "method": method,
         "dataset": dataset,
+        "source": source,
         "architecture": "decoder",
         "base_model": model,
         "n_shot": n_shot,

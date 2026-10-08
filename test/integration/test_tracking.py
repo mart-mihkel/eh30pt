@@ -69,6 +69,7 @@ def run_config() -> RunConfig:
         "base_model": "some-model",
         "n_shot": 0,
         "batch_size": 8,
+        "source": "trigger",
         "system_prompt": "original prompt",
         "total_parameters": 100,
         "trainable_parameters": 10,

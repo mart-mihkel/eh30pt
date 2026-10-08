@@ -213,7 +213,7 @@ def load_discont_extract(
     n_virtual: int = 0,
     *,
     page_size: int = 1000,
-    source: DataSource = "trigger",
+    source: DataSource,
     start_after: int | None = None,
 ) -> DataSplits:
     """Load extract candidates as splits with only test populated."""

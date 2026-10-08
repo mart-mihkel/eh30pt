@@ -124,6 +124,21 @@ def _chosen_labels(result: StudioResult) -> tuple[str, ...]:
     return tuple(value.get("choices", ()))
 
 
+def group_choices(
+    annotation: StudioAnnotation, controls: Sequence[str]
+) -> dict[str, tuple[str, ...]]:
+    """Group one annotation's chosen labels by control, in control order."""
+    chosen: dict[str, list[str]] = {control: [] for control in controls}
+    for result in annotation["result"]:
+        labels = chosen.get(result["from_name"])
+        if labels is None:
+            continue
+
+        labels.extend(_chosen_labels(result))
+
+    return {control: tuple(chosen[control]) for control in controls}
+
+
 def annotation_frame(
     tasks: Sequence[StudioTask], controls: Sequence[str]
 ) -> pl.DataFrame:
@@ -139,13 +154,7 @@ def annotation_frame(
     for task in tasks:
         data = task["data"]
         for annotation in task["annotations"]:
-            chosen: dict[str, list[str]] = {control: [] for control in controls}
-            for result in annotation["result"]:
-                labels = chosen.get(result["from_name"])
-                if labels is None:
-                    continue
-
-                labels.extend(_chosen_labels(result))
+            chosen = group_choices(annotation, controls)
 
             rows.append(task["id"])
             annotations.append(annotation["id"])
@@ -153,7 +162,7 @@ def annotation_frame(
             phrases.append(data.get("phrase", ""))
             drugs.append(data.get("drug", ""))
             reasons.append(data.get("reason", ""))
-            grouped.append([tuple(chosen[control]) for control in controls])
+            grouped.append([chosen[control] for control in controls])
 
     frame = pl.DataFrame(
         {

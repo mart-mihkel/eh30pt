@@ -40,6 +40,13 @@ def test_oblique_format_user_prompt() -> None:
     )
 
 
+def test_classifier_format_user_prompt() -> None:
+    assert (
+        DiscontClassifier._format_user_prompt("Katkestas ravi", "katkestas", "Aspiriin")
+        == "Text: Katkestas ravi\nPhrase: katkestas\nDrug: Aspiriin\nCategory:"
+    )
+
+
 def test_multinerd_format_user_prompt() -> None:
     assert (
         Multinerd._format_user_prompt("Cats run fast", "Cats")
@@ -120,7 +127,7 @@ def test_extract_schema_limits_field_lengths() -> None:
 def test_registry() -> None:
     _obl_fewshots = 5
     _multinerd_labels = 15
-    _classifier_labels = 7
+    _classifier_labels = 8
     _decider_labels = 3
 
     assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
@@ -247,6 +254,7 @@ def test_load_data_rejects_start_after_for_static_datasets(
             dataset,
             "decoder",
             start_after=100,
+            source="trigger",
         )
 
 
@@ -256,9 +264,18 @@ def test_load_data_rejects_source_for_static_datasets() -> None:
         load_data(tokenizer, "oblique", "decoder", source="observed")
 
 
+@pytest.mark.parametrize("dataset", ["discont-classifier", "discont-extract"])
+def test_load_data_requires_source_for_discont_datasets(
+    dataset: DatasetName,
+) -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    with pytest.raises(ValueError, match="source is required"):
+        load_data(tokenizer, dataset, "decoder")
+
+
 def test_load_data_defaults_to_trigger_source() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = load_data(tokenizer, "discont-classifier", "decoder")
+    data = load_data(tokenizer, "discont-classifier", "decoder", source="trigger")
 
     assert list(data.train) == []
     assert list(data.eval) == []
@@ -284,7 +301,7 @@ def test_load_data_rejects_non_decoder_arch_for_extract(arch: Architecture) -> N
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="not supported"):
-        load_data(tokenizer, "discont-extract", arch)
+        load_data(tokenizer, "discont-extract", arch, source="trigger")
 
 
 def test_get_labels_rejects_invalid_dataset() -> None:
@@ -309,7 +326,7 @@ def test_get_few_shots_covers_discont_datasets() -> None:
     assert len(get_few_shots("discont-decider", _n_shots)) == _n_shots
     assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
 
-    with pytest.raises(ValueError, match="only 7 defined"):
+    with pytest.raises(ValueError, match="only 8 defined"):
         get_few_shots("discont-classifier", len(DiscontClassifier.few_shots) + 1)
 
 
@@ -327,7 +344,9 @@ def test_load_data_rejects_invalid_dataset() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="invalid dataset"):
-        load_data(tokenizer, cast("DatasetName", "unknown"), "decoder")
+        load_data(
+            tokenizer, cast("DatasetName", "unknown"), "decoder", source="trigger"
+        )
 
 
 def test_dataset_input_rejects_invalid_dataset() -> None:
@@ -372,7 +391,9 @@ def test_discont_tokenize_rejects_too_many_shots() -> None:
 
     with pytest.raises(ValueError, match="more few shot examples"):
         DiscontClassifier(lambda: iter([]), tokenizer, "decoder").tokenize(
-            {"id": 1, "text": "x"}, tokenizer, n_shot=100
+            {"id": 1, "text": "x", "phrase": "x", "drug": "y", "label": "Other"},
+            tokenizer,
+            n_shot=100,
         )
 
     with pytest.raises(ValueError, match="more few shot examples"):

@@ -7,7 +7,7 @@ from openai.types.shared_params import ResponseFormatJSONSchema
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from eh30pt.types import Architecture, DatasetName, Provider
+from eh30pt.types import Architecture, DatasetName, DataSource, Provider
 
 
 class PostgresSettings(BaseSettings):
@@ -96,6 +96,12 @@ class LabelStudioSettings(BaseSettings):
 class ServerSettings(BaseModel):
     """Server connection settings."""
 
+    model_config = SettingsConfigDict(
+        env_prefix="openai_",
+        env_file=".env",
+        extra="ignore",
+    )
+
     provider: Provider = "llama"
     api_key: str = "no-auth"
     timeout: int = Field(default=300, ge=0)
@@ -121,3 +127,5 @@ class CommonSettings(BaseModel):
     dataset: DatasetName
     arch: Architecture | None = None
     n_shot: int = Field(default=0, ge=0)
+    source: DataSource | None = None
+    labeling_projects: list[int] | None = None

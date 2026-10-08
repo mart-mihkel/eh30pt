@@ -45,6 +45,8 @@ def test_rejects_unknown_dataset() -> None:
             "hf-internal-testing/tiny-random-bert",
             "--dataset",
             "unknown",
+            "--source",
+            "trigger",
         ],
     )
 
@@ -59,6 +61,8 @@ def test_rejects_extraction_dataset_for_training() -> None:
             "hf-internal-testing/tiny-random-bert",
             "--dataset",
             "discont-extract",
+            "--source",
+            "trigger",
             "--train-steps",
             "10",
         ],
@@ -74,6 +78,8 @@ def test_rejects_classification_dataset_for_langextract() -> None:
             "langextract",
             "--dataset",
             "multinerd",
+            "--source",
+            "trigger",
         ],
     )
 
@@ -82,7 +88,17 @@ def test_rejects_classification_dataset_for_langextract() -> None:
 
 
 def test_rejects_unknown_provider() -> None:
-    result = _invoke(["evaluate", "--dataset", "oblique", "--provider", "unknown"])
+    result = _invoke(
+        [
+            "evaluate",
+            "--dataset",
+            "oblique",
+            "--source",
+            "trigger",
+            "--provider",
+            "unknown",
+        ],
+    )
 
     assert result.exit_code != 0
 
@@ -107,6 +123,8 @@ def test_few_shot_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--source",
+            "trigger",
             "--batch-size",
             "8",
             "--seed",
@@ -140,6 +158,8 @@ def test_fine_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--source",
+            "trigger",
             "--train-steps",
             "10",
             "--batch-size",
@@ -189,6 +209,8 @@ def test_qlora_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--source",
+            "trigger",
             "--train-steps",
             "10",
             "--batch-size",
@@ -226,6 +248,8 @@ def test_prompt_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--source",
+            "trigger",
             "--train-steps",
             "10",
             "--batch-size",

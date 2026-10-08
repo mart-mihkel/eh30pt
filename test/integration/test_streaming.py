@@ -63,6 +63,7 @@ def run_config() -> RunConfig:
         "base_model": "some-model",
         "n_shot": 0,
         "batch_size": 1,
+        "source": "trigger",
         "system_prompt": "prompt",
     }
 
@@ -497,7 +498,7 @@ def test_run_labeling_builds_span_tasks(
     discontinuation = (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication/unsafe co-usage",
+        "Contraindication",
         "Adverse reactions",
         "Other",
     )
@@ -505,7 +506,7 @@ def test_run_labeling_builds_span_tasks(
     other = (
         "Adverse reaction without discontinuation",
         "Dosage change",
-        "Other event",
+        "Other non-discontinuation",
     )
 
     meta = (

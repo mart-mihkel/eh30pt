@@ -53,8 +53,15 @@ def main(
     n_virtual = get_n_virtual(tokenizer, sys_prompt)
 
     splits = load_data(
-        tokenizer, common.dataset, arch, n_shot=common.n_shot, n_virtual=n_virtual
+        tokenizer,
+        common.dataset,
+        arch,
+        n_shot=common.n_shot,
+        n_virtual=n_virtual,
+        source=common.source,
+        labeling_projects=common.labeling_projects,
     )
+
     model = prepare_pt_model(prefix_init, tokenizer, common.model, arch, common.dataset)
 
     total = sum(p.numel() for p in model.parameters())
@@ -77,6 +84,7 @@ def main(
     config: PromptTuneRunConfig = {
         "method": method,
         "dataset": common.dataset,
+        "source": common.source,
         "architecture": arch,
         "base_model": common.model,
         "prefix_init": prefix_init,

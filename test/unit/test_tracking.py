@@ -32,6 +32,7 @@ def run_config() -> RunConfig:
         "base_model": "some-model",
         "n_shot": 0,
         "batch_size": 8,
+        "source": "trigger",
         "system_prompt": "original prompt",
         "total_parameters": 100,
         "trainable_parameters": 10,
@@ -101,8 +102,12 @@ def test_identity_view_keeps_identity_fields(run_config: RunConfig) -> None:
     other_method = dict(run_config)
     other_method["method"] = "cls-head"
 
+    other_source = dict(run_config)
+    other_source["source"] = "observed"
+
     assert _identity_view(run_config) != _identity_view(cast("RunConfig", faster))
     assert _identity_view(run_config) != _identity_view(cast("RunConfig", other_method))
+    assert _identity_view(run_config) != _identity_view(cast("RunConfig", other_source))
 
 
 def _read_records(path: Path) -> list[Any]:

@@ -17,6 +17,7 @@ from eh30pt.cli.options.common import (
 )
 from eh30pt.cli.options.labeling import (
     LabelStudioUrlOption,
+    OptionalProjectIdsOption,
     ProjectIdsOption,
     ProjectTitleOption,
 )
@@ -133,6 +134,8 @@ def fine_tune(
     patience: PatienceOption = 0,
     tolerance: ToleranceOption = 0.01,
     arch: ArchOption = None,
+    source: SourceOption = None,
+    labeling_projects: OptionalProjectIdsOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_run_id: RunIdOption = None,
@@ -152,6 +155,8 @@ def fine_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        source=source,
+        labeling_projects=labeling_projects,
     )
 
     mlflow = MlflowSettings(
@@ -171,7 +176,12 @@ def fine_tune(
         warmup_ratio=warmup_ratio,
     )
 
-    main(common=common, head_only=head_only, training=training, mlflow=mlflow)
+    main(
+        common=common,
+        head_only=head_only,
+        training=training,
+        mlflow=mlflow,
+    )
 
 
 @app.command(help="Prompt-tune and run test evaluation")
@@ -189,6 +199,8 @@ def prompt_tune(
     patience: PatienceOption = 0,
     tolerance: ToleranceOption = 0.01,
     arch: ArchOption = None,
+    source: SourceOption = None,
+    labeling_projects: OptionalProjectIdsOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_run_id: RunIdOption = None,
@@ -208,6 +220,8 @@ def prompt_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        source=source,
+        labeling_projects=labeling_projects,
     )
 
     mlflow = MlflowSettings(
@@ -227,7 +241,12 @@ def prompt_tune(
         warmup_ratio=warmup_ratio,
     )
 
-    main(common=common, prefix_init=prefix_init, training=training, mlflow=mlflow)
+    main(
+        common=common,
+        prefix_init=prefix_init,
+        training=training,
+        mlflow=mlflow,
+    )
 
 
 @app.command(help="QLoRA-tune and run test evaluation")
@@ -247,6 +266,8 @@ def qlora(
     patience: PatienceOption = 0,
     tolerance: ToleranceOption = 0.01,
     arch: ArchOption = None,
+    source: SourceOption = None,
+    labeling_projects: OptionalProjectIdsOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_run_id: RunIdOption = None,
@@ -266,6 +287,8 @@ def qlora(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        source=source,
+        labeling_projects=labeling_projects,
     )
 
     lora = LoRASettings(
@@ -291,7 +314,12 @@ def qlora(
         warmup_ratio=warmup_ratio,
     )
 
-    main(common=common, lora=lora, training=training, mlflow=mlflow)
+    main(
+        common=common,
+        lora=lora,
+        training=training,
+        mlflow=mlflow,
+    )
 
 
 @app.command(help="Run test evaluation with few-shot learning")
@@ -302,6 +330,7 @@ def few_shot(
     n_shot: NShotOption = 0,
     batch_size: BatchSizeOption = 8,
     arch: ArchOption = None,
+    source: SourceOption = None,
     mlflow_experiment: ExperimentOption = "eh30pt",
     mlflow_run_name: RunNameOption = None,
     mlflow_run_id: RunIdOption = None,
@@ -321,6 +350,7 @@ def few_shot(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        source=source,
     )
 
     mlflow = MlflowSettings(
@@ -421,7 +451,7 @@ def completion(
 def evaluate(
     *,
     dataset: DatasetOption,
-    source: SourceOption = "trigger",
+    source: SourceOption = None,
     provider: ProviderOption = "llama",
     n_shot: NShotOption = 0,
     system_prompt: SystemOption = None,
@@ -477,7 +507,7 @@ def evaluate(
 def generate(
     *,
     dataset: DatasetOption,
-    source: SourceOption = "trigger",
+    source: SourceOption = None,
     provider: ProviderOption = "llama",
     n_shot: NShotOption = 0,
     system_prompt: SystemOption = None,
@@ -533,7 +563,7 @@ def generate(
 def langextract(
     *,
     dataset: DatasetOption,
-    source: SourceOption = "trigger",
+    source: SourceOption = None,
     provider: ProviderOption = "llama",
     n_shot: LangExtractNShotOption = 1,
     system_prompt: SystemOption = None,
@@ -616,7 +646,7 @@ def create_task(
 @app.command(help="Export finished annotations from Label Studio projects")
 def export_labels(
     *,
-    projects: ProjectIdsOption,
+    labeling_projects: ProjectIdsOption,
     output: OutputOption = None,
     label_studio_url: LabelStudioUrlOption = "http://localhost:8080",
     log_level: LogLevelOption = "info",
@@ -628,7 +658,7 @@ def export_labels(
     logger.setLevel(log_level.upper())
 
     studio = LabelStudioSettings(url=label_studio_url)
-    export_labels(settings=studio, projects=projects, output=output)
+    export_labels(settings=studio, projects=labeling_projects, output=output)
 
 
 if __name__ == "__main__":

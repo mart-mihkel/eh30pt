@@ -71,6 +71,7 @@ type DataSource = Literal[
     "discont",
     "switch",
     "usage-gap",
+    "extract-labels",
 ]
 
 type PipelineTask = Literal[
@@ -100,6 +101,7 @@ class RunConfig(TypedDict):
     base_model: str
     n_shot: int
     batch_size: int
+    source: DataSource | None
     system_prompt: NotRequired[str]
     total_parameters: NotRequired[int]
     trainable_parameters: NotRequired[int]

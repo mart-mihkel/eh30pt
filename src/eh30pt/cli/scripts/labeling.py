@@ -191,7 +191,8 @@ def export_labels(
 
     combined = pl.concat(frames, how="diagonal")
     if output is None:
-        ids = f"labels-{'-'.join(str(project_id) for project_id in projects)}.parquet"
+        joined = "-".join(str(id_) for id_ in projects)
+        ids = f"labels-{joined}.parquet"
         output = LOGDIR / ids
         logger.debug("inferred output path '%s'", output)
 

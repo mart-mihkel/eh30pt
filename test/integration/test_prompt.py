@@ -89,8 +89,21 @@ def counted_rows() -> Callable[[list[int]], Iterator[DiscontClassifierRow]]:
     def _rows(calls: list[int]) -> Iterator[DiscontClassifierRow]:
         calls.append(1)
 
-        yield {"id": 1, "text": "katkestas ravi"}
-        yield {"id": 2, "text": "lõpetas kuuri"}
+        yield {
+            "id": 1,
+            "text": "katkestas ravi peavalu tõttu",
+            "phrase": "katkestas ravi",
+            "drug": "aspiriin",
+            "label": "Adverse reactions",
+        }
+
+        yield {
+            "id": 2,
+            "text": "lõpetas kuuri paranedes",
+            "phrase": "lõpetas kuuri",
+            "drug": "statiin",
+            "label": "Treatment success",
+        }
 
     return _rows
 
@@ -390,17 +403,31 @@ def test_classifier_streams_rows_lazily(
     assert calls == []
 
     first = list(ds.samples())
+    s1 = FewShot(
+        user="Text: katkestas ravi peavalu tõttu\n"
+        "Phrase: katkestas ravi\n"
+        "Drug: aspiriin\n"
+        "Category:",
+        label="Adverse reactions",
+        id=1,
+    )
+
+    s2 = FewShot(
+        user="Text: lõpetas kuuri paranedes\n"
+        "Phrase: lõpetas kuuri\n"
+        "Drug: statiin\n"
+        "Category:",
+        label="Treatment success",
+        id=2,
+    )
 
     assert calls == [1]
-    assert first == [
-        FewShot(user="katkestas ravi", label="", id=1),
-        FewShot(user="lõpetas kuuri", label="", id=2),
-    ]
+    assert first == [s1, s2]
 
     second = list(ds.samples())
 
     assert calls == [1, 1]
-    assert [sample.user for sample in second] == ["katkestas ravi", "lõpetas kuuri"]
+    assert [sample.user for sample in second] == [sample.user for sample in first]
 
 
 def test_decider_streams_rows_lazily(
@@ -435,7 +462,7 @@ def test_decider_streams_rows_lazily(
 def test_load_discont_decider_opens_no_connection(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    splits = load_discont_decider(bert_tokenizer, "decoder")
+    splits = load_discont_decider(bert_tokenizer, "decoder", source="trigger")
 
     assert list(splits.train.samples()) == []
     assert list(splits.eval.samples()) == []
@@ -444,7 +471,7 @@ def test_load_discont_decider_opens_no_connection(
 def test_load_classifier_opens_no_connection(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    splits = load_discont_classifier(bert_tokenizer, "decoder")
+    splits = load_discont_classifier(bert_tokenizer, "decoder", source="trigger")
 
     assert list(splits.train.samples()) == []
     assert list(splits.eval.samples()) == []

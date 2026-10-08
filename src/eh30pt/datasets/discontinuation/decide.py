@@ -166,7 +166,7 @@ def load_discont_decider(
     n_virtual: int = 0,
     *,
     page_size: int = 10000,
-    source: DataSource = "trigger",
+    source: DataSource,
     start_after: int | None = None,
 ) -> DataSplits:
     """Load decider candidates as splits with only test populated."""

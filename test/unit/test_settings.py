@@ -219,12 +219,14 @@ def test_server_rejects_invalid_provider() -> None:
 
 
 def test_common_defaults() -> None:
-    settings = CommonSettings(model="some-model", dataset="oblique")
+    settings = CommonSettings(model="some-model", dataset="oblique", source="trigger")
 
     assert settings.model == "some-model"
     assert settings.dataset == "oblique"
     assert settings.arch is None
     assert settings.n_shot == 0
+    assert settings.source == "trigger"
+    assert settings.labeling_projects is None
 
 
 def test_common_rejects_invalid() -> None:
@@ -232,7 +234,10 @@ def test_common_rejects_invalid() -> None:
         CommonSettings(
             model="some-model",
             dataset="unknown",  # ty: ignore[invalid-argument-type]
+            source="trigger",
         )
 
     with pytest.raises(ValidationError, match="n_shot"):
-        CommonSettings(model="some-model", dataset="oblique", n_shot=-1)
+        CommonSettings(
+            model="some-model", dataset="oblique", n_shot=-1, source="trigger"
+        )

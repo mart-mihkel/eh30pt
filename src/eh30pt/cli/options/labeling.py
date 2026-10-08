@@ -25,3 +25,8 @@ ProjectIdsOption = Annotated[
     list[int],
     Option("--project", "-p", min=1, help="Label Studio project ids to read"),
 ]
+
+OptionalProjectIdsOption = Annotated[
+    list[int] | None,
+    Option("--project", "-p", help="Label Studio project ids training the run"),
+]

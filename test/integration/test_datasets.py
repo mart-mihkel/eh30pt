@@ -6,9 +6,14 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classify import load_discont_classifier
-from eh30pt.datasets.discontinuation.extract import load_discont_extract
+from eh30pt.datasets.discontinuation.classify import (
+    DiscontClassifier,
+    load_discont_classifier,
+)
+from eh30pt.datasets.discontinuation.decide import DiscontDecider
+from eh30pt.datasets.discontinuation.extract import DiscontExtract, load_discont_extract
 from eh30pt.datasets.mixin import DatasetMixin
+from eh30pt.datasets.registry import load_data
 from eh30pt.modeling.arch import infer_architecture
 
 if TYPE_CHECKING:
@@ -51,7 +56,7 @@ def test_labels_match_architecture(model_setup: ModelSetup) -> None:
 def test_truncation_flags(model_setup: ModelSetup) -> None:
     max_length = DatasetMixin._model_max_len(model_setup.tokenizer, 0)
     if max_length is None:
-        pytest.skip("tokenizer has no length limit")
+        pytest.xfail("tokenizer has no length limit")
 
     for row in islice(model_setup.splits.train, 8):
         ids = row["input_ids"]
@@ -72,7 +77,7 @@ def test_discont_extract_streams_seeded_rows(database: None) -> None:
     """Extract candidates stream from seeded postgres with row ids."""
     _ = database
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = load_discont_extract(tokenizer, "decoder")
+    data = load_discont_extract(tokenizer, "decoder", source="trigger")
     samples = list(islice(data.test.samples(), 5))
 
     assert samples
@@ -97,18 +102,28 @@ def test_discont_splits_iterate_tokenized_rows(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     """Classifier, decider, and extract splits tokenize in-memory rows."""
-    from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-    from eh30pt.datasets.discontinuation.decide import DiscontDecider
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-
     classifier = DiscontClassifier(
-        lambda: iter([{"id": 1, "text": "tekkis iiveldus"}]),
+        lambda: iter(
+            [
+                {
+                    "id": 1,
+                    "text": "tekkis iiveldus",
+                    "phrase": "tekkis iiveldus",
+                    "drug": "aspiriin",
+                    "label": "Adverse reactions",
+                }
+            ]
+        ),
         gpt2_tokenizer,
         "decoder",
     )
+
     decider = DiscontDecider(
-        lambda: iter([{"id": 2, "text": "katkestas"}]), gpt2_tokenizer, "decoder"
+        lambda: iter([{"id": 2, "text": "katkestas"}]),
+        gpt2_tokenizer,
+        "decoder",
     )
+
     extract = DiscontExtract(
         lambda: iter([{"id": 3, "text": "jäeti ravim ära"}]),
         gpt2_tokenizer,
@@ -126,7 +141,14 @@ def test_discont_splits_iterate_tokenized_rows(
     assert [sample.id for sample in extract.samples()] == [3]
     assert extract.response_format()["json_schema"]["name"] == "extraction"
 
-    cls_row: DiscontClassifierRow = {"id": 1, "text": "tekkis iiveldus"}
+    cls_row: DiscontClassifierRow = {
+        "id": 1,
+        "text": "tekkis iiveldus",
+        "phrase": "tekkis iiveldus",
+        "drug": "aspiriin",
+        "label": "Adverse reactions",
+    }
+
     dec_row: DeciderRow = {"id": 1, "text": "tekkis iiveldus"}
     ext_row: DiscontExtractRow = {"id": 1, "text": "tekkis iiveldus"}
     assert classifier.tokenize(cls_row, gpt2_tokenizer)["input_ids"]
@@ -148,3 +170,11 @@ def test_join_spans_handles_plain_tags(
 
     assert tokens == ["Tallinn"]
     assert tag_ids == [Multinerd.label2id["PER"]]
+
+
+def test_load_data_omits_source_for_static_datasets(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    data = load_data(gpt2_tokenizer, "oblique", "decoder")
+
+    assert list(data.test.samples())
