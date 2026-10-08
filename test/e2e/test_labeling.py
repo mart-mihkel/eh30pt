@@ -15,6 +15,7 @@ from eh30pt.settings import LabelStudioSettings
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
     from eh30pt.labeling.studio import ProjectRef
 
@@ -127,3 +128,102 @@ def test_delete_removes_the_project(studio: LabelStudioSettings) -> None:
 
         client.delete(created.id).unwrap()
         assert created.id not in {project.id for project in client.projects().unwrap()}
+
+
+def test_export_labels_writes_annotations_to_parquet(
+    studio: LabelStudioSettings, project: ProjectRef, tmp_path: Path
+) -> None:
+    import polars as pl
+
+    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.labeling.studio import StudioResult
+
+    labeling = extraction_labeling("discont-extract", _PREDICTIONS, "run-1")
+    output = tmp_path / "labels.parquet"
+
+    with StudioClient(studio) as client:
+        client.import_tasks(project.id, labeling.tasks).unwrap()
+        imported = client.tasks(project.id).unwrap()
+
+        first: StudioResult = {
+            "from_name": "discont",
+            "to_name": "text",
+            "type": "choices",
+            "value": {"choices": ["Adverse reactions"]},
+        }
+        second: StudioResult = {
+            "from_name": "meta",
+            "to_name": "text",
+            "type": "choices",
+            "value": {"choices": ["Incomplete phrase"]},
+        }
+        client.annotate(imported[0]["id"], [first, second]).unwrap()
+
+    assert (
+        export_labels(settings=studio, projects=[project.id], output=output) == output
+    )
+
+    frame = pl.read_parquet(output)
+
+    assert frame.columns == [
+        "task",
+        "annotation",
+        "text",
+        "phrase",
+        "drug",
+        "reason",
+        "discont",
+        "other",
+        "meta",
+    ]
+    assert frame.height == 1
+    assert frame["discont"].to_list() == [["Adverse reactions"]]
+    assert frame["meta"].to_list() == [["Incomplete phrase"]]
+    assert frame["drug"].to_list() == ["aspiriini"]
+
+
+def test_export_labels_combines_projects_into_one_frame(
+    studio: LabelStudioSettings, project: ProjectRef, tmp_path: Path
+) -> None:
+    import polars as pl
+
+    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.labeling.studio import StudioResult
+
+    labeling = extraction_labeling("discont-extract", _PREDICTIONS, "run-1")
+    output = tmp_path / "labels.parquet"
+
+    choice: StudioResult = {
+        "from_name": "discont",
+        "to_name": "text",
+        "type": "choices",
+        "value": {"choices": ["Treatment success"]},
+    }
+
+    with StudioClient(studio) as client:
+        other = client.create("eh30pt-e2e-other", labeling.config).unwrap()
+        try:
+            client.import_tasks(project.id, labeling.tasks[:1]).unwrap()
+            client.import_tasks(other.id, labeling.tasks[1:]).unwrap()
+
+            first = client.tasks(project.id).unwrap()
+            second = client.tasks(other.id).unwrap()
+            client.annotate(first[0]["id"], [choice]).unwrap()
+            client.annotate(second[0]["id"], [choice]).unwrap()
+
+            assert (
+                export_labels(
+                    settings=studio,
+                    projects=[project.id, other.id],
+                    output=output,
+                )
+                == output
+            )
+        finally:
+            client.delete(other.id).unwrap()
+
+    frame = pl.read_parquet(output)
+
+    _rows = 2
+    assert frame.height == _rows
+    assert frame["discont"].to_list() == [["Treatment success"], ["Treatment success"]]

@@ -115,26 +115,9 @@ def _choices(row: ET.Element, box: _ChoiceBox) -> None:
         ET.SubElement(control, "Choice", value=choice.value, hint=choice.hint)
 
 
-def span_config() -> str:
-    """Build the Label Studio interface for highlighting extracted spans."""
-    view = ET.Element("View")
-    ET.SubElement(view, "Text", name="text", value="$text")
-
-    style = ET.SubElement(view, "Style")
-    style.text = f"""
-        .{_title_class} {{
-            border: 1px solid transparent;
-            border-radius: 3px;
-            padding: 2px 8px;
-            margin-bottom: 4px;
-        }}
-
-        .{_box_class}:has(input:checked) .{_title_class} {{
-            border-color: #1f9d55;
-        }}
-    """
-
-    boxes: tuple[_ChoiceBox, ...] = (
+def _boxes() -> tuple[_ChoiceBox, ...]:
+    """Return the choice boxes of the span interface in rendering order."""
+    return (
         _ChoiceBox(
             name="discont",
             header="Drug discontinuation",
@@ -151,7 +134,7 @@ def span_config() -> str:
                     "Treatment stopped because it was seen as ineffective.",
                 ),
                 _Choice(
-                    "Contraindication/unsafe co-usage",
+                    "Contraindication",
                     (
                         "Treatment stopped because a condition or risk factor "
                         "made continuing it unsafe or inappropriate."
@@ -188,7 +171,7 @@ def span_config() -> str:
                     ),
                 ),
                 _Choice(
-                    "Other event",
+                    "Other non-discontinuation",
                     (
                         "An event that is neither a discontinuation nor any of "
                         "the reasons listed here."
@@ -220,13 +203,38 @@ def span_config() -> str:
         ),
     )
 
+
+def span_controls() -> tuple[str, ...]:
+    """Return the choice control names of the span interface."""
+    return tuple(box.name for box in _boxes())
+
+
+def span_config() -> str:
+    """Build the Label Studio interface for highlighting extracted spans."""
+    view = ET.Element("View")
+    ET.SubElement(view, "Text", name="text", value="$text")
+
+    style = ET.SubElement(view, "Style")
+    style.text = f"""
+        .{_title_class} {{
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 2px 8px;
+            margin-bottom: 4px;
+        }}
+
+        .{_box_class}:has(input:checked) .{_title_class} {{
+            border-color: #1f9d55;
+        }}
+    """
+
     row = ET.SubElement(
         view,
         "View",
         style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start",
     )
 
-    for box in boxes:
+    for box in _boxes():
         _choices(row, box)
 
     hidden = ET.SubElement(view, "View", style="display: none")

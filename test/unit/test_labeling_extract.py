@@ -11,6 +11,7 @@ from eh30pt.labeling.extract import (
     _assert_span_fields,
     extraction_labeling,
     span_config,
+    span_controls,
 )
 from eh30pt.types import DatasetName
 
@@ -54,7 +55,7 @@ def test_span_config_has_three_choice_boxes() -> None:
     for label in (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication/unsafe co-usage",
+        "Contraindication",
         "Adverse reactions",
         "Adverse reaction without discontinuation",
         "Dosage change",
@@ -105,6 +106,14 @@ def test_span_config_highlights_the_header_of_a_used_box() -> None:
     title = f'<View className="{_title_cls}">'
     for header in ("Drug discontinuation", "Not discontinuation", "Meta"):
         assert f'{title}\n        <Header value="{header}" />\n      </View>' in config
+
+
+def test_span_controls_match_the_rendered_boxes() -> None:
+    config = span_config()
+
+    assert span_controls() == ("discont", "other", "meta")
+    for name in span_controls():
+        assert f'<Choices name="{name}" toName="text"' in config
 
 
 def test_span_config_boxes_do_not_share_a_label() -> None:

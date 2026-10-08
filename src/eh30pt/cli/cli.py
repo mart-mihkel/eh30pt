@@ -613,5 +613,23 @@ def create_task(
     )
 
 
+@app.command(help="Export finished annotations from Label Studio projects")
+def export_labels(
+    *,
+    projects: ProjectIdsOption,
+    output: OutputOption = None,
+    label_studio_url: LabelStudioUrlOption = "http://localhost:8080",
+    log_level: LogLevelOption = "info",
+) -> None:
+    """Read finished annotations into one Parquet frame."""
+    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.settings import LabelStudioSettings
+
+    logger.setLevel(log_level.upper())
+
+    studio = LabelStudioSettings(url=label_studio_url)
+    export_labels(settings=studio, projects=projects, output=output)
+
+
 if __name__ == "__main__":
     app()

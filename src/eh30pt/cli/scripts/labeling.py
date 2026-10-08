@@ -8,15 +8,18 @@ import polars as pl
 from mlflow.tracking import MlflowClient
 from returns.result import Failure, Success
 
+from eh30pt.constants import LOGDIR
+from eh30pt.labeling.extract import span_controls
 from eh30pt.labeling.registry import build_labeling
-from eh30pt.labeling.studio import StudioClient
+from eh30pt.labeling.studio import StudioClient, annotation_frame
 from eh30pt.logging import logger
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.resume import _stored_identity
 from eh30pt.types import DatasetName
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
 
     from eh30pt.labeling.studio import ProjectRef
     from eh30pt.labeling.types import Labeling
@@ -152,3 +155,48 @@ def main(
     )
 
     return project
+
+
+def export_labels(
+    *,
+    settings: LabelStudioSettings,
+    projects: Sequence[int],
+    output: Path | None = None,
+) -> Path:
+    """
+    Write projects' annotations to Parquet, one row per annotation.
+
+    Task ids are unique per server, so rows from every project share one frame
+    and the loader still keeps the first annotation per task.
+    """
+    controls = span_controls()
+    frames: list[pl.DataFrame] = []
+    with StudioClient(settings) as studio:
+        for project in projects:
+            match studio.tasks(project):
+                case Success(tasks):
+                    pass
+                case Failure(exc):
+                    msg = f"could not read tasks of project {project}: {exc}"
+                    raise RuntimeError(msg) from exc
+
+            frame = annotation_frame(tasks, controls)
+            logger.info(
+                "collected %d annotations from project %d",
+                frame.height,
+                project,
+            )
+
+            frames.append(frame)
+
+    combined = pl.concat(frames, how="diagonal")
+    if output is None:
+        ids = f"labels-{'-'.join(str(project_id) for project_id in projects)}.parquet"
+        output = LOGDIR / ids
+        logger.debug("inferred output path '%s'", output)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    combined.write_parquet(output)
+    logger.info("wrote %d annotation rows to '%s'", combined.height, output)
+
+    return output

@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, NamedTuple, Self, TypedDict, cast
 
 import httpx
+import polars as pl
 from returns.result import safe
 
 from eh30pt.logging import logger
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
     from httpx._types import QueryParamTypes
 
-    from eh30pt.labeling.types import Task
+    from eh30pt.labeling.types import ChoiceValue, SpanValue, Task
     from eh30pt.settings import LabelStudioSettings
 
 
@@ -30,12 +31,29 @@ class ImportedTasks(NamedTuple):
     predictions: int
 
 
+class StudioResult(TypedDict):
+    """One entry of an annotation result."""
+
+    from_name: str
+    to_name: str
+    type: str
+    value: ChoiceValue | SpanValue
+
+
+class StudioAnnotation(TypedDict):
+    """One annotator submission attached to a task."""
+
+    id: int
+    result: list[StudioResult]
+
+
 class StudioTask(TypedDict):
     """One imported task as the server reports it."""
 
     id: int
     inner_id: int
     data: dict[str, str]
+    annotations: list[StudioAnnotation]
 
 
 def _json(response: httpx.Response, what: str) -> object:
@@ -97,6 +115,69 @@ def _tasks(payload: object, what: str) -> list[dict[str, object]]:
     return cast("list[dict[str, object]]", tasks)
 
 
+def _chosen_labels(result: StudioResult) -> tuple[str, ...]:
+    """Return the labels a result selected, empty for non-choice results."""
+    if result["type"] != "choices":
+        return ()
+
+    value = cast("ChoiceValue", result["value"])
+    return tuple(value.get("choices", ()))
+
+
+def annotation_frame(
+    tasks: Sequence[StudioTask], controls: Sequence[str]
+) -> pl.DataFrame:
+    """Build one row per annotation with a label list column per control."""
+    rows: list[int] = []
+    annotations: list[int] = []
+    texts: list[str] = []
+    phrases: list[str] = []
+    drugs: list[str] = []
+    reasons: list[str] = []
+    grouped: list[list[tuple[str, ...]]] = []
+
+    for task in tasks:
+        data = task["data"]
+        for annotation in task["annotations"]:
+            chosen: dict[str, list[str]] = {control: [] for control in controls}
+            for result in annotation["result"]:
+                labels = chosen.get(result["from_name"])
+                if labels is None:
+                    continue
+
+                labels.extend(_chosen_labels(result))
+
+            rows.append(task["id"])
+            annotations.append(annotation["id"])
+            texts.append(data.get("text", ""))
+            phrases.append(data.get("phrase", ""))
+            drugs.append(data.get("drug", ""))
+            reasons.append(data.get("reason", ""))
+            grouped.append([tuple(chosen[control]) for control in controls])
+
+    frame = pl.DataFrame(
+        {
+            "task": pl.Series("task", rows, dtype=pl.Int64),
+            "annotation": pl.Series("annotation", annotations, dtype=pl.Int64),
+            "text": pl.Series("text", texts, dtype=pl.String),
+            "phrase": pl.Series("phrase", phrases, dtype=pl.String),
+            "drug": pl.Series("drug", drugs, dtype=pl.String),
+            "reason": pl.Series("reason", reasons, dtype=pl.String),
+        },
+    )
+
+    for column, control in enumerate(controls):
+        labels = pl.Series(
+            control,
+            [row[column] for row in grouped],
+            dtype=pl.List(pl.String),
+        )
+
+        frame = frame.with_columns(labels)
+
+    return frame
+
+
 class StudioClient:
     """Label Studio client authenticating with a personal access token."""
 
@@ -129,6 +210,7 @@ class StudioClient:
             "/api/token/refresh",
             json={"refresh": self._settings.token.get_secret_value()},
         )
+
         payload = _object(_json(response, "refresh the access token"), "the response")
         access = payload.get("access")
         if not isinstance(access, str):
@@ -155,6 +237,7 @@ class StudioClient:
             json=payload,
             headers={"Authorization": f"Bearer {self._token()}"},
         )
+
         return _json(response, f"{method.lower()} '{path}'")
 
     def _pages(self, path: str, *, page_size: int) -> Iterator[dict[str, object]]:
@@ -166,6 +249,7 @@ class StudioClient:
                 self._request("GET", url, params=params),
                 "a project page",
             )
+
             next_url = body.get("next")
             url = next_url if isinstance(next_url, str) else None
             params = None  # the next url carries its own query
@@ -183,17 +267,15 @@ class StudioClient:
         """
         page = 1
         while True:
+            params = {
+                "project": project,
+                "page": page,
+                "page_size": page_size,
+                "fields": "all",
+            }
+
             body = _object(
-                self._request(
-                    "GET",
-                    "/api/tasks/",
-                    params={
-                        "project": project,
-                        "page": page,
-                        "page_size": page_size,
-                        "fields": "all",
-                    },
-                ),
+                self._request("GET", "/api/tasks/", params=params),
                 "a task page",
             )
 
@@ -224,25 +306,20 @@ class StudioClient:
     def create(self, title: str, label_config: str) -> ProjectRef:
         """Create a project holding `title` and `label_config`."""
         logger.info("creating project '%s'", title)
+        payload = {"title": title, "label_config": label_config}
         body = _object(
-            self._request(
-                "POST",
-                "/api/projects/",
-                payload={"title": title, "label_config": label_config},
-            ),
+            self._request("POST", "/api/projects/", payload=payload),
             "the created project",
         )
+
         return ProjectRef(id=_number(body, "id", "the created project"), title=title)
 
     @safe
     def validate(self, project: int, label_config: str) -> None:
         """Ask the server to parse the labeling config, failing when invalid."""
         logger.debug("validating the labeling config of project %d", project)
-        self._request(
-            "POST",
-            f"/api/projects/{project}/validate",
-            payload={"label_config": label_config},
-        )
+        payload = {"label_config": label_config}
+        self._request("POST", f"/api/projects/{project}/validate", payload=payload)
 
     @safe
     def delete(self, project: int) -> None:
@@ -264,13 +341,10 @@ class StudioClient:
         for start in range(0, len(items), chunk_size):
             chunk = list(items[start : start + chunk_size])
             body = _object(
-                self._request(
-                    "POST",
-                    f"/api/projects/{project}/import",
-                    payload=chunk,
-                ),
+                self._request("POST", f"/api/projects/{project}/import", payload=chunk),
                 "an import response",
             )
+
             tasks += _number(body, "task_count", "an import response")
             predictions += _number(body, "prediction_count", "an import response")
 
@@ -284,12 +358,24 @@ class StudioClient:
 
     @safe
     def tasks(self, project: int, *, page_size: int = 100) -> list[StudioTask]:
-        """Collect every task of a project."""
+        """Collect every task of a project with its annotations."""
         return [
             StudioTask(
                 id=_number(page, "id", "a task"),
                 inner_id=_number(page, "inner_id", "a task"),
                 data=cast("dict[str, str]", page.get("data", {})),
+                annotations=cast("list[StudioAnnotation]", page.get("annotations", [])),
             )
             for page in self._task_pages(project, page_size=page_size)
         ]
+
+    @safe
+    def annotate(self, task: int, result: Sequence[StudioResult]) -> int:
+        """Attach one annotation to a task, returning its id."""
+        payload = {"task": task, "result": list(result)}
+        body = _object(
+            self._request("POST", f"/api/tasks/{task}/annotations/", payload=payload),
+            "the created annotation",
+        )
+
+        return _number(body, "id", "the created annotation")
