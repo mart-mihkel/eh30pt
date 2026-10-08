@@ -41,7 +41,9 @@ marimo *args='--watch':
 [doc('run pre-commit')]
 [group('dev')]
 @prek:
-    uv run --no-sync prek run --all-files
+    uv run --no-sync ruff format
+    uv run --no-sync ruff check --fix
+    uv run --no-sync ty check --fix
 
 [doc('run all tests')]
 [group('dev')]
