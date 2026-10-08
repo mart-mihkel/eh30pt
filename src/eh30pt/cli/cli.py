@@ -4,39 +4,44 @@ import asyncio
 
 from typer import BadParameter, Context, Typer
 
-from eh30pt.cli.options import (
+from eh30pt.cli.options.common import (
     ArchOption,
-    BatchSizeOption,
-    CompletionDatasetOption,
-    ConcurrencyOption,
     DatasetOption,
-    DryRunOption,
-    EvalStepsOption,
-    ExperimentOption,
-    ExportRunOption,
-    FromIdOption,
-    HeadOnlyOption,
     InferredDatasetOption,
-    InnerCommandArgument,
-    LabelStudioUrlOption,
     LangExtractNShotOption,
-    LearningRateOption,
-    LogIntervalOption,
     LogLevelOption,
-    LoraAlphaOption,
-    LoraDropoutOption,
-    LoraRankOption,
     ModelOption,
     NShotOption,
-    PatienceOption,
-    PrefixInitOption,
+    OutputOption,
+    SeedOption,
+)
+from eh30pt.cli.options.labeling import (
+    LabelStudioUrlOption,
+    ProjectIdsOption,
     ProjectTitleOption,
-    PromptArgument,
-    ProviderOption,
+)
+from eh30pt.cli.options.lora import LoraAlphaOption, LoraDropoutOption, LoraRankOption
+from eh30pt.cli.options.mlflow import (
+    ExperimentOption,
+    ExportRunOption,
     RunIdOption,
     RunNameOption,
-    SeedOption,
+    TrackingUriOption,
+)
+from eh30pt.cli.options.server import (
+    CompletionDatasetOption,
+    ConcurrencyOption,
+    FromIdOption,
+    LogIntervalOption,
+    PromptArgument,
+    ProviderOption,
     ShardSizeOption,
+    SourceOption,
+    SystemOption,
+)
+from eh30pt.cli.options.slurm import (
+    DryRunOption,
+    InnerCommandArgument,
     SlurmCpusOption,
     SlurmGresOption,
     SlurmJobNameOption,
@@ -44,10 +49,15 @@ from eh30pt.cli.options import (
     SlurmOutputOption,
     SlurmPartitionOption,
     SlurmTimeOption,
-    SourceOption,
-    SystemOption,
+)
+from eh30pt.cli.options.training import (
+    BatchSizeOption,
+    EvalStepsOption,
+    HeadOnlyOption,
+    LearningRateOption,
+    PatienceOption,
+    PrefixInitOption,
     ToleranceOption,
-    TrackingUriOption,
     TrainStepsOption,
     WarmupRatioOption,
 )
