@@ -16,7 +16,7 @@ Run it with `uv run ehpt --help` to see the available commands.
 
 ## Services
 
-Local development uses postgres, llama and label-studio services.
+Local development uses postgres, llama, label-studio and mlflow services.
 
 ```bash
 just up   [--detach]
