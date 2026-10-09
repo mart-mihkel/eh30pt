@@ -52,7 +52,7 @@ def _choice_values(option: Callable[..., object]) -> frozenset[str]:
     return frozenset(param_type.choices)
 
 
-_PAIRS = [
+_options = [
     ("dataset_option", dataset_option, DatasetName),
     ("inferred_dataset_option", inferred_dataset_option, DatasetName),
     ("completion_dataset_option", completion_dataset_option, DatasetName),
@@ -66,8 +66,8 @@ _PAIRS = [
 
 @pytest.mark.parametrize(
     ("option", "type_alias"),
-    [(opt, alias) for _, opt, alias in _PAIRS],
-    ids=[name for name, _, _ in _PAIRS],
+    [(opt, alias) for _, opt, alias in _options],
+    ids=[name for name, _, _ in _options],
 )
 def test_choices_match_literal(option: Callable[..., object], type_alias: type) -> None:
     """Option click.Choice choices must match their Literal type values."""
