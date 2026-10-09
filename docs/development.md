@@ -16,7 +16,7 @@ Run it with `uv run ehpt --help` to see the available commands.
 
 ## Services
 
-Local development uses a Postgres database running as a Docker service.
+Local development uses postgres, llama and label-studio services.
 
 ```bash
 just up   [--detach]
