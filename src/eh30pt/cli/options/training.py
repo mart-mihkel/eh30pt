@@ -9,10 +9,6 @@ if TYPE_CHECKING:
 
     from rich_click.decorators import FC
 
-# Unannotated on purpose: click decorators are generic over the decorated
-# callable, which a variable annotation cannot express, so the precise type
-# is left for inference.
-
 train_steps_option = click.option(
     "--train-steps",
     "-t",

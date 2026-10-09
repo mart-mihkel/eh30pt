@@ -2,10 +2,6 @@
 
 import rich_click as click
 
-# Unannotated on purpose: click decorators are generic over the decorated
-# callable, which a variable annotation cannot express, so the precise type
-# is left for inference.
-
 prompt_argument = click.argument("user_prompt", type=str)
 
 system_prompt_option = click.option(

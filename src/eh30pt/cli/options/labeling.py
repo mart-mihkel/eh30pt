@@ -2,10 +2,6 @@
 
 import rich_click as click
 
-# Unannotated on purpose: click decorators are generic over the decorated
-# callable, which a variable annotation cannot express, so the precise type
-# is left for inference.
-
 label_studio_url_option = click.option(
     "--label-studio-url",
     "label_studio_url",

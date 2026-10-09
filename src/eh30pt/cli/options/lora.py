@@ -2,9 +2,6 @@
 
 import rich_click as click
 
-# Unannotated on purpose: click decorators are generic over the decorated
-# callable, which a variable annotation cannot express, so the precise type
-# is left for inference.
 lora_rank_option = click.option(
     "--lora-rank",
     "lora_rank",

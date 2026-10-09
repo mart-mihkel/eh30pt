@@ -2,10 +2,6 @@
 
 import rich_click as click
 
-# Unannotated on purpose: click decorators are generic over the decorated
-# callable, which a variable annotation cannot express, so the precise type
-# is left for inference.
-
 inner_command_argument = click.argument("command", type=str)
 
 slurm_job_name_option = click.option(

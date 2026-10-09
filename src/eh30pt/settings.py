@@ -35,8 +35,14 @@ class PostgresSettings(BaseSettings):
         return f"{proto}://{user}:{password}@{self.host}:{self.port}/{self.db}"
 
 
-class MlflowSettings(BaseModel):
+class MlflowSettings(BaseSettings):
     """MLflow tracking settings."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="mlflow_",
+        env_file=".env",
+        extra="ignore",
+    )
 
     model_path: ClassVar[str] = "model"
     """Model artifact path."""
@@ -93,7 +99,7 @@ class LabelStudioSettings(BaseSettings):
     """Personal access token, exchanged for a short-lived access token."""
 
 
-class ServerSettings(BaseModel):
+class ServerSettings(BaseSettings):
     """Server connection settings."""
 
     model_config = SettingsConfigDict(
