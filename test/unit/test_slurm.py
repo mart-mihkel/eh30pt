@@ -71,8 +71,7 @@ def test_build_sbatch_renders_directives_and_command(
     assert "set -euo pipefail" in script
     assert f"cd {_project}" in script
     assert (
-        "uv run --no-sync eh30pt fine-tune --model some-model --dataset oblique"
-        in script
+        "uv run --no-sync ehpt fine-tune --model some-model --dataset oblique" in script
     )
 
 
@@ -140,7 +139,7 @@ def test_main_dry_run_writes_script_and_prints(
 
     out = capsys.readouterr().out
     assert out == path.read_text()
-    assert "uv run --no-sync eh30pt fine-tune --model some-model" in out
+    assert "uv run --no-sync ehpt fine-tune --model some-model" in out
 
 
 def test_main_without_sbatch_raises(

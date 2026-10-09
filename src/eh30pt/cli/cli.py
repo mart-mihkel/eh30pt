@@ -1,8 +1,9 @@
 """Command line interface."""
 
 import asyncio
+from typing import TYPE_CHECKING
 
-from typer import BadParameter, Context, Typer
+import rich_click as click
 
 from eh30pt.cli.options.common import (
     ArchOption,
@@ -55,12 +56,12 @@ from eh30pt.cli.options.training import (
     BatchSizeOption,
     EvalStepsOption,
     HeadOnlyOption,
-    LearningRateOption,
     PatienceOption,
     PrefixInitOption,
     ToleranceOption,
     TrainStepsOption,
     WarmupRatioOption,
+    learning_rate_option,
 )
 from eh30pt.logging import logger, setup_logging
 from eh30pt.settings import (
@@ -72,11 +73,119 @@ from eh30pt.settings import (
     TrainingSettings,
 )
 
-app = Typer(
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from eh30pt.types import (
+        Architecture,
+        DatasetName,
+        DataSource,
+        LogLevel,
+        PrefixInit,
+        Provider,
+    )
+
+
+@click.group(
+    "ehpt",
     context_settings={"help_option_names": ["-h", "--help"]},
     help="Interface for running scripts",
     no_args_is_help=True,
 )
+@click.rich_config(
+    click.RichHelpConfiguration(
+        theme="cargo-slim",
+        command_groups={
+            "ehpt": [
+                {
+                    "name": "Hugging Face",
+                    "commands": ["fine-tune", "prompt-tune", "qlora", "few-shot"],
+                },
+                {
+                    "name": "Llama",
+                    "commands": ["completion", "evaluate", "generate", "langextract"],
+                },
+                {
+                    "name": "Label-Studio",
+                    "commands": ["create-task", "export-labels"],
+                },
+                {"name": "Meta", "commands": ["slurm"]},
+            ]
+        },
+        option_groups={
+            "ehpt *": [
+                {"name": "Model", "options": ["--model", "--arch"]},
+                {
+                    "name": "Data",
+                    "options": [
+                        "--dataset",
+                        "--source",
+                        "--n-shot",
+                        "--project",
+                        "--from-id",
+                    ],
+                },
+                {
+                    "name": "Training",
+                    "options": [
+                        "--train-steps",
+                        "--eval-steps",
+                        "--batch-size",
+                        "--learning-rate",
+                        "--warmup-ratio",
+                        "--patience",
+                        "--tolerance",
+                        "--head-only",
+                        "--prefix-init",
+                        "--lora-rank",
+                        "--lora-alpha",
+                        "--lora-dropout",
+                    ],
+                },
+                {
+                    "name": "Server",
+                    "options": [
+                        "--provider",
+                        "--system",
+                        "--concurrency",
+                        "--shard-size",
+                        "--log-interval",
+                    ],
+                },
+                {
+                    "name": "SLURM",
+                    "options": [
+                        "--job-name",
+                        "--partition",
+                        "--gres",
+                        "--cpus",
+                        "--mem",
+                        "--time",
+                        "--dry-run",
+                    ],
+                },
+                {"name": "Output", "options": ["--output"]},
+                {
+                    "name": "MLflow",
+                    "options": [
+                        "--mlflow-tracking-uri",
+                        "--mlflow-experiment",
+                        "--mlflow-run-name",
+                        "--mlflow-run-id",
+                    ],
+                },
+                {
+                    "name": "Label Studio",
+                    "options": ["--label-studio-url", "--title"],
+                },
+                {"name": "Run", "options": ["--log-level", "--seed"]},
+            ]
+        },
+    )
+)
+def app() -> None:
+    """Set up logging before running a command."""
+    setup_logging()
 
 
 def set_seed(seed: int | None) -> None:
@@ -113,35 +222,49 @@ def log_accelerator() -> None:
         logger.warning("no acceleator available")
 
 
-@app.callback()
-def setup() -> None:
-    """Set up logging before running a command."""
-    setup_logging()
-
-
-@app.command(help="Fine-tune and run test evaluation")
+@app.command("fine-tune", help="Fine-tune and run test evaluation")
+@ModelOption
+@DatasetOption
+@HeadOnlyOption
+@NShotOption
+@TrainStepsOption
+@EvalStepsOption
+@BatchSizeOption
+@learning_rate_option(5e-5)
+@WarmupRatioOption
+@PatienceOption
+@ToleranceOption
+@ArchOption
+@SourceOption
+@OptionalProjectIdsOption
+@ExperimentOption
+@RunNameOption
+@RunIdOption
+@TrackingUriOption
+@LogLevelOption
+@SeedOption
 def fine_tune(
     *,
-    model: ModelOption,
-    dataset: DatasetOption,
-    head_only: HeadOnlyOption = False,
-    n_shot: NShotOption = 0,
-    train_steps: TrainStepsOption,
-    eval_steps: EvalStepsOption = 0,
-    batch_size: BatchSizeOption = 8,
-    learning_rate: LearningRateOption = 5e-5,
-    warmup_ratio: WarmupRatioOption = 0.06,
-    patience: PatienceOption = 0,
-    tolerance: ToleranceOption = 0.01,
-    arch: ArchOption = None,
-    source: SourceOption = None,
-    labeling_projects: OptionalProjectIdsOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    seed: SeedOption = None,
+    model: str,
+    dataset: DatasetName,
+    head_only: bool,
+    n_shot: int,
+    train_steps: int,
+    eval_steps: int,
+    batch_size: int,
+    learning_rate: float,
+    warmup_ratio: float,
+    patience: int,
+    tolerance: float,
+    arch: Architecture | None,
+    source: DataSource | None,
+    labeling_projects: tuple[int, ...] | None,
+    mlflow_experiment: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    seed: int | None,
 ) -> None:
     """Fine-tune and run test evaluation."""
     from eh30pt.cli.scripts.finetune import main
@@ -156,7 +279,7 @@ def fine_tune(
         arch=arch,
         n_shot=n_shot,
         source=source,
-        labeling_projects=labeling_projects,
+        labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
     mlflow = MlflowSettings(
@@ -184,29 +307,49 @@ def fine_tune(
     )
 
 
-@app.command(help="Prompt-tune and run test evaluation")
+@app.command("prompt-tune", help="Prompt-tune and run test evaluation")
+@ModelOption
+@DatasetOption
+@PrefixInitOption
+@NShotOption
+@TrainStepsOption
+@EvalStepsOption
+@BatchSizeOption
+@learning_rate_option(1e-3)
+@WarmupRatioOption
+@PatienceOption
+@ToleranceOption
+@ArchOption
+@SourceOption
+@OptionalProjectIdsOption
+@ExperimentOption
+@RunNameOption
+@RunIdOption
+@TrackingUriOption
+@LogLevelOption
+@SeedOption
 def prompt_tune(
     *,
-    model: ModelOption,
-    dataset: DatasetOption,
-    prefix_init: PrefixInitOption = "pretrained",
-    n_shot: NShotOption = 0,
-    train_steps: TrainStepsOption,
-    eval_steps: EvalStepsOption = 0,
-    batch_size: BatchSizeOption = 8,
-    learning_rate: LearningRateOption = 1e-3,
-    warmup_ratio: WarmupRatioOption = 0.06,
-    patience: PatienceOption = 0,
-    tolerance: ToleranceOption = 0.01,
-    arch: ArchOption = None,
-    source: SourceOption = None,
-    labeling_projects: OptionalProjectIdsOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    seed: SeedOption = None,
+    model: str,
+    dataset: DatasetName,
+    prefix_init: PrefixInit,
+    n_shot: int,
+    train_steps: int,
+    eval_steps: int,
+    batch_size: int,
+    learning_rate: float,
+    warmup_ratio: float,
+    patience: int,
+    tolerance: float,
+    arch: Architecture | None,
+    source: DataSource | None,
+    labeling_projects: tuple[int, ...] | None,
+    mlflow_experiment: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    seed: int | None,
 ) -> None:
     """Prompt-tune and run test evaluation."""
     from eh30pt.cli.scripts.prompttune import main
@@ -221,7 +364,7 @@ def prompt_tune(
         arch=arch,
         n_shot=n_shot,
         source=source,
-        labeling_projects=labeling_projects,
+        labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
     mlflow = MlflowSettings(
@@ -249,31 +392,53 @@ def prompt_tune(
     )
 
 
-@app.command(help="QLoRA-tune and run test evaluation")
+@app.command("qlora", help="QLoRA-tune and run test evaluation")
+@ModelOption
+@DatasetOption
+@LoraRankOption
+@LoraAlphaOption
+@LoraDropoutOption
+@NShotOption
+@TrainStepsOption
+@EvalStepsOption
+@BatchSizeOption
+@learning_rate_option(2e-4)
+@WarmupRatioOption
+@PatienceOption
+@ToleranceOption
+@ArchOption
+@SourceOption
+@OptionalProjectIdsOption
+@ExperimentOption
+@RunNameOption
+@RunIdOption
+@TrackingUriOption
+@LogLevelOption
+@SeedOption
 def qlora(
     *,
-    model: ModelOption,
-    dataset: DatasetOption,
-    lora_rank: LoraRankOption = 16,
-    lora_alpha: LoraAlphaOption = 16,
-    lora_dropout: LoraDropoutOption = 0.05,
-    n_shot: NShotOption = 0,
-    train_steps: TrainStepsOption,
-    eval_steps: EvalStepsOption = 0,
-    batch_size: BatchSizeOption = 8,
-    learning_rate: LearningRateOption = 2e-4,
-    warmup_ratio: WarmupRatioOption = 0.06,
-    patience: PatienceOption = 0,
-    tolerance: ToleranceOption = 0.01,
-    arch: ArchOption = None,
-    source: SourceOption = None,
-    labeling_projects: OptionalProjectIdsOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    seed: SeedOption = None,
+    model: str,
+    dataset: DatasetName,
+    lora_rank: int,
+    lora_alpha: int,
+    lora_dropout: float,
+    n_shot: int,
+    train_steps: int,
+    eval_steps: int,
+    batch_size: int,
+    learning_rate: float,
+    warmup_ratio: float,
+    patience: int,
+    tolerance: float,
+    arch: Architecture | None,
+    source: DataSource | None,
+    labeling_projects: tuple[int, ...] | None,
+    mlflow_experiment: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    seed: int | None,
 ) -> None:
     """QLoRA-tune and run test evaluation."""
     from eh30pt.cli.scripts.qlora import main
@@ -288,7 +453,7 @@ def qlora(
         arch=arch,
         n_shot=n_shot,
         source=source,
-        labeling_projects=labeling_projects,
+        labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
     lora = LoRASettings(
@@ -322,21 +487,33 @@ def qlora(
     )
 
 
-@app.command(help="Run test evaluation with few-shot learning")
+@app.command("few-shot", help="Run test evaluation with few-shot learning")
+@ModelOption
+@DatasetOption
+@NShotOption
+@BatchSizeOption
+@ArchOption
+@SourceOption
+@ExperimentOption
+@RunNameOption
+@RunIdOption
+@TrackingUriOption
+@LogLevelOption
+@SeedOption
 def few_shot(
     *,
-    model: ModelOption,
-    dataset: DatasetOption,
-    n_shot: NShotOption = 0,
-    batch_size: BatchSizeOption = 8,
-    arch: ArchOption = None,
-    source: SourceOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    seed: SeedOption = None,
+    model: str,
+    dataset: DatasetName,
+    n_shot: int,
+    batch_size: int,
+    arch: Architecture | None,
+    source: DataSource | None,
+    mlflow_experiment: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    seed: int | None,
 ) -> None:
     """Run test evaluation with few-shot learning."""
     from eh30pt.cli.scripts.fewshot import main
@@ -364,22 +541,34 @@ def few_shot(
 
 
 @app.command(
+    "slurm",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
     help="Submit a training command as a SLURM job",
 )
+@click.pass_context
+@InnerCommandArgument
+@SlurmJobNameOption
+@SlurmOutputOption
+@SlurmPartitionOption
+@SlurmGresOption
+@SlurmCpusOption
+@SlurmMemOption
+@SlurmTimeOption
+@DryRunOption
+@LogLevelOption
 def slurm(
-    ctx: Context,
-    command: InnerCommandArgument,
+    ctx: click.Context,
+    command: str,
     *,
-    job_name: SlurmJobNameOption = None,
-    output: SlurmOutputOption = "log/slurm/%j-%x.out",
-    partition: SlurmPartitionOption = None,
-    gres: SlurmGresOption = None,
-    cpus: SlurmCpusOption = 8,
-    mem: SlurmMemOption = "64G",
-    time: SlurmTimeOption = "12:00:00",
-    dry_run: DryRunOption = False,
-    log_level: LogLevelOption = "info",
+    job_name: str | None,
+    output: str,
+    partition: str | None,
+    gres: str | None,
+    cpus: int,
+    mem: str,
+    time: str,
+    dry_run: bool,
+    log_level: LogLevel,
 ) -> None:
     """
     Submit a training command as a SLURM job.
@@ -392,7 +581,7 @@ def slurm(
 
     if command not in ("fine-tune", "prompt-tune", "qlora", "few-shot"):
         msg = f"cannot submit '{command}', expected a training command"
-        raise BadParameter(msg)
+        raise click.BadParameter(msg)
 
     main(
         command,
@@ -408,15 +597,21 @@ def slurm(
     )
 
 
-@app.command(help="Query a server and print the completion")
+@app.command("completion", help="Query a server and print the completion")
+@PromptArgument
+@SystemOption
+@ProviderOption
+@CompletionDatasetOption
+@LogLevelOption
+@SeedOption
 def completion(
     *,
-    user_prompt: PromptArgument,
-    system_prompt: SystemOption = None,
-    provider: ProviderOption = "llama",
-    dataset: CompletionDatasetOption = None,
-    log_level: LogLevelOption = "info",
-    seed: SeedOption = None,
+    user_prompt: str,
+    system_prompt: str | None,
+    provider: Provider,
+    dataset: DatasetName | None,
+    log_level: LogLevel,
+    seed: int | None,
 ) -> None:
     """Query a server and print the completion."""
     from eh30pt.cli.scripts.completion import main
@@ -432,7 +627,7 @@ def completion(
 
     if system_prompt is None:
         msg = "system prompt is required when --dataset is not given"
-        raise BadParameter(msg, param_hint="--system")
+        raise click.BadParameter(msg, param_hint="--system")
 
     fmt = get_response_schema(dataset) if dataset is not None else None
     server = ServerSettings(provider=provider, format=fmt)
@@ -447,23 +642,37 @@ def completion(
     )
 
 
-@app.command(help="Run few-shot test evaluation on a server")
+@app.command("evaluate", help="Run few-shot test evaluation on a server")
+@DatasetOption
+@SourceOption
+@ProviderOption
+@NShotOption
+@SystemOption
+@ConcurrencyOption
+@FromIdOption
+@RunNameOption
+@RunIdOption
+@ExperimentOption
+@TrackingUriOption
+@LogLevelOption
+@LogIntervalOption
+@SeedOption
 def evaluate(
     *,
-    dataset: DatasetOption,
-    source: SourceOption = None,
-    provider: ProviderOption = "llama",
-    n_shot: NShotOption = 0,
-    system_prompt: SystemOption = None,
-    concurrency: ConcurrencyOption = 8,
-    from_id: FromIdOption = None,
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    log_interval: LogIntervalOption = 1000,
-    seed: SeedOption = None,
+    dataset: DatasetName,
+    source: DataSource | None,
+    provider: Provider,
+    n_shot: int,
+    system_prompt: str | None,
+    concurrency: int,
+    from_id: int | None,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_experiment: str,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    log_interval: int,
+    seed: int | None,
 ) -> None:
     """Run few-shot test evaluation on a server."""
     from eh30pt.cli.scripts.evaluate import main
@@ -503,23 +712,37 @@ def evaluate(
     )
 
 
-@app.command(help="Generate predictions on a server")
+@app.command("generate", help="Generate predictions on a server")
+@DatasetOption
+@SourceOption
+@ProviderOption
+@NShotOption
+@SystemOption
+@ConcurrencyOption
+@FromIdOption
+@RunNameOption
+@RunIdOption
+@ExperimentOption
+@TrackingUriOption
+@LogLevelOption
+@ShardSizeOption
+@SeedOption
 def generate(
     *,
-    dataset: DatasetOption,
-    source: SourceOption = None,
-    provider: ProviderOption = "llama",
-    n_shot: NShotOption = 0,
-    system_prompt: SystemOption = None,
-    concurrency: ConcurrencyOption = 8,
-    from_id: FromIdOption = None,
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    shard_size: ShardSizeOption = 10_000,
-    seed: SeedOption = None,
+    dataset: DatasetName,
+    source: DataSource | None,
+    provider: Provider,
+    n_shot: int,
+    system_prompt: str | None,
+    concurrency: int,
+    from_id: int | None,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_experiment: str,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    shard_size: int,
+    seed: int | None,
 ) -> None:
     """Generate predictions on a server and log them as an MLflow artifact."""
     from eh30pt.cli.scripts.generate import main
@@ -559,23 +782,37 @@ def generate(
     )
 
 
-@app.command(help="Generate predictions with langextract on a server")
+@app.command("langextract", help="Generate predictions with langextract on a server")
+@DatasetOption
+@SourceOption
+@ProviderOption
+@LangExtractNShotOption
+@SystemOption
+@FromIdOption
+@RunNameOption
+@RunIdOption
+@ExperimentOption
+@TrackingUriOption
+@LogLevelOption
+@ShardSizeOption
+@ConcurrencyOption
+@SeedOption
 def langextract(
     *,
-    dataset: DatasetOption,
-    source: SourceOption = None,
-    provider: ProviderOption = "llama",
-    n_shot: LangExtractNShotOption = 1,
-    system_prompt: SystemOption = None,
-    from_id: FromIdOption = None,
-    mlflow_run_name: RunNameOption = None,
-    mlflow_run_id: RunIdOption = None,
-    mlflow_experiment: ExperimentOption = "eh30pt",
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
-    shard_size: ShardSizeOption = 10_000,
-    concurrency: ConcurrencyOption = 8,
-    seed: SeedOption = None,
+    dataset: DatasetName,
+    source: DataSource | None,
+    provider: Provider,
+    n_shot: int,
+    system_prompt: str | None,
+    from_id: int | None,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_experiment: str,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
+    shard_size: int,
+    concurrency: int,
+    seed: int | None,
 ) -> None:
     """Generate predictions with langextract and log them as an artifact."""
     from eh30pt.cli.scripts.langextract import main
@@ -612,15 +849,21 @@ def langextract(
     )
 
 
-@app.command(help="Create a Label Studio project from prediction shards")
+@app.command("create-task", help="Create a Label Studio project from prediction shards")
+@ExportRunOption
+@InferredDatasetOption
+@ProjectTitleOption
+@LabelStudioUrlOption
+@TrackingUriOption
+@LogLevelOption
 def create_task(
     *,
-    mlflow_run_id: ExportRunOption,
-    dataset: InferredDatasetOption = None,
-    title: ProjectTitleOption = None,
-    label_studio_url: LabelStudioUrlOption = "http://localhost:8080",
-    mlflow_tracking_uri: TrackingUriOption = "sqlite:///mlflow.db",
-    log_level: LogLevelOption = "info",
+    mlflow_run_id: str,
+    dataset: DatasetName | None,
+    title: str | None,
+    label_studio_url: str,
+    mlflow_tracking_uri: str,
+    log_level: LogLevel,
 ) -> None:
     """Create a Label Studio project and import the run's tasks into it."""
     from eh30pt.cli.scripts.labeling import main
@@ -643,13 +886,19 @@ def create_task(
     )
 
 
-@app.command(help="Export finished annotations from Label Studio projects")
+@app.command(
+    "export-labels", help="Export finished annotations from Label Studio projects"
+)
+@ProjectIdsOption
+@OutputOption
+@LabelStudioUrlOption
+@LogLevelOption
 def export_labels(
     *,
-    labeling_projects: ProjectIdsOption,
-    output: OutputOption = None,
-    label_studio_url: LabelStudioUrlOption = "http://localhost:8080",
-    log_level: LogLevelOption = "info",
+    labeling_projects: tuple[int, ...],
+    output: Path | None,
+    label_studio_url: str,
+    log_level: LogLevel,
 ) -> None:
     """Read finished annotations into one Parquet frame."""
     from eh30pt.cli.scripts.labeling import export_labels
@@ -658,7 +907,7 @@ def export_labels(
     logger.setLevel(log_level.upper())
 
     studio = LabelStudioSettings(url=label_studio_url)
-    export_labels(settings=studio, projects=labeling_projects, output=output)
+    export_labels(settings=studio, projects=list(labeling_projects), output=output)
 
 
 if __name__ == "__main__":

@@ -1,61 +1,90 @@
 """Live model server querying and streaming options."""
 
-from typing import Annotated
+import rich_click as click
 
-from typer import Argument, Option
+# Unannotated on purpose: click decorators are generic over the decorated
+# callable, which a variable annotation cannot express, so the precise type
+# is left for inference.
 
-from eh30pt.types import DatasetName, DataSource, Provider
+PromptArgument = click.argument("user_prompt", type=str)
 
-PromptArgument = Annotated[
-    str,
-    Argument(help="User prompt to send to the server"),
-]
+SystemOption = click.option(
+    "--system",
+    "system_prompt",
+    type=str,
+    default=None,
+    help="System prompt, defaults to the dataset prompt",
+)
 
-SystemOption = Annotated[
-    str | None,
-    Option("--system", help="System prompt, defaults to the dataset prompt"),
-]
-
-CompletionDatasetOption = Annotated[
-    DatasetName.__value__ | None,
-    Option("--dataset", "-d", help="Constrain output to the dataset label set"),
-]
-
-BaseUrlOption = Annotated[
-    str,
-    Option("--base-url", help="Base URL of the server"),
-]
-
-ShardSizeOption = Annotated[
-    int,
-    Option("--shard-size", min=1, help="Records per prediction shard"),
-]
-
-LogIntervalOption = Annotated[
-    int,
-    Option("--log-interval", min=1, help="Samples between running metric logs"),
-]
-
-ConcurrencyOption = Annotated[
-    int,
-    Option("--concurrency", "-c", min=1, help="Concurrent server requests"),
-]
-
-ProviderOption = Annotated[
-    Provider.__value__,
-    Option("--provider", help="Server provider"),
-]
-
-SourceOption = Annotated[
-    DataSource.__value__ | None,
-    Option("--source", help="Est-Health 30 query for discontinuation events"),
-]
-
-FromIdOption = Annotated[
-    int | None,
-    Option(
-        "--from-id",
-        min=0,
-        help="Only stream rows with id greater than this value",
+CompletionDatasetOption = click.option(
+    "--dataset",
+    "-d",
+    "dataset",
+    type=click.Choice(
+        [
+            "multinerd",
+            "oblique",
+            "discont-classifier",
+            "discont-decider",
+            "discont-extract",
+            "discont-multiple",
+        ]
     ),
-]
+    default=None,
+    help="Constrain output to the dataset label set",
+)
+
+ShardSizeOption = click.option(
+    "--shard-size",
+    "shard_size",
+    type=click.IntRange(min=1),
+    default=10_000,
+    show_default=True,
+    help="Records per prediction shard",
+)
+
+LogIntervalOption = click.option(
+    "--log-interval",
+    "log_interval",
+    type=click.IntRange(min=1),
+    default=1000,
+    show_default=True,
+    help="Samples between running metric logs",
+)
+
+ConcurrencyOption = click.option(
+    "--concurrency",
+    "-c",
+    "concurrency",
+    type=click.IntRange(min=1),
+    default=8,
+    show_default=True,
+    help="Concurrent server requests",
+)
+
+ProviderOption = click.option(
+    "--provider",
+    "provider",
+    type=click.Choice(["llama", "vllm"]),
+    default="llama",
+    show_default=True,
+    help="Server provider",
+)
+
+SourceOption = click.option(
+    "--source",
+    "source",
+    type=click.Choice(
+        ["observed", "trigger", "discont", "switch", "usage-gap", "extract-labels"]
+    ),
+    default=None,
+    help="Est-Health 30 query for discontinuation events",
+)
+
+FromIdOption = click.option(
+    "--from-id",
+    "from_id",
+    type=click.IntRange(min=0),
+    default=None,
+    help="Only stream rows with id greater than this value",
+)

@@ -1,1 +1,1 @@
-"""Shared Typer option and argument types."""
+"""Shared click option and argument decorators."""

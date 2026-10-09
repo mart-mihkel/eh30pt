@@ -12,6 +12,7 @@ dependencies = [
     "bitsandbytes~=0.50.2",
     "langextract~=1.7.0",
     "accelerate~=1.15.0",
+    "rich-click~=1.9.0",
     "sqlalchemy~=2.0.0",
     "pydantic~=2.13.5",
     "tiktoken~=0.14.0",
@@ -22,7 +23,6 @@ dependencies = [
     "mlflow~=3.16.0",
     "polars~=1.44.2",
     "torch~=2.14.0",
-    "typer~=0.27.2",
     "httpx~=0.28.1",
     "rich~=15.0.0",
     "peft~=0.20.0",
@@ -54,7 +54,7 @@ notebooks = [
 ]
 
 [project.scripts]
-eh30pt = "eh30pt.cli.cli:app"
+ehpt = "eh30pt.cli.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
@@ -111,5 +111,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-decorators = ["typer.Typer.command"]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]

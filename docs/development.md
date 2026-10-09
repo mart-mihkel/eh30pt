@@ -12,7 +12,7 @@ just sync
 ```
 
 The package installs a command line interface into the virtualenv.
-Run it with `uv run eh30pt --help` to see the available commands.
+Run it with `uv run ehpt --help` to see the available commands.
 
 ## Services
 
@@ -29,8 +29,9 @@ All code changes must pass the pre-commit checks and tests.
 See the [tests](./tests.md) document for the test layout, fixtures, and options.
 
 ```bash
-just prek  # pre-commit
-just test  # test suite
+just prek  # pre-commit checks
+just test  # fast unit and integration test suite
+just e2e   # slow end to end test suite
 ```
 
 ## Notebooks

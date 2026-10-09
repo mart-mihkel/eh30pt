@@ -7,8 +7,8 @@ import mlflow
 import mlflow.artifacts
 import polars as pl
 import pytest
+from click.testing import CliRunner
 from mlflow.tracking import MlflowClient
-from typer.testing import CliRunner
 
 from eh30pt.cli.cli import app
 from eh30pt.datasets.registry import get_labels
@@ -18,7 +18,7 @@ from test.e2e.conftest import single_run
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typer.testing import Result
+    from click.testing import Result
 
 
 @pytest.fixture(scope="module")

@@ -1,57 +1,112 @@
 """Shared model, dataset and run-shape options."""
 
 from pathlib import Path
-from typing import Annotated
 
-from typer import Option
+import rich_click as click
 
-from eh30pt.types import Architecture, DatasetName, LogLevel
+# Unannotated on purpose: click decorators are generic over the decorated
+# callable, which a variable annotation cannot express, so the precise type
+# is left for inference.
 
-ModelOption = Annotated[
-    str,
-    Option("--model", "-m", help="HuggingFace model or path to checkpoint"),
-]
+ModelOption = click.option(
+    "--model",
+    "-m",
+    "model",
+    required=True,
+    type=str,
+    help="HuggingFace model or path to checkpoint",
+)
 
-DatasetOption = Annotated[
-    DatasetName.__value__,
-    Option("--dataset", "-d", help="Dataset name"),
-]
-
-InferredDatasetOption = Annotated[
-    DatasetName.__value__ | None,
-    Option(
-        "--dataset",
-        "-d",
-        help="Dataset name, inferred from the run when omitted",
+DatasetOption = click.option(
+    "--dataset",
+    "-d",
+    "dataset",
+    required=True,
+    type=click.Choice(
+        [
+            "multinerd",
+            "oblique",
+            "discont-classifier",
+            "discont-decider",
+            "discont-extract",
+            "discont-multiple",
+        ]
     ),
-]
+    help="Dataset name",
+)
 
-NShotOption = Annotated[
-    int,
-    Option("--n-shot", "-n", min=0, help="Number of examples in system prompt"),
-]
+InferredDatasetOption = click.option(
+    "--dataset",
+    "-d",
+    "dataset",
+    required=False,
+    default=None,
+    type=click.Choice(
+        [
+            "multinerd",
+            "oblique",
+            "discont-classifier",
+            "discont-decider",
+            "discont-extract",
+            "discont-multiple",
+        ]
+    ),
+    help="Dataset name, inferred from the run when omitted",
+)
 
-LangExtractNShotOption = Annotated[
-    int,
-    Option("--n-shot", "-n", min=1, help="Number of examples in system prompt"),
-]
+NShotOption = click.option(
+    "--n-shot",
+    "-n",
+    "n_shot",
+    type=click.IntRange(min=0),
+    default=0,
+    show_default=True,
+    help="Number of examples in system prompt",
+)
 
-OutputOption = Annotated[
-    Path | None,
-    Option("--output", "-o", help="Path for the generated export"),
-]
+LangExtractNShotOption = click.option(
+    "--n-shot",
+    "-n",
+    "n_shot",
+    type=click.IntRange(min=1),
+    default=1,
+    show_default=True,
+    help="Number of examples in system prompt",
+)
 
-LogLevelOption = Annotated[
-    LogLevel.__value__,
-    Option("--log-level", "-l", help="Log level"),
-]
+OutputOption = click.option(
+    "--output",
+    "-o",
+    "output",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Path for the generated export",
+)
 
-SeedOption = Annotated[
-    int | None,
-    Option("--seed", "-s", min=0, help="Random seed"),
-]
+LogLevelOption = click.option(
+    "--log-level",
+    "-l",
+    "log_level",
+    type=click.Choice(["debug", "info", "warning", "error"]),
+    default="info",
+    show_default=True,
+    help="Log level",
+)
 
-ArchOption = Annotated[
-    Architecture.__value__ | None,
-    Option("--arch", "-a", help="Override auto-detected model architecture"),
-]
+SeedOption = click.option(
+    "--seed",
+    "-s",
+    "seed",
+    type=click.IntRange(min=0),
+    default=None,
+    help="Random seed",
+)
+
+ArchOption = click.option(
+    "--arch",
+    "-a",
+    "arch",
+    type=click.Choice(["encoder", "decoder", "encoder-decoder"]),
+    default=None,
+    help="Override auto-detected model architecture",
+)

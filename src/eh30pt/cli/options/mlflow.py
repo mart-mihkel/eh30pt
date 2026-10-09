@@ -1,41 +1,59 @@
 """MLflow tracking options."""
 
-from typing import Annotated
+import rich_click as click
 
-from typer import Option
+# Unannotated on purpose: click decorators are generic over the decorated
+# callable, which a variable annotation cannot express, so the precise type
+# is left for inference.
 
-TrackingUriOption = Annotated[
-    str,
-    Option(envvar="MLFLOW_TRACKING_URI", help="MLflow tracking URI"),
-]
+TrackingUriOption = click.option(
+    "--mlflow-tracking-uri",
+    "mlflow_tracking_uri",
+    type=str,
+    default="sqlite:///mlflow.db",
+    show_default=True,
+    show_envvar=True,
+    envvar="MLFLOW_TRACKING_URI",
+    help="MLflow tracking URI",
+)
 
-ExperimentOption = Annotated[
-    str,
-    Option(envvar="MLFLOW_EXPERIMENT", help="Experiment name for mlflow tracking"),
-]
+ExperimentOption = click.option(
+    "--mlflow-experiment",
+    "mlflow_experiment",
+    type=str,
+    default="eh30pt",
+    show_default=True,
+    show_envvar=True,
+    envvar="MLFLOW_EXPERIMENT",
+    help="Experiment name for mlflow tracking",
+)
 
-ExportRunOption = Annotated[
-    str,
-    Option(
-        "--mlflow-run-id",
-        envvar="MLFLOW_RUN_ID",
-        help="Run whose prediction shards to export",
-    ),
-]
+ExportRunOption = click.option(
+    "--mlflow-run-id",
+    "mlflow_run_id",
+    type=str,
+    required=True,
+    show_envvar=True,
+    envvar="MLFLOW_RUN_ID",
+    help="Run whose prediction shards to export",
+)
 
-RunNameOption = Annotated[
-    str | None,
-    Option(
-        envvar="MLFLOW_RUN_NAME",
-        help="Run name for mlflow tracking, inferred from parameters by default",
-    ),
-]
+RunNameOption = click.option(
+    "--mlflow-run-name",
+    "mlflow_run_name",
+    type=str,
+    default=None,
+    show_envvar=True,
+    envvar="MLFLOW_RUN_NAME",
+    help="Run name for mlflow tracking, inferred from parameters by default",
+)
 
-RunIdOption = Annotated[
-    str | None,
-    Option(
-        "--mlflow-run-id",
-        envvar="MLFLOW_RUN_ID",
-        help="Reattach to an existing run and append results",
-    ),
-]
+RunIdOption = click.option(
+    "--mlflow-run-id",
+    "mlflow_run_id",
+    type=str,
+    default=None,
+    show_envvar=True,
+    envvar="MLFLOW_RUN_ID",
+    help="Reattach to an existing run and append results",
+)

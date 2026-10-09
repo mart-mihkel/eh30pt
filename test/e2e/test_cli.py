@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 import torch
-from typer.testing import CliRunner
+from click.testing import CliRunner
 
 from eh30pt.cli.cli import app
 from test.conftest import models
@@ -13,7 +13,7 @@ from test.e2e.conftest import single_run
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typer.testing import Result
+    from click.testing import Result
 
 
 _model_params: Final = [pytest.param(name, id=name) for name in models]

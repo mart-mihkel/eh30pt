@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from typer.testing import CliRunner
+from click.testing import CliRunner
 
 from eh30pt.cli.cli import app, log_accelerator, set_seed
 
@@ -47,6 +47,15 @@ def test_set_seed_with_seed_is_deterministic() -> None:
 
 def test_log_accelerator_runs() -> None:
     log_accelerator()
+
+
+def test_all_commands_render_help() -> None:
+    """Every command must render help without warnings or errors."""
+    runner = CliRunner()
+    for name in app.commands:
+        result = runner.invoke(app, [name, "--help"])
+
+        assert result.exit_code == 0, name
 
 
 def test_slurm_rejects_non_training_command() -> None:

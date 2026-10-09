@@ -1,50 +1,77 @@
 """SLURM job submission options."""
 
-from typing import Annotated
+import rich_click as click
 
-from typer import Argument, Option
+# Unannotated on purpose: click decorators are generic over the decorated
+# callable, which a variable annotation cannot express, so the precise type
+# is left for inference.
 
-InnerCommandArgument = Annotated[
-    str,
-    Argument(help="Training command to submit"),
-]
+InnerCommandArgument = click.argument("command", type=str)
 
-SlurmJobNameOption = Annotated[
-    str | None,
-    Option("--job-name", help="SLURM job name, defaults to the training command"),
-]
+SlurmJobNameOption = click.option(
+    "--job-name",
+    "job_name",
+    type=str,
+    default=None,
+    help="SLURM job name, defaults to the training command",
+)
 
-SlurmOutputOption = Annotated[
-    str,
-    Option("--output", help="SLURM output path, supports %j and %x placeholders"),
-]
+SlurmOutputOption = click.option(
+    "--output",
+    "output",
+    type=str,
+    default="log/slurm/%j-%x.out",
+    show_default=True,
+    help="SLURM output path, supports %j and %x placeholders",
+)
 
-SlurmPartitionOption = Annotated[
-    str | None,
-    Option("--partition", help="SLURM partition to submit to"),
-]
+SlurmPartitionOption = click.option(
+    "--partition",
+    "partition",
+    type=str,
+    default=None,
+    help="SLURM partition to submit to",
+)
 
-SlurmGresOption = Annotated[
-    str | None,
-    Option("--gres", help="Generic resources to request per job"),
-]
+SlurmGresOption = click.option(
+    "--gres",
+    "gres",
+    type=str,
+    default=None,
+    help="Generic resources to request per job",
+)
 
-SlurmCpusOption = Annotated[
-    int,
-    Option("--cpus", min=1, help="CPUs to request per job"),
-]
+SlurmCpusOption = click.option(
+    "--cpus",
+    "cpus",
+    type=click.IntRange(min=1),
+    default=8,
+    show_default=True,
+    help="CPUs to request per job",
+)
 
-SlurmMemOption = Annotated[
-    str,
-    Option("--mem", help="Memory to request per job"),
-]
+SlurmMemOption = click.option(
+    "--mem",
+    "mem",
+    type=str,
+    default="64G",
+    show_default=True,
+    help="Memory to request per job",
+)
 
-SlurmTimeOption = Annotated[
-    str,
-    Option("--time", help="Wall-clock limit per job"),
-]
+SlurmTimeOption = click.option(
+    "--time",
+    "time",
+    type=str,
+    default="12:00:00",
+    show_default=True,
+    help="Wall-clock limit per job",
+)
 
-DryRunOption = Annotated[
-    bool,
-    Option("--dry-run", help="Print the batch script without submitting"),
-]
+DryRunOption = click.option(
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
+    help="Print the batch script without submitting",
+)

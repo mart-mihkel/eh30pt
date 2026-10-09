@@ -6,7 +6,7 @@ See the documentation for [development](./docs/development.md) to get started.
 
 ```bash
 uv sync
-uv run eh30pt --help
+uv run ehpt --help
 ```
 
 ## Data

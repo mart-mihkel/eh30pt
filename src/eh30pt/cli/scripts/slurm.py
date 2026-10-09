@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import typer
+import rich_click as click
 
 from eh30pt.logging import logger
 
@@ -46,7 +46,7 @@ def build_sbatch(
             "uv",
             "run",
             "--no-sync",
-            "eh30pt",
+            "ehpt",
             command,
             *args,
         ]
@@ -95,7 +95,7 @@ def main(
     logger.info("wrote batch script to '%s'", path)
 
     if dry_run:
-        typer.echo(script, nl=False)
+        click.echo(script, nl=False)
         return
 
     sbatch = shutil.which("sbatch")

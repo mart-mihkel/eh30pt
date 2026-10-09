@@ -1,32 +1,46 @@
 """Label Studio round-trip options."""
 
-from typing import Annotated
+import rich_click as click
 
-from typer import Option
+# Unannotated on purpose: click decorators are generic over the decorated
+# callable, which a variable annotation cannot express, so the precise type
+# is left for inference.
 
-LabelStudioUrlOption = Annotated[
-    str,
-    Option(
-        "--label-studio-url",
-        envvar="LABEL_STUDIO_URL",
-        help="Base URL of the Label Studio server",
-    ),
-]
+LabelStudioUrlOption = click.option(
+    "--label-studio-url",
+    "label_studio_url",
+    type=str,
+    default="http://localhost:8080",
+    show_default=True,
+    show_envvar=True,
+    envvar="LABEL_STUDIO_URL",
+    help="Base URL of the Label Studio server",
+)
 
-ProjectTitleOption = Annotated[
-    str | None,
-    Option(
-        "--title",
-        help="Project title, inferred from the dataset when omitted",
-    ),
-]
+ProjectTitleOption = click.option(
+    "--title",
+    "title",
+    type=str,
+    default=None,
+    help="Project title, inferred from the dataset when omitted",
+)
 
-ProjectIdsOption = Annotated[
-    list[int],
-    Option("--project", "-p", min=1, help="Label Studio project ids to read"),
-]
+ProjectIdsOption = click.option(
+    "--project",
+    "-p",
+    "labeling_projects",
+    type=click.IntRange(min=1),
+    required=True,
+    multiple=True,
+    help="Label Studio project ids to read",
+)
 
-OptionalProjectIdsOption = Annotated[
-    list[int] | None,
-    Option("--project", "-p", help="Label Studio project ids training the run"),
-]
+OptionalProjectIdsOption = click.option(
+    "--project",
+    "-p",
+    "labeling_projects",
+    type=int,
+    default=None,
+    multiple=True,
+    help="Label Studio project ids training the run",
+)
