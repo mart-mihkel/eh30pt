@@ -40,7 +40,7 @@ from eh30pt.cli.options.server import (
     data_source_option,
     from_id_option,
     log_interval_option,
-    prompt_rgument,
+    prompt_argument,
     provider_option,
     shard_size_option,
     system_prompt_option,
@@ -266,7 +266,7 @@ def fine_tune(
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     seed: int | None,
 ) -> None:
@@ -287,7 +287,7 @@ def fine_tune(
     )
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -351,7 +351,7 @@ def prompt_tune(
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     seed: int | None,
 ) -> None:
@@ -372,7 +372,7 @@ def prompt_tune(
     )
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -440,7 +440,7 @@ def qlora(
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     seed: int | None,
 ) -> None:
@@ -467,7 +467,7 @@ def qlora(
     )
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -515,7 +515,7 @@ def few_shot(
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     seed: int | None,
 ) -> None:
@@ -535,7 +535,7 @@ def few_shot(
     )
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -602,7 +602,7 @@ def slurm(
 
 
 @app.command("completion", help="Query a server and print the completion")
-@prompt_rgument
+@prompt_argument
 @system_prompt_option
 @provider_option
 @completion_dataset_option
@@ -673,7 +673,7 @@ def evaluate(
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     log_interval: int,
     seed: int | None,
@@ -690,7 +690,7 @@ def evaluate(
     server = ServerSettings(provider=provider, format=fmt)
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -743,7 +743,7 @@ def generate(
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     shard_size: int,
     seed: int | None,
@@ -760,7 +760,7 @@ def generate(
     server = ServerSettings(provider=provider, format=fmt)
 
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -812,7 +812,7 @@ def langextract(
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
     shard_size: int,
     concurrency: int,
@@ -827,7 +827,7 @@ def langextract(
 
     server = ServerSettings(provider=provider)
     mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri,
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
         run_name=mlflow_run_name,
         run_id=mlflow_run_id,
@@ -866,7 +866,7 @@ def create_task(
     dataset: DatasetName | None,
     title: str | None,
     label_studio_url: str,
-    mlflow_tracking_uri: str,
+    mlflow_tracking_uri: str | None,
     log_level: LogLevel,
 ) -> None:
     """Create a Label Studio project and import the run's tasks into it."""
@@ -876,7 +876,10 @@ def create_task(
     logger.setLevel(log_level.upper())
 
     studio = LabelStudioSettings(url=label_studio_url)
-    mlflow = MlflowSettings(tracking_uri=mlflow_tracking_uri, run_id=mlflow_run_id)
+    mlflow = MlflowSettings(
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
+        run_id=mlflow_run_id,
+    )
 
     project = main(
         settings=studio,

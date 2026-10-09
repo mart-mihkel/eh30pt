@@ -6,7 +6,7 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-prompt_rgument = click.argument("user_prompt", type=str)
+prompt_argument = click.argument("user_prompt", type=str)
 
 system_prompt_option = click.option(
     "--system",

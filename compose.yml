@@ -65,7 +65,8 @@ services:
       - "5000"
       - --workers
       - "2"
-      - --default-artifact-root
+      - --serve-artifacts
+      - --artifacts-destination
       - /mlflow/artifacts
     volumes:
       - mlflow-artifacts:/mlflow/artifacts

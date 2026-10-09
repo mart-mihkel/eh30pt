@@ -10,7 +10,6 @@ tracking_uri_option = click.option(
     "--mlflow-tracking-uri",
     "mlflow_tracking_uri",
     type=str,
-    default="sqlite:///mlflow.db",
     show_default=True,
     show_envvar=True,
     envvar="MLFLOW_TRACKING_URI",

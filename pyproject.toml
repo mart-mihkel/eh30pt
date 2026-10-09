@@ -111,4 +111,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+runtime-evaluated-base-classes = [
+    "pydantic_settings.BaseSettings",
+    "pydantic.BaseModel",
+]
