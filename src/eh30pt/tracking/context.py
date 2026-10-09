@@ -1,5 +1,6 @@
 """An open MLflow run plus its local checkpoint directory."""
 
+import logging
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, Self, TextIO, cast
@@ -8,12 +9,10 @@ import mlflow
 import mlflow.transformers
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
-from rich.console import Console
-from rich.logging import RichHandler
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
-from eh30pt.logging import logger
+from eh30pt.logging import _UvFormatter, logger
 from eh30pt.modeling.arch import get_pipeline_task
 from eh30pt.modeling.trainer import get_trainer
 from eh30pt.settings import MlflowSettings
@@ -48,9 +47,9 @@ _from_id_tag = "eh30pt.from_id"
 
 
 class _RunLog(NamedTuple):
-    """File-backed rich log capture mirroring the console without color."""
+    """File-backed log capture mirroring the console without color."""
 
-    handler: RichHandler
+    handler: logging.Handler
     file: TextIO
 
 
@@ -161,8 +160,8 @@ class RunContext:
         path = self.dir / "run.log"
         path.parent.mkdir(parents=True, exist_ok=True)
         file = path.open("a", encoding="utf-8")
-        console = Console(file=file, width=80)
-        handler = RichHandler(console=console, show_path=False, show_time=False)
+        handler: logging.Handler = logging.StreamHandler(cast("TextIO", file))
+        handler.setFormatter(_UvFormatter(use_color=False))
         logger.addHandler(handler)
         self._run_log = _RunLog(handler=handler, file=file)
 
