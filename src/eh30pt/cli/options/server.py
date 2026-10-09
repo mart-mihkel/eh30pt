@@ -6,9 +6,9 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-PromptArgument = click.argument("user_prompt", type=str)
+prompt_rgument = click.argument("user_prompt", type=str)
 
-SystemOption = click.option(
+system_prompt_option = click.option(
     "--system",
     "system_prompt",
     type=str,
@@ -16,7 +16,7 @@ SystemOption = click.option(
     help="System prompt, defaults to the dataset prompt",
 )
 
-CompletionDatasetOption = click.option(
+completion_dataset_option = click.option(
     "--dataset",
     "-d",
     "dataset",
@@ -34,7 +34,7 @@ CompletionDatasetOption = click.option(
     help="Constrain output to the dataset label set",
 )
 
-ShardSizeOption = click.option(
+shard_size_option = click.option(
     "--shard-size",
     "shard_size",
     type=click.IntRange(min=1),
@@ -43,7 +43,7 @@ ShardSizeOption = click.option(
     help="Records per prediction shard",
 )
 
-LogIntervalOption = click.option(
+log_interval_option = click.option(
     "--log-interval",
     "log_interval",
     type=click.IntRange(min=1),
@@ -52,7 +52,7 @@ LogIntervalOption = click.option(
     help="Samples between running metric logs",
 )
 
-ConcurrencyOption = click.option(
+concurrency_option = click.option(
     "--concurrency",
     "-c",
     "concurrency",
@@ -62,7 +62,7 @@ ConcurrencyOption = click.option(
     help="Concurrent server requests",
 )
 
-ProviderOption = click.option(
+provider_option = click.option(
     "--provider",
     "provider",
     type=click.Choice(["llama", "vllm"]),
@@ -71,7 +71,7 @@ ProviderOption = click.option(
     help="Server provider",
 )
 
-SourceOption = click.option(
+data_source_option = click.option(
     "--source",
     "source",
     type=click.Choice(
@@ -81,7 +81,7 @@ SourceOption = click.option(
     help="Est-Health 30 query for discontinuation events",
 )
 
-FromIdOption = click.option(
+from_id_option = click.option(
     "--from-id",
     "from_id",
     type=click.IntRange(min=0),

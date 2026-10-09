@@ -6,7 +6,7 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-TrackingUriOption = click.option(
+tracking_uri_option = click.option(
     "--mlflow-tracking-uri",
     "mlflow_tracking_uri",
     type=str,
@@ -17,7 +17,7 @@ TrackingUriOption = click.option(
     help="MLflow tracking URI",
 )
 
-ExperimentOption = click.option(
+experiment_option = click.option(
     "--mlflow-experiment",
     "mlflow_experiment",
     type=str,
@@ -28,7 +28,7 @@ ExperimentOption = click.option(
     help="Experiment name for mlflow tracking",
 )
 
-ExportRunOption = click.option(
+export_run_option = click.option(
     "--mlflow-run-id",
     "mlflow_run_id",
     type=str,
@@ -38,7 +38,7 @@ ExportRunOption = click.option(
     help="Run whose prediction shards to export",
 )
 
-RunNameOption = click.option(
+run_name_option = click.option(
     "--mlflow-run-name",
     "mlflow_run_name",
     type=str,
@@ -48,7 +48,7 @@ RunNameOption = click.option(
     help="Run name for mlflow tracking, inferred from parameters by default",
 )
 
-RunIdOption = click.option(
+run_id_option = click.option(
     "--mlflow-run-id",
     "mlflow_run_id",
     type=str,

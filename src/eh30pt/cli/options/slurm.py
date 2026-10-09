@@ -6,9 +6,9 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-InnerCommandArgument = click.argument("command", type=str)
+inner_command_argument = click.argument("command", type=str)
 
-SlurmJobNameOption = click.option(
+slurm_job_name_option = click.option(
     "--job-name",
     "job_name",
     type=str,
@@ -16,7 +16,7 @@ SlurmJobNameOption = click.option(
     help="SLURM job name, defaults to the training command",
 )
 
-SlurmOutputOption = click.option(
+slurm_output_option = click.option(
     "--output",
     "output",
     type=str,
@@ -25,7 +25,7 @@ SlurmOutputOption = click.option(
     help="SLURM output path, supports %j and %x placeholders",
 )
 
-SlurmPartitionOption = click.option(
+slurm_partition_option = click.option(
     "--partition",
     "partition",
     type=str,
@@ -33,7 +33,7 @@ SlurmPartitionOption = click.option(
     help="SLURM partition to submit to",
 )
 
-SlurmGresOption = click.option(
+slurm_gres_option = click.option(
     "--gres",
     "gres",
     type=str,
@@ -41,7 +41,7 @@ SlurmGresOption = click.option(
     help="Generic resources to request per job",
 )
 
-SlurmCpusOption = click.option(
+slurm_cpus_option = click.option(
     "--cpus",
     "cpus",
     type=click.IntRange(min=1),
@@ -50,7 +50,7 @@ SlurmCpusOption = click.option(
     help="CPUs to request per job",
 )
 
-SlurmMemOption = click.option(
+slurm_mem_option = click.option(
     "--mem",
     "mem",
     type=str,
@@ -59,7 +59,7 @@ SlurmMemOption = click.option(
     help="Memory to request per job",
 )
 
-SlurmTimeOption = click.option(
+slurm_time_option = click.option(
     "--time",
     "time",
     type=str,
@@ -68,7 +68,7 @@ SlurmTimeOption = click.option(
     help="Wall-clock limit per job",
 )
 
-DryRunOption = click.option(
+dry_run_option = click.option(
     "--dry-run",
     "dry_run",
     is_flag=True,

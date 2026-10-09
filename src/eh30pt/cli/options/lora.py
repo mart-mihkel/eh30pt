@@ -5,7 +5,7 @@ import rich_click as click
 # Unannotated on purpose: click decorators are generic over the decorated
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
-LoraRankOption = click.option(
+lora_rank_option = click.option(
     "--lora-rank",
     "lora_rank",
     type=click.IntRange(min=1),
@@ -14,7 +14,7 @@ LoraRankOption = click.option(
     help="LoRA adapter rank",
 )
 
-LoraAlphaOption = click.option(
+lora_alpha_option = click.option(
     "--lora-alpha",
     "lora_alpha",
     type=click.IntRange(min=1),
@@ -23,7 +23,7 @@ LoraAlphaOption = click.option(
     help="LoRA scaling factor",
 )
 
-LoraDropoutOption = click.option(
+lora_dropout_option = click.option(
     "--lora-dropout",
     "lora_dropout",
     type=click.FloatRange(min=0, max=1),

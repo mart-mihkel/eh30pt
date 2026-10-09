@@ -6,62 +6,66 @@ from typing import TYPE_CHECKING
 import rich_click as click
 
 from eh30pt.cli.options.common import (
-    ArchOption,
-    DatasetOption,
-    InferredDatasetOption,
-    LangExtractNShotOption,
-    LogLevelOption,
-    ModelOption,
-    NShotOption,
-    OutputOption,
-    SeedOption,
+    arch_option,
+    dataset_option,
+    inferred_dataset_option,
+    lang_extract_n_shot_option,
+    log_level_option,
+    model_option,
+    n_shot_option,
+    output_option,
+    seed_option,
 )
 from eh30pt.cli.options.labeling import (
-    LabelStudioUrlOption,
-    OptionalProjectIdsOption,
-    ProjectIdsOption,
-    ProjectTitleOption,
+    label_studio_url_option,
+    optional_project_ids_option,
+    project_ids_option,
+    project_title_option,
 )
-from eh30pt.cli.options.lora import LoraAlphaOption, LoraDropoutOption, LoraRankOption
+from eh30pt.cli.options.lora import (
+    lora_alpha_option,
+    lora_dropout_option,
+    lora_rank_option,
+)
 from eh30pt.cli.options.mlflow import (
-    ExperimentOption,
-    ExportRunOption,
-    RunIdOption,
-    RunNameOption,
-    TrackingUriOption,
+    experiment_option,
+    export_run_option,
+    run_id_option,
+    run_name_option,
+    tracking_uri_option,
 )
 from eh30pt.cli.options.server import (
-    CompletionDatasetOption,
-    ConcurrencyOption,
-    FromIdOption,
-    LogIntervalOption,
-    PromptArgument,
-    ProviderOption,
-    ShardSizeOption,
-    SourceOption,
-    SystemOption,
+    completion_dataset_option,
+    concurrency_option,
+    data_source_option,
+    from_id_option,
+    log_interval_option,
+    prompt_rgument,
+    provider_option,
+    shard_size_option,
+    system_prompt_option,
 )
 from eh30pt.cli.options.slurm import (
-    DryRunOption,
-    InnerCommandArgument,
-    SlurmCpusOption,
-    SlurmGresOption,
-    SlurmJobNameOption,
-    SlurmMemOption,
-    SlurmOutputOption,
-    SlurmPartitionOption,
-    SlurmTimeOption,
+    dry_run_option,
+    inner_command_argument,
+    slurm_cpus_option,
+    slurm_gres_option,
+    slurm_job_name_option,
+    slurm_mem_option,
+    slurm_output_option,
+    slurm_partition_option,
+    slurm_time_option,
 )
 from eh30pt.cli.options.training import (
-    BatchSizeOption,
-    EvalStepsOption,
-    HeadOnlyOption,
-    PatienceOption,
-    PrefixInitOption,
-    ToleranceOption,
-    TrainStepsOption,
-    WarmupRatioOption,
+    batch_size_option,
+    eval_steps_option,
+    head_only_option,
     learning_rate_option,
+    patience_option,
+    prefix_init_option,
+    tolerance_option,
+    train_steps_option,
+    warmup_ratio_option,
 )
 from eh30pt.logging import logger, setup_logging
 from eh30pt.settings import (
@@ -223,26 +227,26 @@ def log_accelerator() -> None:
 
 
 @app.command("fine-tune", help="Fine-tune and run test evaluation")
-@ModelOption
-@DatasetOption
-@HeadOnlyOption
-@NShotOption
-@TrainStepsOption
-@EvalStepsOption
-@BatchSizeOption
+@model_option
+@dataset_option
+@head_only_option
+@n_shot_option
+@train_steps_option
+@eval_steps_option
+@batch_size_option
 @learning_rate_option(5e-5)
-@WarmupRatioOption
-@PatienceOption
-@ToleranceOption
-@ArchOption
-@SourceOption
-@OptionalProjectIdsOption
-@ExperimentOption
-@RunNameOption
-@RunIdOption
-@TrackingUriOption
-@LogLevelOption
-@SeedOption
+@warmup_ratio_option
+@patience_option
+@tolerance_option
+@arch_option
+@data_source_option
+@optional_project_ids_option
+@experiment_option
+@run_name_option
+@run_id_option
+@tracking_uri_option
+@log_level_option
+@seed_option
 def fine_tune(
     *,
     model: str,
@@ -308,26 +312,26 @@ def fine_tune(
 
 
 @app.command("prompt-tune", help="Prompt-tune and run test evaluation")
-@ModelOption
-@DatasetOption
-@PrefixInitOption
-@NShotOption
-@TrainStepsOption
-@EvalStepsOption
-@BatchSizeOption
+@model_option
+@dataset_option
+@prefix_init_option
+@n_shot_option
+@train_steps_option
+@eval_steps_option
+@batch_size_option
 @learning_rate_option(1e-3)
-@WarmupRatioOption
-@PatienceOption
-@ToleranceOption
-@ArchOption
-@SourceOption
-@OptionalProjectIdsOption
-@ExperimentOption
-@RunNameOption
-@RunIdOption
-@TrackingUriOption
-@LogLevelOption
-@SeedOption
+@warmup_ratio_option
+@patience_option
+@tolerance_option
+@arch_option
+@data_source_option
+@optional_project_ids_option
+@experiment_option
+@run_name_option
+@run_id_option
+@tracking_uri_option
+@log_level_option
+@seed_option
 def prompt_tune(
     *,
     model: str,
@@ -393,28 +397,28 @@ def prompt_tune(
 
 
 @app.command("qlora", help="QLoRA-tune and run test evaluation")
-@ModelOption
-@DatasetOption
-@LoraRankOption
-@LoraAlphaOption
-@LoraDropoutOption
-@NShotOption
-@TrainStepsOption
-@EvalStepsOption
-@BatchSizeOption
+@model_option
+@dataset_option
+@lora_rank_option
+@lora_alpha_option
+@lora_dropout_option
+@n_shot_option
+@train_steps_option
+@eval_steps_option
+@batch_size_option
 @learning_rate_option(2e-4)
-@WarmupRatioOption
-@PatienceOption
-@ToleranceOption
-@ArchOption
-@SourceOption
-@OptionalProjectIdsOption
-@ExperimentOption
-@RunNameOption
-@RunIdOption
-@TrackingUriOption
-@LogLevelOption
-@SeedOption
+@warmup_ratio_option
+@patience_option
+@tolerance_option
+@arch_option
+@data_source_option
+@optional_project_ids_option
+@experiment_option
+@run_name_option
+@run_id_option
+@tracking_uri_option
+@log_level_option
+@seed_option
 def qlora(
     *,
     model: str,
@@ -488,18 +492,18 @@ def qlora(
 
 
 @app.command("few-shot", help="Run test evaluation with few-shot learning")
-@ModelOption
-@DatasetOption
-@NShotOption
-@BatchSizeOption
-@ArchOption
-@SourceOption
-@ExperimentOption
-@RunNameOption
-@RunIdOption
-@TrackingUriOption
-@LogLevelOption
-@SeedOption
+@model_option
+@dataset_option
+@n_shot_option
+@batch_size_option
+@arch_option
+@data_source_option
+@experiment_option
+@run_name_option
+@run_id_option
+@tracking_uri_option
+@log_level_option
+@seed_option
 def few_shot(
     *,
     model: str,
@@ -546,16 +550,16 @@ def few_shot(
     help="Submit a training command as a SLURM job",
 )
 @click.pass_context
-@InnerCommandArgument
-@SlurmJobNameOption
-@SlurmOutputOption
-@SlurmPartitionOption
-@SlurmGresOption
-@SlurmCpusOption
-@SlurmMemOption
-@SlurmTimeOption
-@DryRunOption
-@LogLevelOption
+@inner_command_argument
+@slurm_job_name_option
+@slurm_output_option
+@slurm_partition_option
+@slurm_gres_option
+@slurm_cpus_option
+@slurm_mem_option
+@slurm_time_option
+@dry_run_option
+@log_level_option
 def slurm(
     ctx: click.Context,
     command: str,
@@ -598,12 +602,12 @@ def slurm(
 
 
 @app.command("completion", help="Query a server and print the completion")
-@PromptArgument
-@SystemOption
-@ProviderOption
-@CompletionDatasetOption
-@LogLevelOption
-@SeedOption
+@prompt_rgument
+@system_prompt_option
+@provider_option
+@completion_dataset_option
+@log_level_option
+@seed_option
 def completion(
     *,
     user_prompt: str,
@@ -643,20 +647,20 @@ def completion(
 
 
 @app.command("evaluate", help="Run few-shot test evaluation on a server")
-@DatasetOption
-@SourceOption
-@ProviderOption
-@NShotOption
-@SystemOption
-@ConcurrencyOption
-@FromIdOption
-@RunNameOption
-@RunIdOption
-@ExperimentOption
-@TrackingUriOption
-@LogLevelOption
-@LogIntervalOption
-@SeedOption
+@dataset_option
+@data_source_option
+@provider_option
+@n_shot_option
+@system_prompt_option
+@concurrency_option
+@from_id_option
+@run_name_option
+@run_id_option
+@experiment_option
+@tracking_uri_option
+@log_level_option
+@log_interval_option
+@seed_option
 def evaluate(
     *,
     dataset: DatasetName,
@@ -713,20 +717,20 @@ def evaluate(
 
 
 @app.command("generate", help="Generate predictions on a server")
-@DatasetOption
-@SourceOption
-@ProviderOption
-@NShotOption
-@SystemOption
-@ConcurrencyOption
-@FromIdOption
-@RunNameOption
-@RunIdOption
-@ExperimentOption
-@TrackingUriOption
-@LogLevelOption
-@ShardSizeOption
-@SeedOption
+@dataset_option
+@data_source_option
+@provider_option
+@n_shot_option
+@system_prompt_option
+@concurrency_option
+@from_id_option
+@run_name_option
+@run_id_option
+@experiment_option
+@tracking_uri_option
+@log_level_option
+@shard_size_option
+@seed_option
 def generate(
     *,
     dataset: DatasetName,
@@ -783,20 +787,20 @@ def generate(
 
 
 @app.command("langextract", help="Generate predictions with langextract on a server")
-@DatasetOption
-@SourceOption
-@ProviderOption
-@LangExtractNShotOption
-@SystemOption
-@FromIdOption
-@RunNameOption
-@RunIdOption
-@ExperimentOption
-@TrackingUriOption
-@LogLevelOption
-@ShardSizeOption
-@ConcurrencyOption
-@SeedOption
+@dataset_option
+@data_source_option
+@provider_option
+@lang_extract_n_shot_option
+@system_prompt_option
+@from_id_option
+@run_name_option
+@run_id_option
+@experiment_option
+@tracking_uri_option
+@log_level_option
+@shard_size_option
+@concurrency_option
+@seed_option
 def langextract(
     *,
     dataset: DatasetName,
@@ -850,12 +854,12 @@ def langextract(
 
 
 @app.command("create-task", help="Create a Label Studio project from prediction shards")
-@ExportRunOption
-@InferredDatasetOption
-@ProjectTitleOption
-@LabelStudioUrlOption
-@TrackingUriOption
-@LogLevelOption
+@export_run_option
+@inferred_dataset_option
+@project_title_option
+@label_studio_url_option
+@tracking_uri_option
+@log_level_option
 def create_task(
     *,
     mlflow_run_id: str,
@@ -887,12 +891,13 @@ def create_task(
 
 
 @app.command(
-    "export-labels", help="Export finished annotations from Label Studio projects"
+    "export-labels",
+    help="Export finished annotations from Label Studio projects",
 )
-@ProjectIdsOption
-@OutputOption
-@LabelStudioUrlOption
-@LogLevelOption
+@project_ids_option
+@output_option
+@label_studio_url_option
+@log_level_option
 def export_labels(
     *,
     labeling_projects: tuple[int, ...],

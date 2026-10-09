@@ -8,7 +8,7 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-ModelOption = click.option(
+model_option = click.option(
     "--model",
     "-m",
     "model",
@@ -17,7 +17,7 @@ ModelOption = click.option(
     help="HuggingFace model or path to checkpoint",
 )
 
-DatasetOption = click.option(
+dataset_option = click.option(
     "--dataset",
     "-d",
     "dataset",
@@ -35,7 +35,7 @@ DatasetOption = click.option(
     help="Dataset name",
 )
 
-InferredDatasetOption = click.option(
+inferred_dataset_option = click.option(
     "--dataset",
     "-d",
     "dataset",
@@ -54,7 +54,7 @@ InferredDatasetOption = click.option(
     help="Dataset name, inferred from the run when omitted",
 )
 
-NShotOption = click.option(
+n_shot_option = click.option(
     "--n-shot",
     "-n",
     "n_shot",
@@ -64,7 +64,7 @@ NShotOption = click.option(
     help="Number of examples in system prompt",
 )
 
-LangExtractNShotOption = click.option(
+lang_extract_n_shot_option = click.option(
     "--n-shot",
     "-n",
     "n_shot",
@@ -74,7 +74,7 @@ LangExtractNShotOption = click.option(
     help="Number of examples in system prompt",
 )
 
-OutputOption = click.option(
+output_option = click.option(
     "--output",
     "-o",
     "output",
@@ -83,7 +83,7 @@ OutputOption = click.option(
     help="Path for the generated export",
 )
 
-LogLevelOption = click.option(
+log_level_option = click.option(
     "--log-level",
     "-l",
     "log_level",
@@ -93,7 +93,7 @@ LogLevelOption = click.option(
     help="Log level",
 )
 
-SeedOption = click.option(
+seed_option = click.option(
     "--seed",
     "-s",
     "seed",
@@ -102,7 +102,7 @@ SeedOption = click.option(
     help="Random seed",
 )
 
-ArchOption = click.option(
+arch_option = click.option(
     "--arch",
     "-a",
     "arch",

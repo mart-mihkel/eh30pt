@@ -6,7 +6,7 @@ import rich_click as click
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-LabelStudioUrlOption = click.option(
+label_studio_url_option = click.option(
     "--label-studio-url",
     "label_studio_url",
     type=str,
@@ -17,7 +17,7 @@ LabelStudioUrlOption = click.option(
     help="Base URL of the Label Studio server",
 )
 
-ProjectTitleOption = click.option(
+project_title_option = click.option(
     "--title",
     "title",
     type=str,
@@ -25,7 +25,7 @@ ProjectTitleOption = click.option(
     help="Project title, inferred from the dataset when omitted",
 )
 
-ProjectIdsOption = click.option(
+project_ids_option = click.option(
     "--project",
     "-p",
     "labeling_projects",
@@ -35,7 +35,7 @@ ProjectIdsOption = click.option(
     help="Label Studio project ids to read",
 )
 
-OptionalProjectIdsOption = click.option(
+optional_project_ids_option = click.option(
     "--project",
     "-p",
     "labeling_projects",

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 # callable, which a variable annotation cannot express, so the precise type
 # is left for inference.
 
-TrainStepsOption = click.option(
+train_steps_option = click.option(
     "--train-steps",
     "-t",
     "train_steps",
@@ -22,7 +22,7 @@ TrainStepsOption = click.option(
     help="Number of training steps",
 )
 
-EvalStepsOption = click.option(
+eval_steps_option = click.option(
     "--eval-steps",
     "-e",
     "eval_steps",
@@ -32,7 +32,7 @@ EvalStepsOption = click.option(
     help="Evaluate every N steps, 0 disables",
 )
 
-BatchSizeOption = click.option(
+batch_size_option = click.option(
     "--batch-size",
     "-b",
     "batch_size",
@@ -42,7 +42,7 @@ BatchSizeOption = click.option(
     help="Training/eval batch size",
 )
 
-PatienceOption = click.option(
+patience_option = click.option(
     "--patience",
     "patience",
     type=click.IntRange(min=0),
@@ -51,7 +51,7 @@ PatienceOption = click.option(
     help="Evals without improvement before stopping, 0 disables",
 )
 
-ToleranceOption = click.option(
+tolerance_option = click.option(
     "--tolerance",
     "tolerance",
     type=click.FloatRange(min=0),
@@ -74,7 +74,7 @@ def learning_rate_option(default: float) -> Callable[[FC], FC]:
     )
 
 
-WarmupRatioOption = click.option(
+warmup_ratio_option = click.option(
     "--warmup-ratio",
     "-w",
     "warmup_ratio",
@@ -84,7 +84,7 @@ WarmupRatioOption = click.option(
     help="Fraction of steps for lr warmup",
 )
 
-PrefixInitOption = click.option(
+prefix_init_option = click.option(
     "--prefix-init",
     "prefix_init",
     type=click.Choice(["pretrained", "random"]),
@@ -93,7 +93,7 @@ PrefixInitOption = click.option(
     help="Prefix initialization method",
 )
 
-HeadOnlyOption = click.option(
+head_only_option = click.option(
     "--head-only",
     "head_only",
     is_flag=True,
