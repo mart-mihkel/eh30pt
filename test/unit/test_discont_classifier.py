@@ -1,6 +1,10 @@
 """Tests for mapping exported annotations to classifier training rows."""
 
-from eh30pt.datasets.discontinuation.classify import labeled_row
+from eh30pt.datasets.discontinuation.classify import (
+    DiscontClassifier,
+    DiscontClassifierRow,
+    labeled_row,
+)
 
 
 def test_labeled_row_maps_each_box_choice() -> None:
@@ -241,3 +245,68 @@ def test_labeled_rows_skip_unmappable_annotations() -> None:
     rows = list(labeled_rows(tasks))  # ty: ignore[invalid-argument-type]
 
     assert [(row["id"], row["label"]) for row in rows] == [(1, "Dosage change")]
+
+
+def _voted_rows(count: int) -> list[DiscontClassifierRow]:
+    """Return `count` voted rows cycling through the classifier labels."""
+    labels = tuple(DiscontClassifier.id2label.values())
+    return [
+        {
+            "id": task_id,
+            "text": "text",
+            "phrase": "phrase",
+            "drug": "drug",
+            "label": labels[task_id % len(labels)],
+        }
+        for task_id in range(count)
+    ]
+
+
+def test_carve_puts_every_row_in_exactly_one_split() -> None:
+    from eh30pt.datasets.discontinuation.classify import _carve
+
+    rows = _voted_rows(100)
+    splits = _carve(rows)
+
+    assert [len(splits.train), len(splits.eval), len(splits.test)] == [80, 10, 10]
+    assert sorted(row["id"] for row in (*splits.train, *splits.eval, *splits.test)) == [
+        row["id"] for row in rows
+    ]
+
+
+def test_carve_shuffles_the_splits_reproducibly() -> None:
+    from eh30pt.datasets.discontinuation.classify import _carve
+
+    splits = _carve(_voted_rows(100))
+    reordered = _carve(list(reversed(_voted_rows(100))))
+
+    assert [row["id"] for row in splits.test] == [row["id"] for row in reordered.test]
+    assert sorted(row["id"] for row in splits.test) != list(range(90, 100))
+
+
+def test_carve_keeps_rows_that_cannot_fill_three_splits_in_train() -> None:
+    from eh30pt.datasets.discontinuation.classify import _carve
+
+    for count in (0, 1, 2):
+        rows = _voted_rows(count)
+        splits = _carve(rows)
+
+        assert splits.train == rows
+        assert splits.eval == []
+        assert splits.test == []
+
+
+def test_above_drops_consumed_rows_without_moving_them() -> None:
+    from eh30pt.datasets.discontinuation.classify import _above, _carve
+
+    splits = _carve(_voted_rows(100))
+
+    assert _above(splits, start_after=None) is splits
+
+    consumed = 40
+    resumed = _above(splits, start_after=consumed)
+
+    for before, after in zip(splits, resumed, strict=True):
+        assert [row["id"] for row in after] == [
+            row["id"] for row in before if row["id"] > consumed
+        ]

@@ -1,19 +1,27 @@
 """Drug discontinuation reason classification dataset."""
 
 from collections import Counter
-from functools import partial
+from functools import cache
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cast
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Literal,
+    NamedTuple,
+    NotRequired,
+    TypedDict,
+    cast,
+)
 
+from datasets import Dataset
 from datasets.iterable_dataset import IterableDataset
 from returns.result import Failure, Success
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
-from eh30pt.datasets.discontinuation.streaming import _stream_rows
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.labeling.studio import StudioClient, group_choices
 from eh30pt.logging import logger
-from eh30pt.settings import LabelStudioSettings, PostgresSettings
+from eh30pt.settings import LabelStudioSettings
 from eh30pt.types import DataSplits, FewShot
 
 if TYPE_CHECKING:
@@ -45,6 +53,14 @@ class DiscontClassifierRow(TypedDict):
     phrase: NotRequired[str]
     drug: NotRequired[str]
     label: NotRequired[DiscontClassifierLabel]
+
+
+class SplitRows(NamedTuple):
+    """The row lists the voted rows are carved into."""
+
+    train: list[DiscontClassifierRow]
+    eval: list[DiscontClassifierRow]
+    test: list[DiscontClassifierRow]
 
 
 class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
@@ -292,27 +308,62 @@ def stream_labeled_rows(
                     raise RuntimeError(msg) from exc
 
 
-def _no_cls_rows() -> Iterator[DiscontClassifierRow]:
-    """Yield no rows for the empty train and eval splits."""
-    return iter(())
+def _carve(rows: Sequence[DiscontClassifierRow], *, seed: int = 0) -> SplitRows:
+    """
+    Carve the voted rows into train, eval and test splits.
+
+    Rows are ordered by id first, so which split a row lands in depends on
+    the rows themselves rather than the order Label Studio paged them in.
+    Two tenths are held out and cut in half a second time, mirroring how
+    oblique carves eval out of what its first cut held back, and rows too
+    few to leave train at least one stay in train on their own.
+    """
+    ordered = sorted(rows, key=lambda row: row["id"])
+    tenth = max(1, round(len(ordered) * 0.1))
+
+    if len(ordered) - tenth * 2 < 1:
+        return SplitRows(train=ordered, eval=[], test=[])
+
+    dataset = Dataset.from_list(cast("list[dict[str, object]]", ordered))
+    rest = dataset.train_test_split(test_size=tenth * 2, seed=seed, keep_in_memory=True)
+    halves = rest["test"].train_test_split(
+        test_size=tenth, seed=seed, keep_in_memory=True
+    )
+
+    return SplitRows(
+        train=_rows_of(rest["train"]),
+        eval=_rows_of(halves["train"]),
+        test=_rows_of(halves["test"]),
+    )
 
 
-def _stream_classifier_rows(
-    url: str,
-    *,
-    page_size: int,
-    start_after: int | None = None,
-) -> Iterator[DiscontClassifierRow]:
-    """Stream trigger events with id above start_after, connecting lazily."""
-    yield from cast(
-        "Iterator[DiscontClassifierRow]",
-        _stream_rows(
-            url,
-            "trigger",
-            page_size=page_size,
-            start_after=start_after,
-            message="streaming discontinuation events",
-        ),
+def _rows_of(dataset: Dataset) -> list[DiscontClassifierRow]:
+    """
+    Return the rows of one carved split as typed rows.
+
+    Every row comes from `labeled_row`, which fills all four fields, so the
+    arrow columns round trip back into the full typed dict.
+    """
+    return cast("list[DiscontClassifierRow]", dataset.to_list())
+
+
+def _above(splits: SplitRows, start_after: int | None) -> SplitRows:
+    """
+    Drop the rows at or below `start_after` from every split.
+
+    The filter runs after the carve, so a resumed run sees the same rows in
+    the same splits it saw before, only without the consumed ones.
+    """
+    if start_after is None:
+        return splits
+
+    consumed: int = start_after
+
+    def keep(rows: list[DiscontClassifierRow]) -> list[DiscontClassifierRow]:
+        return [row for row in rows if row["id"] > consumed]
+
+    return SplitRows(
+        train=keep(splits.train), eval=keep(splits.eval), test=keep(splits.test)
     )
 
 
@@ -322,28 +373,30 @@ def load_discont_classifier(
     n_shot: int = 0,
     n_virtual: int = 0,
     *,
-    page_size: int = 10000,
     start_after: int | None = None,
     labeling_projects: Sequence[int],
 ) -> DataSplits:
     """
-    Load voted Label Studio rows as train and trigger events as test.
+    Load the voted Label Studio rows as train, eval and test splits.
 
-    The eval split stays empty because the projects carry no held out rows.
+    The projects are read once, when the first split iterates, and all three
+    splits then share that single fetch.
     """
-    logger.debug("discontinuation rows stream from Est-Health on first iteration")
-    url = PostgresSettings().connection_url
-    test_rows = partial(
-        _stream_classifier_rows,
-        url,
-        page_size=page_size,
-        start_after=start_after,
-    )
 
-    train_rows = partial(stream_labeled_rows, LabelStudioSettings(), labeling_projects)
+    @cache
+    def voted() -> SplitRows:
+        logger.debug("reading the voted rows of projects %s", labeling_projects)
+        rows = list(stream_labeled_rows(LabelStudioSettings(), labeling_projects))
+        return _above(_carve(rows), start_after)
 
     return DataSplits(
-        train=DiscontClassifier(train_rows, tokenizer, arch, n_shot, n_virtual),
-        eval=DiscontClassifier(_no_cls_rows, tokenizer, arch, n_shot, n_virtual),
-        test=DiscontClassifier(test_rows, tokenizer, arch, n_shot, n_virtual),
+        train=DiscontClassifier(
+            lambda: iter(voted().train), tokenizer, arch, n_shot, n_virtual
+        ),
+        eval=DiscontClassifier(
+            lambda: iter(voted().eval), tokenizer, arch, n_shot, n_virtual
+        ),
+        test=DiscontClassifier(
+            lambda: iter(voted().test), tokenizer, arch, n_shot, n_virtual
+        ),
     )

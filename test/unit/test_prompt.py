@@ -430,9 +430,7 @@ def test_select_source_rejects_invalid() -> None:
         )
 
 
-def test_no_row_factories_are_empty() -> None:
-    from eh30pt.datasets.discontinuation.classify import _no_cls_rows
+def test_no_extract_row_factory_is_empty() -> None:
     from eh30pt.datasets.discontinuation.extract import _no_extract_rows
 
-    assert list(_no_cls_rows()) == []
     assert list(_no_extract_rows()) == []

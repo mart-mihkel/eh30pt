@@ -469,8 +469,12 @@ def test_load_discont_extract_opens_no_connection(
 
 
 def test_load_classifier_opens_no_connection(
-    bert_tokenizer: PreTrainedTokenizerFast,
+    bert_tokenizer: PreTrainedTokenizerFast, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Building the splits reads no project, the first iteration reads them."""
+    monkeypatch.setenv("LABEL_STUDIO_URL", "http://localhost:1")
+
     splits = load_discont_classifier(bert_tokenizer, "decoder", labeling_projects=[1])
 
-    assert list(splits.eval.samples()) == []
+    with pytest.raises(RuntimeError, match="could not read tasks of project 1"):
+        _ = list(splits.eval.samples())
