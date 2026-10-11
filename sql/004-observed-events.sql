@@ -9,9 +9,7 @@ as
     de.text
   from
     (
-      select distinct on (
-        d.patient_id,
-        e.data ->> 'text')
+      select distinct on (d.patient_id, e.data ->> 'text')
         e.id,
         e.epi_id,
         e."table",

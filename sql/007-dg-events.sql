@@ -13,7 +13,8 @@ as
       select distinct on (
         d.patient_id,
         e.data ->> 'text',
-        d.event_type)
+        d.event_type
+      )
         e.id,
         e.epi_id,
         e."table",

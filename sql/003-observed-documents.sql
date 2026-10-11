@@ -40,7 +40,8 @@ insert into user_sven.ddi194_observed_cda_documents (
   time_source
 )
 select
-  7000 + (n - 1) % 25 as patient_id,
+  -- prime modulus keeps patients decoupled from the phrase and event type cycles
+  7000 + (n - 1) % 151 as patient_id,
   (array['A', 'B', 'C', 'D', 'E'])[1 + (n - 1) % 5]
   as index_drug,
   (array['F', 'G', 'H', 'I', 'J'])[1 + (n - 1) % 5]

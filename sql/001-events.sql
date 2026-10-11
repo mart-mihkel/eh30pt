@@ -22,6 +22,61 @@ create table if not exists cda_fact_extraction_202603.events (
   specialty_code text
 );
 
+with
+phrases
+as (
+  select
+    array['Vererõhk 140/90, pulss 78.',
+    'Diagnoositud essentsiaalne hüpertensioon.',
+    'Patsient suunatud kardioloogi vastuvõtule.',
+    'Kaebused rindkere valule füüsilisel koormusel.',
+    'EKG: siinusrütm, sagedus 72.',
+    'Teostatud vereanalüüsid, CRP normis.',
+    'Soovitatud elustiili muutused ja soolavaba dieet.',
+    'Kontrollvisiit kolme kuu pärast.',
+    'Patsiendil esineb õhupuudus trepist käimisel.',
+    'Kopsudes kuulda nõrgenenud hingamiskahinat.',
+    'Ravimite taluvus hea, kõrvaltoimeid ei esine.',
+    'Teostatud ultraheliuuring kõhukoopast.',
+    'Patsient suunatud kirurgi konsultatsioonile.',
+    'Diabeediravi toimib, HbA1c paranenud.',
+    'Kolesterool normis, kuur lõpetatud plaanipäraselt.',
+    'Patsient jätkab statiinravi, taluvus hea.',
+    'Südame ultraheliuuring: struktuur ja funktsioon normis.',
+    'Neerufunktsioonid korras, kreatiniin 78 µmol/l.',
+    'Maksaproovid kontrollis, ALT ja AST normipiiril.',
+    'Patsient informeeritud raviplaanist ja järelkontrollist.',
+    'Vaktsineerimine läbi viidud, tüsistusi ei esinenud.',
+    'Sissekanne saatekirjale: kardioloogi konsultatsioon.',
+    'Elektrolüüdid ja happe-aluse tasakaal normis.',
+    'Haiguslugu täiendatud uuringute tulemustega.']
+    as document_texts,
+    array['Patsient katkestas losartaani võtmise, köha tõttu.',
+    'Ravi lõpetas arst, vererõhk normaliseerus.',
+    'Arst asendas amlodipiini teise ravimiga, tursete tõttu.',
+    'Patsient vahetas statiini, lihasvalude tõttu.',
+    'Patsient loobus varfariinist, veritsusohu tõttu.',
+    'Annust vähendas arst, pearingluse tõttu.',
+    'Ravi katkestamine arsti otsusel, maksaproovide tõusu tõttu.',
+    'Metformiini lõpetamine seedehäirete tõttu.',
+    'Ravimite taluvus hea, kõrvaltoimeid ei esine.',
+    'Diabeediravi toimib, HbA1c paranenud.',
+    'Vererõhk 140/90, pulss 78.',
+    'EKG: siinusrütm, sagedus 72.',
+    'Arst peatas antikoagulantravi enne plaanilist operatsiooni.',
+    'Patsient jätkab ravi muutumatult, kaebusi pole.',
+    'Vererõhk kontrollil 132/80, pulss 64.',
+    'Nebilet tühistati, südametegevus aeglustus.',
+    'Patsient unustas kolm päeva ravimit võtta.',
+    'Aspiriin asendati klopidogreelliga verejooksu ohu tõttu.',
+    'Ravi ajutiselt peatatud, laborianalüüsid kontrolliks.',
+    'Kopsupõletik ravitud antibiootikumidega, paranemine toimunud.',
+    'Patsient loobus suitsetamisest, nõustamine jätkub.',
+    'EKG muutusi ei esine, rütm sinuseline.',
+    'Arst vähendas statiini annust, kolesterool 4,8 mmol/l.',
+    'Arst kirjutas uue ravimi, kuna eelmine ei sobinud.']
+    as anamnesis_texts
+)
 insert into cda_fact_extraction_202603.events (
   data,
   hidden,
@@ -48,48 +103,17 @@ select
       'text',
       case
         when n in (26, 27) then ''
-        when (n - 1) % 25 < 13 then
-          (array[
-            'Vererõhk 140/90, pulss 78.',
-            'Diagnoositud essentsiaalne hüpertensioon.',
-            'Patsient suunatud kardioloogi vastuvõtule.',
-            'Kaebused rindkere valule füüsilisel koormusel.',
-            'EKG: siinusrütm, sagedus 72.',
-            'Teostatud vereanalüüsid, CRP normis.',
-            'Soovitatud elustiili muutused ja soolavaba dieet.',
-            'Kontrollvisiit kolme kuu pärast.',
-            'Patsiendil esineb õhupuudus trepist käimisel.',
-            'Kopsudes kuulda nõrgenenud hingamiskahinat.',
-            'Ravimite taluvus hea, kõrvaltoimeid ei esine.',
-            'Teostatud ultraheliuuring kõhukoopast.',
-            'Patsient suunatud kirurgi konsultatsioonile.',
-            'Diabeediravi toimib, HbA1c paranenud.',
-            'Kolesterool normis, kuur lõpetatud plaanipäraselt.',
-            'Patsient jätkab statiinravi, taluvus hea.'
-          ])[1 + (n - 1) % 16]
-        else
-          (array[
-            'Patsient katkestas losartaani võtmise, köha tõttu.',
-            'Ravi lõpetas arst, vererõhk normaliseerus.',
-            'Arst asendas amlodipiini teise ravimiga, tursete tõttu.',
-            'Patsient vahetas statiini, lihasvalude tõttu.',
-            'Patsient loobus varfariinist, veritsusohu tõttu.',
-            'Annust vähendas arst, pearingluse tõttu.',
-            'Ravi katkestamine arsti otsusel, maksaproovide tõusu tõttu.',
-            'Metformiini lõpetamine seedehäirete tõttu.',
-            'Ravimite taluvus hea, kõrvaltoimeid ei esine.',
-            'Diabeediravi toimib, HbA1c paranenud.',
-            'Vererõhk 140/90, pulss 78.',
-            'EKG: siinusrütm, sagedus 72.'
-          ])[1 + (n - 1) % 12]
+        when (n - 1) % 25 < 13
+        then document_texts[1 + (n - 1) % array_length(document_texts, 1)]
+        else anamnesis_texts[1 + (n - 1) % array_length(anamnesis_texts, 1)]
       end,
       'meta', jsonb_build_object('source', 'mock', 'row', n),
-      'layers', '[]'::jsonb,
-      'relation_layers', '[]'::jsonb
+      'layers', cast('[]' as jsonb),
+      'relation_layers', cast('[]' as jsonb)
     )
   end,
   false,
-  n::text,
+  cast(n as text),
   case
     when n in (246, 247) then null
     when (n - 1) % 10 < 6 then 'ravim'
@@ -98,28 +122,45 @@ select
     when (n - 1) % 10 = 8 then 'protseduur'
     else 'diagnoos'
   end,
-  timestamp '2024-01-01 08:00:00' + (n - 1) * interval '2 hours',
+  -- 10 minutes apart keeps the whole series inside a single calendar year
+  cast('2024-01-01 08:00:00' as timestamp) +
+  (n - 1) * cast('10 minutes' as interval),
   1000 + n,
   'cda',
-  case when (n - 1) % 25 < 13 then 'document' else 'anamnesis' end,
+  case
+    when (n - 1) % 25 < 13 then 'document'
+    else 'anamnesis'
+  end,
   case
     when (n - 1) % 25 < 13 then 'narrative'
     when n % 2 = 0 then 'anamnesis'
     else 'anamnsum'
   end,
-  (5000 + n)::text,
+  cast(5000 + n as text),
   case
-    when (n - 1) % 25 < 13 then
-      (array['Epikriis', 'Saatekiri', 'Läbivaatus', 'Vastuvõtt'])[1 + (n - 1) % 4]
+    when (n - 1) % 25 < 13
+    then (array['Epikriis',
+    'Saatekiri',
+    'Läbivaatus',
+    'Vastuvõtt'])[1 + (n - 1) % 4]
     else 'Anamnees'
   end,
-  (n * 7) % 120,
-  (n * 13) % 250,
-  (timestamp '2024-01-01 08:00:00' + (n - 1) * interval '2 hours')::date::text,
-  'D00' || (1 + (n - 1) % 9),
-  (array['sisehaigused', 'kardioloogia', 'neuroloogia', 'perearstiabi', 'onkoloogia'])[1 + (n - 1) % 5],
+  n * 7 % 120,
+  n * 13 % 250,
+  cast(cast(cast('2024-01-01 08:00:00' as timestamp) +
+  (n - 1) * cast('10 minutes' as interval)
+  as date)
+  as text),
+  'D00' || 1 + (n - 1) % 9,
+  (array['sisehaigused',
+  'kardioloogia',
+  'neuroloogia',
+  'perearstiabi',
+  'onkoloogia'])[1 + (n - 1) % 5],
   (array['SISE', 'KARD', 'NEUR', 'PERE', 'ONK'])[1 + (n - 1) % 5]
-from generate_series(1, 5000) as n;
+from
+  phrases,
+  generate_series(1, 50000) as n;
 
 create index if not exists "ix_events_epi_id"
 on cda_fact_extraction_202603.events
