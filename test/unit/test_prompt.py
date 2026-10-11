@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING, Final, cast
 import pytest
 
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.datasets.discontinuation.decide import DeciderRow, DiscontDecider
-from eh30pt.datasets.discontinuation.extract import DiscontExtract
+from eh30pt.datasets.discontinuation.extract import (
+    DiscontExtract,
+    DiscontExtractRow,
+)
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Obl
 from eh30pt.datasets.registry import (
@@ -66,10 +68,6 @@ def test_few_shots_cover_labels() -> None:
         DiscontClassifier.id2label.values()
     )
 
-    assert {shot.label for shot in DiscontDecider.few_shots} == set(
-        DiscontDecider.id2label.values()
-    )
-
 
 def test_get_few_shots() -> None:
     shots = get_few_shots("oblique", 5)
@@ -87,14 +85,16 @@ def test_get_few_shots() -> None:
 
 def test_discont_extract_few_shots_are_extraction_objects() -> None:
     _defined = 5
-    shots = get_few_shots("discont-extract", _defined)
+    shots = get_few_shots("discont-extract/trigger", _defined)
 
     assert len(shots) == _defined
     for shot in shots:
-        assert set(json.loads(shot.label)) == set(get_extract_fields("discont-extract"))
+        assert set(json.loads(shot.label)) == set(
+            get_extract_fields("discont-extract/trigger")
+        )
 
     with pytest.raises(ValueError, match="only 5 defined"):
-        get_few_shots("discont-extract", _defined + 1)
+        get_few_shots("discont-extract/trigger", _defined + 1)
 
 
 def test_few_shots_derive_from_extract_shots() -> None:
@@ -113,9 +113,9 @@ def test_few_shots_derive_from_extract_shots() -> None:
 
 
 def test_extract_schema_limits_field_lengths() -> None:
-    properties = get_response_schema("discont-extract")["json_schema"]["schema"][
-        "properties"
-    ]
+    properties = get_response_schema("discont-extract/trigger")["json_schema"][
+        "schema"
+    ]["properties"]
 
     assert properties == {
         "reason": {"type": "string", "maxLength": 1024},
@@ -128,18 +128,18 @@ def test_registry() -> None:
     _obl_fewshots = 5
     _multinerd_labels = 15
     _classifier_labels = 8
-    _decider_labels = 3
 
     assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
     assert len(get_labels("multinerd")) == _multinerd_labels
-    assert len(get_labels("discont-classifier")) == _classifier_labels
-    assert len(get_labels("discont-decider")) == _decider_labels
+    assert len(get_labels("discont-classifier/extract-labels")) == _classifier_labels
 
     assert get_sys_prompt("oblique") == Obl.system_prompt
     assert get_sys_prompt("multinerd") == Multinerd.system_prompt
-    assert get_sys_prompt("discont-classifier") == DiscontClassifier.system_prompt
-    assert get_sys_prompt("discont-decider") == DiscontDecider.system_prompt
-    assert get_sys_prompt("discont-extract") == DiscontExtract.system_prompt
+    assert (
+        get_sys_prompt("discont-classifier/extract-labels")
+        == DiscontClassifier.system_prompt
+    )
+    assert get_sys_prompt("discont-extract/trigger") == DiscontExtract.system_prompt
 
     assert len(get_few_shots("oblique", 5)) == _obl_fewshots
 
@@ -161,7 +161,7 @@ def test_get_response_schema() -> None:
         "enum": list(Obl.id2label.values()),
     }
 
-    extract = get_response_schema("discont-extract")
+    extract = get_response_schema("discont-extract/trigger")
 
     assert extract["json_schema"]["name"] == "extraction"
     assert (
@@ -177,9 +177,8 @@ def test_get_task_marks_extraction_dataset() -> None:
 
     assert get_task("multinerd") == "classification"
     assert get_task("oblique") == "classification"
-    assert get_task("discont-classifier") == "classification"
-    assert get_task("discont-decider") == "classification"
-    assert get_task("discont-extract") == "extraction"
+    assert get_task("discont-classifier/extract-labels") == "classification"
+    assert get_task("discont-extract/trigger") == "extraction"
 
     with pytest.raises(ValueError, match="invalid dataset"):
         get_task(cast("DatasetName", "unknown"))
@@ -187,18 +186,18 @@ def test_get_task_marks_extraction_dataset() -> None:
 
 def test_get_labels_rejects_extraction_dataset() -> None:
     with pytest.raises(ValueError, match="has no labels"):
-        get_labels("discont-extract")
+        get_labels("discont-extract/trigger")
 
 
 def test_require_classification_rejects_extraction_dataset() -> None:
     assert_classification("oblique", "training needs labels")
 
     with pytest.raises(ValueError, match="extraction dataset"):
-        assert_classification("discont-extract", "training needs labels")
+        assert_classification("discont-extract/trigger", "training needs labels")
 
 
 def test_require_extraction_rejects_classification_dataset() -> None:
-    assert_extraction("discont-extract", "langextract needs extraction fields")
+    assert_extraction("discont-extract/trigger", "langextract needs extraction fields")
 
     with pytest.raises(ValueError, match="classification dataset"):
         assert_extraction("oblique", "langextract needs extraction fields")
@@ -206,23 +205,23 @@ def test_require_extraction_rejects_classification_dataset() -> None:
 
 def test_get_extract_shots() -> None:
     _defined = 5
-    shots = get_extract_shots("discont-extract", _defined)
+    shots = get_extract_shots("discont-extract/trigger", _defined)
 
     assert len(shots) == _defined
     assert all(
-        set(shot.extractions) == set(get_extract_fields("discont-extract"))
+        set(shot.extractions) == set(get_extract_fields("discont-extract/trigger"))
         for shot in shots
     )
 
     with pytest.raises(ValueError, match="only 5 defined"):
-        get_extract_shots("discont-extract", _defined + 1)
+        get_extract_shots("discont-extract/trigger", _defined + 1)
 
     with pytest.raises(ValueError, match="has no extraction examples"):
         get_extract_shots("oblique", 1)
 
 
 def test_get_extract_fields() -> None:
-    assert get_extract_fields("discont-extract") == ("phrase", "reason", "drug")
+    assert get_extract_fields("discont-extract/trigger") == ("phrase", "reason", "drug")
 
     with pytest.raises(ValueError, match="has no extraction fields"):
         get_extract_fields("oblique")
@@ -232,9 +231,8 @@ def test_response_schemas_serialize_to_json() -> None:
     datasets: list[DatasetName] = [
         "multinerd",
         "oblique",
-        "discont-classifier",
-        "discont-decider",
-        "discont-extract",
+        "discont-classifier/extract-labels",
+        "discont-extract/trigger",
     ]
 
     for dataset in datasets:
@@ -249,33 +247,37 @@ def test_load_data_rejects_start_after_for_static_datasets(
 ) -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
     with pytest.raises(ValueError, match="only supported for discont"):
-        load_data(
-            tokenizer,
-            dataset,
-            "decoder",
-            start_after=100,
-            source="trigger",
-        )
+        load_data(tokenizer, dataset, "decoder", start_after=100)
 
 
-def test_load_data_rejects_source_for_static_datasets() -> None:
-    tokenizer = cast("PreTrainedTokenizerFast", None)
-    with pytest.raises(ValueError, match="only supported for discont"):
-        load_data(tokenizer, "oblique", "decoder", source="observed")
-
-
-@pytest.mark.parametrize("dataset", ["discont-classifier", "discont-extract"])
-def test_load_data_requires_source_for_discont_datasets(
+@pytest.mark.parametrize("dataset", ["multinerd", "oblique"])
+def test_load_data_rejects_labeling_projects_for_static_datasets(
     dataset: DatasetName,
 ) -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    with pytest.raises(ValueError, match="source is required"):
-        load_data(tokenizer, dataset, "decoder")
+    with pytest.raises(ValueError, match="project ids are only read by"):
+        load_data(tokenizer, dataset, "decoder", labeling_projects=[1])
 
 
-def test_load_data_defaults_to_trigger_source() -> None:
+def test_load_data_rejects_labeling_projects_for_extract_datasets() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = load_data(tokenizer, "discont-classifier", "decoder", source="trigger")
+
+    with pytest.raises(ValueError, match="project ids are only read by"):
+        load_data(
+            tokenizer, "discont-extract/trigger", "decoder", labeling_projects=[1]
+        )
+
+
+def test_load_data_requires_projects_for_the_classifier() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    with pytest.raises(ValueError, match="needs project ids"):
+        load_data(tokenizer, "discont-classifier/extract-labels", "decoder")
+
+
+def test_load_data_streams_the_test_split_only() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+    data = load_data(tokenizer, "discont-extract/trigger", "decoder")
 
     assert list(data.train) == []
     assert list(data.eval) == []
@@ -283,14 +285,14 @@ def test_load_data_defaults_to_trigger_source() -> None:
 
 def test_discont_samples_carry_row_id() -> None:
 
-    rows: list[DeciderRow] = [
+    rows: list[DiscontExtractRow] = [
         {"id": 42, "text": "katkestas"},
         {"id": 7, "text": "lõpetas"},
     ]
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    decider = DiscontDecider(lambda: iter(rows), tokenizer, "decoder")
+    extract = DiscontExtract(lambda: iter(rows), tokenizer, "decoder")
 
-    assert [(sample.id, sample.user) for sample in decider.samples()] == [
+    assert [(sample.id, sample.user) for sample in extract.samples()] == [
         (42, "katkestas"),
         (7, "lõpetas"),
     ]
@@ -301,7 +303,7 @@ def test_load_data_rejects_non_decoder_arch_for_extract(arch: Architecture) -> N
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="not supported"):
-        load_data(tokenizer, "discont-extract", arch, source="trigger")
+        load_data(tokenizer, "discont-extract/trigger", arch)
 
 
 def test_get_labels_rejects_invalid_dataset() -> None:
@@ -319,15 +321,16 @@ def test_get_few_shots_rejects_invalid_dataset() -> None:
         get_few_shots(cast("DatasetName", "unknown"), 1)
 
 
-def test_get_few_shots_covers_discont_datasets() -> None:
+def test_get_few_shots_covers_datasets() -> None:
     _n_shots: Final = 2
 
-    assert len(get_few_shots("discont-classifier", _n_shots)) == _n_shots
-    assert len(get_few_shots("discont-decider", _n_shots)) == _n_shots
+    assert len(get_few_shots("discont-classifier/extract-labels", _n_shots)) == _n_shots
     assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
 
     with pytest.raises(ValueError, match="only 8 defined"):
-        get_few_shots("discont-classifier", len(DiscontClassifier.few_shots) + 1)
+        get_few_shots(
+            "discont-classifier/extract-labels", len(DiscontClassifier.few_shots) + 1
+        )
 
 
 def test_dataset_sources_cover_discont_tables() -> None:
@@ -335,8 +338,10 @@ def test_dataset_sources_cover_discont_tables() -> None:
 
     from eh30pt.tracking.datasets import dataset_input, dataset_source
 
-    assert isinstance(dataset_source("discont-classifier"), CodeDatasetSource)
-    assert isinstance(dataset_source("discont-decider"), CodeDatasetSource)
+    assert isinstance(
+        dataset_source("discont-classifier/extract-labels"), CodeDatasetSource
+    )
+    assert isinstance(dataset_source("discont-extract/trigger"), CodeDatasetSource)
     assert dataset_input("oblique").profile is None
 
 
@@ -344,9 +349,7 @@ def test_load_data_rejects_invalid_dataset() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="invalid dataset"):
-        load_data(
-            tokenizer, cast("DatasetName", "unknown"), "decoder", source="trigger"
-        )
+        load_data(tokenizer, cast("DatasetName", "unknown"), "decoder")
 
 
 def test_dataset_input_rejects_invalid_dataset() -> None:
@@ -362,7 +365,7 @@ def test_dataset_input_rejects_invalid_dataset() -> None:
 def test_dataset_input_covers_extract_dataset() -> None:
     from eh30pt.tracking.datasets import dataset_input
 
-    assert dataset_input("discont-extract").name == "discont-extract"
+    assert dataset_input("discont-extract/trigger").name == "discont-extract/trigger"
 
 
 def test_mixin_base_methods_raise() -> None:
@@ -384,7 +387,6 @@ def test_mixin_base_methods_raise() -> None:
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:
     from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-    from eh30pt.datasets.discontinuation.decide import DiscontDecider
     from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     tokenizer = cast("PreTrainedTokenizerFast", None)
@@ -394,11 +396,6 @@ def test_discont_tokenize_rejects_too_many_shots() -> None:
             {"id": 1, "text": "x", "phrase": "x", "drug": "y", "label": "Other"},
             tokenizer,
             n_shot=100,
-        )
-
-    with pytest.raises(ValueError, match="more few shot examples"):
-        DiscontDecider(lambda: iter([]), tokenizer, "decoder").tokenize(
-            {"id": 1, "text": "x"}, tokenizer, n_shot=100
         )
 
     with pytest.raises(ValueError, match="more few shot examples"):
@@ -435,9 +432,7 @@ def test_select_source_rejects_invalid() -> None:
 
 def test_no_row_factories_are_empty() -> None:
     from eh30pt.datasets.discontinuation.classify import _no_cls_rows
-    from eh30pt.datasets.discontinuation.decide import _no_decider_rows
     from eh30pt.datasets.discontinuation.extract import _no_extract_rows
 
     assert list(_no_cls_rows()) == []
-    assert list(_no_decider_rows()) == []
     assert list(_no_extract_rows()) == []

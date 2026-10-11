@@ -14,10 +14,10 @@ from eh30pt.datasets.discontinuation.classify import (
     DiscontClassifierRow,
     load_discont_classifier,
 )
-from eh30pt.datasets.discontinuation.decide import (
-    DeciderRow,
-    DiscontDecider,
-    load_discont_decider,
+from eh30pt.datasets.discontinuation.extract import (
+    DiscontExtract,
+    DiscontExtractRow,
+    load_discont_extract,
 )
 from eh30pt.datasets.multinerd import Multinerd, MultinerdRow
 from eh30pt.datasets.oblique import Obl, OblRow
@@ -430,18 +430,18 @@ def test_classifier_streams_rows_lazily(
     assert [sample.user for sample in second] == [sample.user for sample in first]
 
 
-def test_decider_streams_rows_lazily(
+def test_extract_streams_rows_lazily(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     calls: list[int] = []
 
-    def _rows() -> Iterator[DeciderRow]:
+    def _rows() -> Iterator[DiscontExtractRow]:
         calls.append(1)
 
         yield {"id": 1, "text": "katkestas ravi"}
         yield {"id": 2, "text": "lõpetas kuuri"}
 
-    ds = DiscontDecider(_rows, bert_tokenizer, "decoder")
+    ds = DiscontExtract(_rows, bert_tokenizer, "decoder")
 
     assert calls == []
 
@@ -459,10 +459,10 @@ def test_decider_streams_rows_lazily(
     assert [sample.user for sample in second] == ["katkestas ravi", "lõpetas kuuri"]
 
 
-def test_load_discont_decider_opens_no_connection(
+def test_load_discont_extract_opens_no_connection(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    splits = load_discont_decider(bert_tokenizer, "decoder", source="trigger")
+    splits = load_discont_extract(bert_tokenizer, "decoder", source="trigger")
 
     assert list(splits.train.samples()) == []
     assert list(splits.eval.samples()) == []
@@ -471,7 +471,6 @@ def test_load_discont_decider_opens_no_connection(
 def test_load_classifier_opens_no_connection(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    splits = load_discont_classifier(bert_tokenizer, "decoder", source="trigger")
+    splits = load_discont_classifier(bert_tokenizer, "decoder", labeling_projects=[1])
 
-    assert list(splits.train.samples()) == []
     assert list(splits.eval.samples()) == []

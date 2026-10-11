@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING, TypeAliasType, get_args
 
 import click
 import pytest
@@ -15,14 +15,12 @@ from eh30pt.cli.options.common import (
 )
 from eh30pt.cli.options.server import (
     completion_dataset_option,
-    data_source_option,
     provider_option,
 )
 from eh30pt.cli.options.training import prefix_init_option
 from eh30pt.types import (
     Architecture,
     DatasetName,
-    DataSource,
     LogLevel,
     PrefixInit,
     Provider,
@@ -32,9 +30,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def _literal_values(type_alias: type) -> frozenset[str]:
+def _literal_values(type_alias: TypeAliasType) -> frozenset[str]:
     """Extract the set of string values from a PEP 695 Literal type alias."""
-    args = get_args(type_alias.__value__)  # ty: ignore[unresolved-attribute]
+    args = get_args(type_alias.__value__)
     return frozenset(args)
 
 
@@ -58,7 +56,6 @@ _options = [
     ("completion_dataset_option", completion_dataset_option, DatasetName),
     ("log_level_option", log_level_option, LogLevel),
     ("arch_option", arch_option, Architecture),
-    ("data_source_option", data_source_option, DataSource),
     ("provider_option", provider_option, Provider),
     ("prefix_init_option", prefix_init_option, PrefixInit),
 ]
@@ -69,7 +66,9 @@ _options = [
     [(opt, alias) for _, opt, alias in _options],
     ids=[name for name, _, _ in _options],
 )
-def test_choices_match_literal(option: Callable[..., object], type_alias: type) -> None:
+def test_choices_match_literal(
+    option: Callable[..., object], type_alias: TypeAliasType
+) -> None:
     """Option click.Choice choices must match their Literal type values."""
     expected = _literal_values(type_alias)
     actual = _choice_values(option)

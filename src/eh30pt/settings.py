@@ -7,7 +7,7 @@ from openai.types.shared_params import ResponseFormatJSONSchema
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from eh30pt.types import Architecture, DatasetName, DataSource, Provider
+from eh30pt.types import Architecture, DatasetName, Provider
 
 
 class PostgresSettings(BaseSettings):
@@ -133,5 +133,4 @@ class CommonSettings(BaseModel):
     dataset: DatasetName
     arch: Architecture | None = None
     n_shot: int = Field(default=0, ge=0)
-    source: DataSource | None = None
     labeling_projects: list[int] | None = None

@@ -58,7 +58,7 @@ def studio() -> LabelStudioSettings:
 @pytest.fixture
 def project(studio: LabelStudioSettings) -> Iterator[ProjectRef]:
     """Create a throwaway project and delete it after the test."""
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
 
     with StudioClient(studio) as client:
         created = client.create("eh30pt-e2e", labeling.config).unwrap()
@@ -71,7 +71,7 @@ def test_create_project_imports_tasks_with_pre_annotations(
     studio: LabelStudioSettings,
     project: ProjectRef,
 ) -> None:
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
 
     with StudioClient(studio) as client:
         client.validate(project.id, labeling.config).unwrap()
@@ -91,7 +91,7 @@ def test_create_project_imports_tasks_with_pre_annotations(
 def test_create_task_creates_a_separate_project_per_call(
     studio: LabelStudioSettings,
 ) -> None:
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     created: list[ProjectRef] = []
 
     _projects = 2
@@ -120,7 +120,7 @@ def test_validate_rejects_a_malformed_label_config(
 
 
 def test_delete_removes_the_project(studio: LabelStudioSettings) -> None:
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
 
     with StudioClient(studio) as client:
         created = client.create("eh30pt-e2e-delete", labeling.config).unwrap()
@@ -138,7 +138,7 @@ def test_export_labels_writes_annotations_to_parquet(
     from eh30pt.cli.scripts.labeling import export_labels
     from eh30pt.labeling.studio import StudioResult
 
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     output = tmp_path / "labels.parquet"
 
     with StudioClient(studio) as client:
@@ -190,7 +190,7 @@ def test_export_labels_combines_projects_into_one_frame(
     from eh30pt.cli.scripts.labeling import export_labels
     from eh30pt.labeling.studio import StudioResult
 
-    labeling = extraction_labeling("discont-extract", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     output = tmp_path / "labels.parquet"
 
     choice: StudioResult = {

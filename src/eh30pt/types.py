@@ -39,10 +39,12 @@ type Architecture = Literal[
 type DatasetName = Literal[
     "multinerd",
     "oblique",
-    "discont-classifier",
-    "discont-decider",
-    "discont-extract",
-    "discont-multiple",
+    "discont-classifier/extract-labels",
+    "discont-extract/trigger",
+    "discont-extract/observed",
+    "discont-extract/discont",
+    "discont-extract/switch",
+    "discont-extract/usage-gap",
 ]
 
 type Method = Literal[
@@ -71,7 +73,6 @@ type DataSource = Literal[
     "discont",
     "switch",
     "usage-gap",
-    "extract-labels",
 ]
 
 type PipelineTask = Literal[
@@ -101,7 +102,6 @@ class RunConfig(TypedDict):
     base_model: str
     n_shot: int
     batch_size: int
-    source: DataSource | None
     system_prompt: NotRequired[str]
     total_parameters: NotRequired[int]
     trainable_parameters: NotRequired[int]

@@ -66,4 +66,6 @@ def test_load_model_rejects_extraction_dataset(arch: Architecture) -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="extraction dataset"):
-        load_model(tokenizer, "unused", "discont-extract", arch, head_only=False)
+        load_model(
+            tokenizer, "unused", "discont-extract/trigger", arch, head_only=False
+        )

@@ -1,6 +1,10 @@
 """Live model server querying and streaming options."""
 
+from typing import get_args
+
 import rich_click as click
+
+from eh30pt.types import DatasetName
 
 prompt_argument = click.argument("user_prompt", type=str)
 
@@ -16,16 +20,7 @@ completion_dataset_option = click.option(
     "--dataset",
     "-d",
     "dataset",
-    type=click.Choice(
-        [
-            "multinerd",
-            "oblique",
-            "discont-classifier",
-            "discont-decider",
-            "discont-extract",
-            "discont-multiple",
-        ]
-    ),
+    type=click.Choice(get_args(DatasetName.__value__)),
     default=None,
     help="Constrain output to the dataset label set",
 )
@@ -65,16 +60,6 @@ provider_option = click.option(
     default="llama",
     show_default=True,
     help="Server provider",
-)
-
-data_source_option = click.option(
-    "--source",
-    "source",
-    type=click.Choice(
-        ["observed", "trigger", "discont", "switch", "usage-gap", "extract-labels"]
-    ),
-    default=None,
-    help="Est-Health 30 query for discontinuation events",
 )
 
 from_id_option = click.option(

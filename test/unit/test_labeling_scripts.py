@@ -6,9 +6,9 @@ from eh30pt.cli.scripts.labeling import _dataset_name
 
 
 def test_dataset_name_returns_the_tracked_dataset() -> None:
-    assert _dataset_name({"dataset": "discont-extract", "method": "x"}, "run-1") == (
-        "discont-extract"
-    )
+    assert _dataset_name(
+        {"dataset": "discont-extract/trigger", "method": "x"}, "run-1"
+    ) == ("discont-extract/trigger")
 
 
 def test_dataset_name_rejects_a_run_without_dataset() -> None:

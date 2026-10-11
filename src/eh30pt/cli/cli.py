@@ -37,7 +37,6 @@ from eh30pt.cli.options.mlflow import (
 from eh30pt.cli.options.server import (
     completion_dataset_option,
     concurrency_option,
-    data_source_option,
     from_id_option,
     log_interval_option,
     prompt_argument,
@@ -83,7 +82,6 @@ if TYPE_CHECKING:
     from eh30pt.types import (
         Architecture,
         DatasetName,
-        DataSource,
         LogLevel,
         PrefixInit,
         Provider,
@@ -123,7 +121,6 @@ if TYPE_CHECKING:
                     "name": "Data",
                     "options": [
                         "--dataset",
-                        "--source",
                         "--n-shot",
                         "--project",
                         "--from-id",
@@ -239,7 +236,6 @@ def log_accelerator() -> None:
 @patience_option
 @tolerance_option
 @arch_option
-@data_source_option
 @optional_project_ids_option
 @experiment_option
 @run_name_option
@@ -261,7 +257,6 @@ def fine_tune(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    source: DataSource | None,
     labeling_projects: tuple[int, ...] | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
@@ -282,7 +277,6 @@ def fine_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        source=source,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
@@ -324,7 +318,6 @@ def fine_tune(
 @patience_option
 @tolerance_option
 @arch_option
-@data_source_option
 @optional_project_ids_option
 @experiment_option
 @run_name_option
@@ -346,7 +339,6 @@ def prompt_tune(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    source: DataSource | None,
     labeling_projects: tuple[int, ...] | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
@@ -367,7 +359,6 @@ def prompt_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        source=source,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
@@ -411,7 +402,6 @@ def prompt_tune(
 @patience_option
 @tolerance_option
 @arch_option
-@data_source_option
 @optional_project_ids_option
 @experiment_option
 @run_name_option
@@ -435,7 +425,6 @@ def qlora(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    source: DataSource | None,
     labeling_projects: tuple[int, ...] | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
@@ -456,7 +445,6 @@ def qlora(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        source=source,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
     )
 
@@ -497,7 +485,6 @@ def qlora(
 @n_shot_option
 @batch_size_option
 @arch_option
-@data_source_option
 @experiment_option
 @run_name_option
 @run_id_option
@@ -511,7 +498,6 @@ def few_shot(
     n_shot: int,
     batch_size: int,
     arch: Architecture | None,
-    source: DataSource | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
@@ -531,7 +517,6 @@ def few_shot(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        source=source,
     )
 
     mlflow = MlflowSettings(
@@ -648,7 +633,6 @@ def completion(
 
 @app.command("evaluate", help="Run few-shot test evaluation on a server")
 @dataset_option
-@data_source_option
 @provider_option
 @n_shot_option
 @system_prompt_option
@@ -664,7 +648,6 @@ def completion(
 def evaluate(
     *,
     dataset: DatasetName,
-    source: DataSource | None,
     provider: Provider,
     n_shot: int,
     system_prompt: str | None,
@@ -707,7 +690,6 @@ def evaluate(
             system_prompt=system_prompt,
             server=server,
             dataset=dataset,
-            source=source,
             n_shot=n_shot,
             stream=stream,
             mlflow=mlflow,
@@ -718,7 +700,6 @@ def evaluate(
 
 @app.command("generate", help="Generate predictions on a server")
 @dataset_option
-@data_source_option
 @provider_option
 @n_shot_option
 @system_prompt_option
@@ -734,7 +715,6 @@ def evaluate(
 def generate(
     *,
     dataset: DatasetName,
-    source: DataSource | None,
     provider: Provider,
     n_shot: int,
     system_prompt: str | None,
@@ -777,7 +757,6 @@ def generate(
             system_prompt=system_prompt,
             server=server,
             dataset=dataset,
-            source=source,
             n_shot=n_shot,
             stream=stream,
             mlflow=mlflow,
@@ -788,7 +767,6 @@ def generate(
 
 @app.command("langextract", help="Generate predictions with langextract on a server")
 @dataset_option
-@data_source_option
 @provider_option
 @lang_extract_n_shot_option
 @system_prompt_option
@@ -804,7 +782,6 @@ def generate(
 def langextract(
     *,
     dataset: DatasetName,
-    source: DataSource | None,
     provider: Provider,
     n_shot: int,
     system_prompt: str | None,
@@ -844,7 +821,6 @@ def langextract(
             system_prompt=system_prompt,
             server=server,
             dataset=dataset,
-            source=source,
             n_shot=n_shot,
             stream=stream,
             mlflow=mlflow,

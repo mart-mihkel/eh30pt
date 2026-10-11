@@ -6,11 +6,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classify import (
-    DiscontClassifier,
-    load_discont_classifier,
-)
-from eh30pt.datasets.discontinuation.decide import DiscontDecider
+from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.datasets.discontinuation.extract import DiscontExtract, load_discont_extract
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.datasets.registry import load_data
@@ -20,7 +16,6 @@ if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
     from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
-    from eh30pt.datasets.discontinuation.decide import DeciderRow
     from eh30pt.datasets.discontinuation.extract import DiscontExtractRow
     from test.integration.conftest import ModelSetup
 
@@ -87,11 +82,11 @@ def test_discont_extract_streams_seeded_rows(database: None) -> None:
         assert sample.label == ""
 
 
-def test_discont_classifier_streams_sample_source(database: None) -> None:
-    """Classifier rows stream from the random sample table when asked."""
+def test_discont_extract_streams_observed_source(database: None) -> None:
+    """Extract candidates stream from the unfiltered event table when asked."""
     _ = database
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = load_discont_classifier(tokenizer, "decoder", source="observed")
+    data = load_discont_extract(tokenizer, "decoder", source="observed")
     samples = list(islice(data.test.samples(), 5))
 
     assert samples
@@ -101,7 +96,7 @@ def test_discont_classifier_streams_sample_source(database: None) -> None:
 def test_discont_splits_iterate_tokenized_rows(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    """Classifier, decider, and extract splits tokenize in-memory rows."""
+    """Classifier and extract splits tokenize in-memory rows."""
     classifier = DiscontClassifier(
         lambda: iter(
             [
@@ -118,26 +113,19 @@ def test_discont_splits_iterate_tokenized_rows(
         "decoder",
     )
 
-    decider = DiscontDecider(
-        lambda: iter([{"id": 2, "text": "katkestas"}]),
-        gpt2_tokenizer,
-        "decoder",
-    )
-
     extract = DiscontExtract(
         lambda: iter([{"id": 3, "text": "jäeti ravim ära"}]),
         gpt2_tokenizer,
         "decoder",
     )
 
-    for split in (classifier, decider, extract):
+    for split in (classifier, extract):
         rows = list(iter(split))
 
         assert rows
         assert set(rows[0]) >= {"input_ids", "labels"}
 
     assert [sample.id for sample in classifier.samples()] == [1]
-    assert [sample.id for sample in decider.samples()] == [2]
     assert [sample.id for sample in extract.samples()] == [3]
     assert extract.response_format()["json_schema"]["name"] == "extraction"
 
@@ -149,10 +137,8 @@ def test_discont_splits_iterate_tokenized_rows(
         "label": "Adverse reactions",
     }
 
-    dec_row: DeciderRow = {"id": 1, "text": "tekkis iiveldus"}
     ext_row: DiscontExtractRow = {"id": 1, "text": "tekkis iiveldus"}
     assert classifier.tokenize(cls_row, gpt2_tokenizer)["input_ids"]
-    assert decider.tokenize(dec_row, gpt2_tokenizer)["input_ids"]
     assert extract.tokenize(ext_row, gpt2_tokenizer)["input_ids"]
 
 

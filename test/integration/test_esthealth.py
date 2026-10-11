@@ -67,14 +67,14 @@ def test_discontinuation_seed_matches_query_pattern(session: Session) -> None:
     """Discontinuation rows seeded in the db match the default text pattern."""
     total = session.scalar(select(func.count()).select_from(CdaEvent))
 
-    expected_total = 5000
+    expected_total = 50000
     assert total == expected_total
 
     seeded = session.scalar(
         select(func.count()).select_from(CdaEvent).where(CdaEvent.table == "anamnesis")
     )
 
-    expected_rows = 2400
+    expected_rows = 24000
     assert seeded == expected_rows
 
     epi_ids = session.scalars(select(CdaEvent.epi_id)).all()

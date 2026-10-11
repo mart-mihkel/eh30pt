@@ -45,8 +45,6 @@ def test_rejects_unknown_dataset() -> None:
             "hf-internal-testing/tiny-random-bert",
             "--dataset",
             "unknown",
-            "--source",
-            "trigger",
         ],
     )
 
@@ -60,9 +58,7 @@ def test_rejects_extraction_dataset_for_training() -> None:
             "--model",
             "hf-internal-testing/tiny-random-bert",
             "--dataset",
-            "discont-extract",
-            "--source",
-            "trigger",
+            "discont-extract/trigger",
             "--train-steps",
             "10",
         ],
@@ -78,8 +74,6 @@ def test_rejects_classification_dataset_for_langextract() -> None:
             "langextract",
             "--dataset",
             "multinerd",
-            "--source",
-            "trigger",
         ],
     )
 
@@ -93,8 +87,6 @@ def test_rejects_unknown_provider() -> None:
             "evaluate",
             "--dataset",
             "oblique",
-            "--source",
-            "trigger",
             "--provider",
             "unknown",
         ],
@@ -103,8 +95,14 @@ def test_rejects_unknown_provider() -> None:
     assert result.exit_code != 0
 
 
-def test_rejects_unknown_source() -> None:
-    result = _invoke(["generate", "--dataset", "oblique", "--source", "unknown"])
+def test_rejects_classifier_without_projects() -> None:
+    result = _invoke(["generate", "--dataset", "discont-classifier/extract-labels"])
+
+    assert result.exit_code != 0
+
+
+def test_rejects_unknown_dataset_source() -> None:
+    result = _invoke(["generate", "--dataset", "discont-extract/extract-labels"])
 
     assert result.exit_code != 0
 
@@ -123,8 +121,6 @@ def test_few_shot_obl(
             models[model_name],
             "--dataset",
             "oblique",
-            "--source",
-            "trigger",
             "--batch-size",
             "8",
             "--seed",
@@ -158,8 +154,6 @@ def test_fine_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
-            "--source",
-            "trigger",
             "--train-steps",
             "10",
             "--batch-size",
@@ -209,8 +203,6 @@ def test_qlora_obl(
             models[model_name],
             "--dataset",
             "oblique",
-            "--source",
-            "trigger",
             "--train-steps",
             "10",
             "--batch-size",
@@ -248,8 +240,6 @@ def test_prompt_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
-            "--source",
-            "trigger",
             "--train-steps",
             "10",
             "--batch-size",

@@ -32,7 +32,6 @@ def run_config() -> RunConfig:
         "base_model": "some-model",
         "n_shot": 0,
         "batch_size": 8,
-        "source": "trigger",
         "system_prompt": "original prompt",
         "total_parameters": 100,
         "trainable_parameters": 10,
@@ -84,15 +83,22 @@ def test_build_run_name_keeps_version_dots() -> None:
 def test_dataset_input_names_match_datasets() -> None:
     assert dataset_input("multinerd").name == "multinerd"
     assert dataset_input("oblique").name == "oblique"
-    assert dataset_input("discont-classifier").name == "discont-classifier"
-    assert dataset_input("discont-decider").name == "discont-decider"
+    assert (
+        dataset_input("discont-classifier/extract-labels").name
+        == "discont-classifier/extract-labels"
+    )
+    assert dataset_input("discont-extract/trigger").name == "discont-extract/trigger"
 
 
 def test_dataset_input_sources_point_at_origins() -> None:
     assert isinstance(dataset_input("multinerd").source, HuggingFaceDatasetSource)
     assert isinstance(dataset_input("oblique").source, HTTPDatasetSource)
-    assert isinstance(dataset_input("discont-classifier").source, CodeDatasetSource)
-    assert isinstance(dataset_input("discont-decider").source, CodeDatasetSource)
+    assert isinstance(
+        dataset_input("discont-classifier/extract-labels").source, CodeDatasetSource
+    )
+    assert isinstance(
+        dataset_input("discont-extract/trigger").source, CodeDatasetSource
+    )
 
 
 def test_identity_view_keeps_identity_fields(run_config: RunConfig) -> None:
@@ -102,12 +108,14 @@ def test_identity_view_keeps_identity_fields(run_config: RunConfig) -> None:
     other_method = dict(run_config)
     other_method["method"] = "cls-head"
 
-    other_source = dict(run_config)
-    other_source["source"] = "observed"
+    other_dataset = dict(run_config)
+    other_dataset["dataset"] = "discont-extract/trigger"
 
     assert _identity_view(run_config) != _identity_view(cast("RunConfig", faster))
     assert _identity_view(run_config) != _identity_view(cast("RunConfig", other_method))
-    assert _identity_view(run_config) != _identity_view(cast("RunConfig", other_source))
+    assert _identity_view(run_config) != _identity_view(
+        cast("RunConfig", other_dataset)
+    )
 
 
 def _read_records(path: Path) -> list[Any]:

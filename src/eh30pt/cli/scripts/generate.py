@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from eh30pt.settings import ServerSettings, StreamSettings
     from eh30pt.types import (
         DatasetName,
-        DataSource,
         FewShotRunConfig,
         GenerateRecord,
         Method,
@@ -39,7 +38,6 @@ async def main(
     system_prompt: str | None,
     server: ServerSettings,
     dataset: DatasetName,
-    source: DataSource | None,
     n_shot: int,
     stream: StreamSettings,
     mlflow: MlflowSettings,
@@ -52,7 +50,6 @@ async def main(
         dataset,
         "decoder",
         n_shot=n_shot,
-        source=source,
         start_after=stream.from_id,
     )
 
@@ -76,7 +73,6 @@ async def main(
     config: FewShotRunConfig = {
         "method": method,
         "dataset": dataset,
-        "source": source,
         "architecture": "decoder",
         "base_model": model,
         "n_shot": n_shot,

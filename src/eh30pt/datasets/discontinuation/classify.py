@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
     from eh30pt.labeling.studio import StudioTask
-    from eh30pt.types import Architecture, DataSource
+    from eh30pt.types import Architecture
 
 
 type DiscontClassifierLabel = Literal[
@@ -103,7 +103,10 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             user="iiveldus tekkis, aga ravi jätkub",
             label="Adverse reaction without discontinuation",
         ),
-        FewShot(user="vähendasime statiini doosi", label="Dosage change"),
+        FewShot(
+            user="vähendasime statiini doosi",
+            label="Dosage change",
+        ),
         FewShot(
             user="patsient jätkab ravi muutuseta",
             label="Other non-discontinuation",
@@ -296,17 +299,16 @@ def _no_cls_rows() -> Iterator[DiscontClassifierRow]:
 
 def _stream_classifier_rows(
     url: str,
-    source: DataSource,
     *,
     page_size: int,
     start_after: int | None = None,
 ) -> Iterator[DiscontClassifierRow]:
-    """Stream discontinuation rows with id above start_after, connecting lazily."""
+    """Stream trigger events with id above start_after, connecting lazily."""
     yield from cast(
         "Iterator[DiscontClassifierRow]",
         _stream_rows(
             url,
-            source,
+            "trigger",
             page_size=page_size,
             start_after=start_after,
             message="streaming discontinuation events",
@@ -321,37 +323,24 @@ def load_discont_classifier(
     n_virtual: int = 0,
     *,
     page_size: int = 10000,
-    source: DataSource,
     start_after: int | None = None,
-    labeling_projects: Sequence[int] | None = None,
+    labeling_projects: Sequence[int],
 ) -> DataSplits:
     """
-    Load discontinuation candidates as splits with only test populated.
+    Load voted Label Studio rows as train and trigger events as test.
 
-    Source `extract-labels` fills the train split from the given Label
-    Studio projects instead, which stays empty otherwise.
+    The eval split stays empty because the projects carry no held out rows.
     """
     logger.debug("discontinuation rows stream from Est-Health on first iteration")
     url = PostgresSettings().connection_url
-    test_source = "trigger" if source == "extract-labels" else source
     test_rows = partial(
         _stream_classifier_rows,
         url,
         page_size=page_size,
-        source=test_source,
         start_after=start_after,
     )
 
-    if source == "extract-labels":
-        if not labeling_projects:
-            msg = "source 'extract-labels' needs project ids"
-            raise ValueError(msg)
-
-        train_rows = partial(
-            stream_labeled_rows, LabelStudioSettings(), labeling_projects
-        )
-    else:
-        train_rows = _no_cls_rows
+    train_rows = partial(stream_labeled_rows, LabelStudioSettings(), labeling_projects)
 
     return DataSplits(
         train=DiscontClassifier(train_rows, tokenizer, arch, n_shot, n_virtual),

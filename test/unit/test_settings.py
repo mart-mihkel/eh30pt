@@ -153,10 +153,7 @@ def test_common_rejects_invalid() -> None:
         CommonSettings(
             model="some-model",
             dataset="unknown",  # ty: ignore[invalid-argument-type]
-            source="trigger",
         )
 
     with pytest.raises(ValidationError, match="n_shot"):
-        CommonSettings(
-            model="some-model", dataset="oblique", n_shot=-1, source="trigger"
-        )
+        CommonSettings(model="some-model", dataset="oblique", n_shot=-1)

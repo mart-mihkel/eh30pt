@@ -33,7 +33,7 @@ def dataset_source(dataset: DatasetName) -> DatasetSource:
     if dataset == "oblique":
         return HTTPDatasetSource(url=Obl.data_permalink)
 
-    if dataset == "discont-decider":
+    if dataset.startswith("discont-extract/"):
         tags = {
             "database": "eh30",
             "tables": [CdaTriggerEvent.__tablename__],
@@ -42,16 +42,7 @@ def dataset_source(dataset: DatasetName) -> DatasetSource:
 
         return CodeDatasetSource(tags=tags)
 
-    if dataset == "discont-extract":
-        tags = {
-            "database": "eh30",
-            "tables": [CdaTriggerEvent.__tablename__],
-            "schema": CdaTriggerEvent.__table__.schema,
-        }
-
-        return CodeDatasetSource(tags=tags)
-
-    if dataset == "discont-classifier":
+    if dataset == "discont-classifier/extract-labels":
         tags = {
             "database": "eh30",
             "tables": [CdaEvent.__tablename__],

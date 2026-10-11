@@ -34,12 +34,13 @@ interactions:
     uri: http://localhost:9931/models
   response:
     body:
-      string: '{"models":[{"name":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","aliases":["/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf"],"tags":[],"object":"model","created":1790926520,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":128256,"n_ctx":16384,"n_ctx_train":131072,"n_embd":2048,"n_params":1235814432,"size":1313251456,"ftype":"Q8_0"}}]}'
+      string: '{"models":[{"name":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","model":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","aliases":["unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M"],"tags":[],"object":"model","architecture":{"input_modalities":["text"],"output_modalities":["text"]},"created":1791696988,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":4096,"n_ctx_train":32768,"n_embd":896,"n_params":494032768,"size":391859712,"ftype":"Q4_K
+        - Medium"}}]}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '747'
+      - '813'
       content-type:
       - application/json; charset=utf-8
       keep-alive:
@@ -51,7 +52,7 @@ interactions:
       message: OK
 - request:
     body: '{"messages":[{"role":"system","content":"You are a terse calculator, answer
-      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"Llama-3.2-1B-Instruct-Q8_0.gguf","seed":null}'
+      with the number."},{"role":"user","content":"What is 2+2? Answer in one word."}],"model":"Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","seed":null}'
     headers:
       accept:
       - application/json
@@ -60,7 +61,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '211'
+      - '219'
       content-type:
       - application/json
       host:
@@ -89,12 +90,12 @@ interactions:
     uri: http://localhost:9931/chat/completions
   response:
     body:
-      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4"}}],"created":1790926522,"model":"/Users/mart/models/Llama-3.2-1B-Instruct-Q8_0.gguf","system_fingerprint":"b11349-fb4b2737a","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":58,"total_tokens":60,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-pebqyy4wjYIo2OhmYivTme47tIHNozVL","timings":{"cache_n":0,"prompt_n":58,"prompt_ms":1745.014,"prompt_per_token_ms":30.086448275862068,"prompt_per_second":33.237555687232316,"predicted_n":2,"predicted_ms":12.159,"predicted_per_token_ms":12.159,"predicted_per_second":82.24360555966773}}'
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"4"}}],"created":1791696989,"model":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","system_fingerprint":"b11515-3d65c90d0","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":36,"total_tokens":38,"prompt_tokens_details":{"cached_tokens":0}},"id":"chatcmpl-iiRJ5g82ByhHpGim0d6PPONw4PXpGXUc","timings":{"cache_n":0,"prompt_n":36,"prompt_ms":1023.276,"prompt_per_token_ms":28.424333333333333,"prompt_per_second":35.18112415418714,"predicted_n":2,"predicted_ms":9.916,"predicted_per_token_ms":9.916,"predicted_per_second":100.8471157724889}}'
     headers:
       access-control-allow-origin:
       - ''
       content-length:
-      - '654'
+      - '648'
       content-type:
       - application/json; charset=utf-8
       keep-alive:

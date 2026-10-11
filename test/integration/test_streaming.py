@@ -63,7 +63,6 @@ def run_config() -> RunConfig:
         "base_model": "some-model",
         "n_shot": 0,
         "batch_size": 1,
-        "source": "trigger",
         "system_prompt": "prompt",
     }
 
@@ -408,7 +407,7 @@ def test_run_labeling_builds_span_tasks(
             tracking_uri=mlflow_client.tracking_uri,
             run_id=run_id,
         ),
-        dataset="discont-extract",
+        dataset="discont-extract/trigger",
     )
 
     tasks = labeling.tasks
@@ -629,7 +628,7 @@ def test_run_labeling_reads_struct_predictions(
             tracking_uri=mlflow_client.tracking_uri,
             run_id=run_id,
         ),
-        dataset="discont-extract",
+        dataset="discont-extract/trigger",
     )
 
     tasks = labeling.tasks
@@ -664,7 +663,7 @@ def test_run_labeling_rejects_non_extraction_predictions(
                 tracking_uri=mlflow_client.tracking_uri,
                 run_id=run_id,
             ),
-            dataset="discont-extract",
+            dataset="discont-extract/trigger",
         )
 
 
@@ -689,7 +688,7 @@ def test_run_labeling_rejects_non_object_predictions(
                 tracking_uri=mlflow_client.tracking_uri,
                 run_id=run_id,
             ),
-            dataset="discont-extract",
+            dataset="discont-extract/trigger",
         )
 
 
@@ -711,7 +710,7 @@ def test_run_labeling_without_shards_is_empty(
             tracking_uri=mlflow_client.tracking_uri,
             run_id=run_id,
         ),
-        dataset="discont-extract",
+        dataset="discont-extract/trigger",
     )
 
     assert labeling.tasks == []
@@ -723,7 +722,7 @@ def test_run_labeling_without_run_id_raises() -> None:
     with pytest.raises(ValueError, match="no mlflow run id"):
         run_labeling(
             mlflow_settings=MlflowSettings(tracking_uri="sqlite:///mlflow.db"),
-            dataset="discont-extract",
+            dataset="discont-extract/trigger",
         )
 
 
@@ -837,7 +836,6 @@ def test_langextract_main_rejects_classification_dataset() -> None:
                 system_prompt=None,
                 server=ServerSettings(),
                 dataset="oblique",
-                source="trigger",
                 n_shot=1,
                 stream=StreamSettings(),
                 mlflow=MlflowSettings(),

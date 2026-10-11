@@ -15,7 +15,11 @@ def test_labeled_row_maps_each_box_choice() -> None:
             ("Adverse reaction without discontinuation",),
             "Adverse reaction without discontinuation",
         ),
-        ((), ("Dosage change",), "Dosage change"),
+        (
+            (),
+            ("Dosage change",),
+            "Dosage change",
+        ),
         ((), ("Other non-discontinuation",), "Other non-discontinuation"),
     ):
         row = labeled_row(
@@ -93,7 +97,10 @@ def test_labeled_row_drops_flagged_or_ambiguous_annotations() -> None:
             phrase="p",
             drug="d",
             discont=(),
-            other=("Dosage change", "Other non-discontinuation"),
+            other=(
+                "Dosage change",
+                "Other non-discontinuation",
+            ),
             meta=(),
         )
         is None

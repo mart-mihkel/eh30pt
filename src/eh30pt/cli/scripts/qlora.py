@@ -52,7 +52,6 @@ def main(
         common.dataset,
         arch,
         n_shot=common.n_shot,
-        source=common.source,
         labeling_projects=common.labeling_projects,
     )
 
@@ -83,7 +82,6 @@ def main(
     config: QLoRaRunConfig = {
         "method": method,
         "dataset": common.dataset,
-        "source": common.source,
         "architecture": arch,
         "base_model": common.model,
         "lora_r": lora.rank,

@@ -1,8 +1,11 @@
 """Shared model, dataset and run-shape options."""
 
 from pathlib import Path
+from typing import get_args
 
 import rich_click as click
+
+from eh30pt.types import Architecture, DatasetName
 
 model_option = click.option(
     "--model",
@@ -18,17 +21,8 @@ dataset_option = click.option(
     "-d",
     "dataset",
     required=True,
-    type=click.Choice(
-        [
-            "multinerd",
-            "oblique",
-            "discont-classifier",
-            "discont-decider",
-            "discont-extract",
-            "discont-multiple",
-        ]
-    ),
-    help="Dataset name",
+    type=click.Choice(get_args(DatasetName.__value__)),
+    help="Dataset name, suffixed with the Est-Health query it streams from",
 )
 
 inferred_dataset_option = click.option(
@@ -37,16 +31,7 @@ inferred_dataset_option = click.option(
     "dataset",
     required=False,
     default=None,
-    type=click.Choice(
-        [
-            "multinerd",
-            "oblique",
-            "discont-classifier",
-            "discont-decider",
-            "discont-extract",
-            "discont-multiple",
-        ]
-    ),
+    type=click.Choice(get_args(DatasetName.__value__)),
     help="Dataset name, inferred from the run when omitted",
 )
 
@@ -102,7 +87,7 @@ arch_option = click.option(
     "--arch",
     "-a",
     "arch",
-    type=click.Choice(["encoder", "decoder", "encoder-decoder"]),
+    type=click.Choice(get_args(Architecture.__value__)),
     default=None,
     help="Override auto-detected model architecture",
 )

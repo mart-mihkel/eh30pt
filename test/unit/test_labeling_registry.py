@@ -17,13 +17,15 @@ if TYPE_CHECKING:
 def test_build_labeling_dispatches_on_task_type() -> None:
     frame = pl.DataFrame()
 
-    extraction = build_labeling("discont-extract", frame, "run-1")
-    classification = build_labeling("discont-multiple", frame, "run-1")
+    extraction = build_labeling("discont-extract/trigger", frame, "run-1")
+    classification = build_labeling("discont-classifier/extract-labels", frame, "run-1")
 
     assert extraction.tasks == []
     assert extraction.config == span_config()
     assert classification.tasks == []
-    assert classification.config == choice_config(get_labels("discont-multiple"))
+    assert classification.config == choice_config(
+        get_labels("discont-classifier/extract-labels")
+    )
 
 
 def test_build_labeling_rejects_unknown_dataset() -> None:

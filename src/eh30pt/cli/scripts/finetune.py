@@ -47,7 +47,6 @@ def main(
         common.dataset,
         arch,
         n_shot=common.n_shot,
-        source=common.source,
         labeling_projects=common.labeling_projects,
     )
 
@@ -74,7 +73,6 @@ def main(
     config: FineTuneRunConfig = {
         "method": method,
         "dataset": common.dataset,
-        "source": common.source,
         "architecture": arch,
         "base_model": common.model,
         "head_only": head_only,

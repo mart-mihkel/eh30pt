@@ -126,7 +126,7 @@ def test_span_config_boxes_do_not_share_a_label() -> None:
 
 
 def test_extraction_labeling_without_shards_is_empty() -> None:
-    labeling = extraction_labeling("discont-extract", pl.DataFrame(), "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", pl.DataFrame(), "run-1")
 
     assert labeling.tasks == []
     assert labeling.config == span_config()
