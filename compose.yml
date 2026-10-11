@@ -72,12 +72,7 @@ services:
       - mlflow-artifacts:/mlflow/artifacts
     healthcheck:
       test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:5000/')",
-        ]
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
       start_period: 30s
       interval: 10s
       timeout: 5s
@@ -92,9 +87,11 @@ services:
     environment:
       LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-ls@ls.ls}
       LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:-ls}
-      LABEL_STUDIO_USER_TOKEN: ${LABEL_STUDIO_TOKEN:-}
+      LABEL_STUDIO_USER_TOKEN: ${LABEL_STUDIO_TOKEN:-eh30pt-dev-token}
+      LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN: "true"
     volumes:
       - label-studio-data:/label-studio/data
+      - ./deploy/label-studio/40-dev-token.sh:/label-studio/deploy/docker-entrypoint.d/app-docker/40-dev-token.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
       start_period: 30s

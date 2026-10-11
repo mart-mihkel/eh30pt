@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from eh30pt.settings import (
     CommonSettings,
+    LabelStudioSettings,
     LoRASettings,
     MlflowSettings,
     PostgresSettings,
@@ -34,7 +35,9 @@ def clean_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         "POSTGRES_PASSWORD",
         "OPENAI_API_KEY",
         "MLFLOW_TRACKING_URI",
+        "LABEL_STUDIO_URL",
         "LABEL_STUDIO_TOKEN",
+        "LABEL_STUDIO_AUTH",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -157,3 +160,32 @@ def test_common_rejects_invalid() -> None:
 
     with pytest.raises(ValidationError, match="n_shot"):
         CommonSettings(model="some-model", dataset="oblique", n_shot=-1)
+
+
+def test_label_studio_defaults_to_the_development_token() -> None:
+    settings = LabelStudioSettings()
+
+    assert settings.url == "http://localhost:8080"
+    assert settings.token.get_secret_value() == "eh30pt-dev-token"
+    assert settings.auth == "legacy"
+
+
+def test_label_studio_reads_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LABEL_STUDIO_URL", "https://label.internal")
+    monkeypatch.setenv("LABEL_STUDIO_TOKEN", "s3cret")
+    monkeypatch.setenv("LABEL_STUDIO_AUTH", "refresh")
+
+    settings = LabelStudioSettings()
+
+    assert settings.url == "https://label.internal"
+    assert settings.token.get_secret_value() == "s3cret"
+    assert settings.auth == "refresh"
+
+
+def test_label_studio_rejects_unknown_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LABEL_STUDIO_AUTH", "bearer")
+
+    with pytest.raises(ValidationError, match="auth"):
+        LabelStudioSettings()

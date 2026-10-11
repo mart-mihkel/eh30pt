@@ -1,6 +1,6 @@
 """Environment settings."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 from urllib.parse import quote
 
 from openai.types.shared_params import ResponseFormatJSONSchema
@@ -95,8 +95,17 @@ class LabelStudioSettings(BaseSettings):
     )
 
     url: str = "http://localhost:8080"
-    token: SecretStr
-    """Personal access token, exchanged for a short-lived access token."""
+    token: SecretStr = SecretStr("eh30pt-dev-token")
+    """API token, defaulting to the one compose pins on the dev user."""
+
+    auth: Literal["legacy", "refresh"] = "legacy"
+    """
+    How `token` authenticates.
+
+    A legacy token travels as `Authorization: Token <token>` and is looked up
+    as the user token; a refresh token is exchanged for a short lived access
+    token sent as `Authorization: Bearer <access>`.
+    """
 
 
 class ServerSettings(BaseSettings):

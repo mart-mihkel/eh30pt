@@ -188,7 +188,7 @@ def annotation_frame(
 
 
 class StudioClient:
-    """Label Studio client authenticating with a personal access token."""
+    """Label Studio client authenticating with the configured API token."""
 
     def __init__(self, settings: LabelStudioSettings) -> None:
         """Store the endpoint and the token, deferring the access exchange."""
@@ -204,7 +204,21 @@ class StudioClient:
         """Close the underlying connection pool."""
         self._client.close()
 
-    def _token(self) -> str:
+    def _authorization(self) -> str:
+        """
+        Return the Authorization header of the next request.
+
+        A legacy token is sent as the user token itself, which is what a
+        development Label Studio pins on its dev user, while a personal access
+        token refreshes into a short lived access token first.
+        """
+        match self._settings.auth:
+            case "legacy":
+                return f"Token {self._settings.token.get_secret_value()}"
+            case "refresh":
+                return f"Bearer {self._access_token()}"
+
+    def _access_token(self) -> str:
         """
         Return an access token, exchanging the personal token for one.
 
@@ -244,7 +258,7 @@ class StudioClient:
             path,
             params=params,
             json=payload,
-            headers={"Authorization": f"Bearer {self._token()}"},
+            headers={"Authorization": self._authorization()},
         )
 
         return _json(response, f"{method.lower()} '{path}'")
