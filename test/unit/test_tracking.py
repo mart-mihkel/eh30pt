@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, get_args
 
 import polars as pl
 import pytest
@@ -10,10 +10,11 @@ from mlflow.data.code_dataset_source import CodeDatasetSource
 from mlflow.data.http_dataset_source import HTTPDatasetSource
 from mlflow.data.huggingface_dataset_source import HuggingFaceDatasetSource
 
+from eh30pt.tracking.context import registry_name
 from eh30pt.tracking.datasets import dataset_input
 from eh30pt.tracking.resume import _identity_view, build_run_name
 from eh30pt.tracking.shards import write_shard
-from eh30pt.types import GenerateRecord
+from eh30pt.types import DatasetName, GenerateRecord
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -78,6 +79,25 @@ def test_build_run_name_strips_weight_file_extension() -> None:
 def test_build_run_name_keeps_version_dots() -> None:
     """Keep dots that are part of the model version."""
     assert build_run_name("org/Llama-3.2", "fine-tune") == "Llama-3.2-fine-tune"
+
+
+def test_registry_name_folds_the_dataset_source_slash() -> None:
+    """Fold the source slash MLflow forbids in registry names into a hyphen."""
+    name = registry_name("discont-extract/trigger", "decoder")
+
+    assert name == "discont-extract-trigger-decoder"
+
+
+def test_registry_name_keeps_model_version_dots() -> None:
+    """Keep dots that are part of a model version."""
+    assert registry_name("exp", "Llama-3.2", "fine-tune") == "exp-Llama-3.2-fine-tune"
+
+
+def test_registry_names_stay_distinct_per_dataset() -> None:
+    """Keep one registry name per dataset, or prompts would share versions."""
+    names = get_args(DatasetName.__value__)
+
+    assert len({registry_name(name) for name in names}) == len(names)
 
 
 def test_dataset_input_names_match_datasets() -> None:

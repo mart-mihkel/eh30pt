@@ -1,6 +1,7 @@
 """An open MLflow run plus its local checkpoint directory."""
 
 import logging
+import re
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, Self, TextIO, cast
@@ -51,6 +52,11 @@ class _RunLog(NamedTuple):
 
     handler: logging.Handler
     file: TextIO
+
+
+def registry_name(*parts: str) -> str:
+    """Join name parts into a name the MLflow model registry accepts."""
+    return re.sub(r"[^A-Za-z0-9_.-]", "-", "-".join(parts))
 
 
 class RunContext:
@@ -561,7 +567,7 @@ class RunContext:
 
     def log_prompt_version(
         self,
-        dataset: str,
+        dataset: DatasetName,
         arch: Architecture,
         system_prompt: str,
     ) -> None:
@@ -572,7 +578,7 @@ class RunContext:
             raise ValueError(msg)
 
         prompt_version = self.register_prompt_version(
-            f"{dataset}-{arch}",
+            registry_name(dataset, arch),
             system_prompt,
             commit_message=f"tracked from run {run}",
         )

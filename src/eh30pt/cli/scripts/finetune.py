@@ -15,7 +15,7 @@ from eh30pt.modeling.collator import get_collator
 from eh30pt.modeling.loader import load_model
 from eh30pt.modeling.metrics import MetricsAccumulator
 from eh30pt.modeling.tokenizer import cap_tokenizer_length, load_tokenizer
-from eh30pt.tracking.context import RunContext
+from eh30pt.tracking.context import RunContext, registry_name
 from eh30pt.tracking.resume import build_run_name
 
 if TYPE_CHECKING:
@@ -90,6 +90,13 @@ def main(
     }
 
     with RunContext(mlflow, config) as ctx:
+        registered_name = registry_name(
+            mlflow.experiment,
+            common.dataset,
+            arch,
+            method,
+        )
+
         ctx.log_prompt_version(common.dataset, arch, sys_prompt)
         ctx.train_and_evaluate(
             model=model,
@@ -98,6 +105,6 @@ def main(
             arch=arch,
             collate_fn=collate_fn,
             metrics_fn=metrics_fn,
-            registered_name=f"{mlflow.experiment}-{common.dataset}-{arch}-{method}",
+            registered_name=registered_name,
             training=training,
         )

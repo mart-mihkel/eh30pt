@@ -745,6 +745,29 @@ def test_register_prompt_version_reuses_unchanged_template(
         assert first.version == second.version
 
 
+def test_log_prompt_version_accepts_slashed_dataset(
+    mlflow_client: MlflowClient, run_config: RunConfig
+) -> None:
+    """Register a prompt for datasets whose name carries a source slash."""
+    _ = mlflow_client
+    mlflow.set_experiment("prompt-slash-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="prompt-slash-exp",
+        run_name="slash-run",
+    )
+
+    with RunContext(settings, config=run_config) as ctx:
+        ctx.log_prompt_version("discont-extract/trigger", "decoder", "template")
+
+        prompt_version = mlflow_client.search_prompt_versions(
+            "discont-extract-trigger-decoder"
+        )
+
+        assert len(prompt_version) == 1
+        assert mlflow.get_run(ctx.run_id).data.params["prompt_version"] == "1"
+
+
 def test_checkpoint_names_empty_without_directory(
     run_config: RunConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
