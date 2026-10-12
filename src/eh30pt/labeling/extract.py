@@ -117,89 +117,92 @@ def _choices(row: ET.Element, box: _ChoiceBox) -> None:
 
 def _boxes() -> tuple[_ChoiceBox, ...]:
     """Return the choice boxes of the span interface in rendering order."""
+    discont_choices = (
+        _Choice(
+            "Treatment success",
+            (
+                "Treatment stopped because it worked, was completed, "
+                "or the patient improved enough."
+            ),
+        ),
+        _Choice(
+            "Treatment inefficacy",
+            "Treatment stopped because it was seen as ineffective.",
+        ),
+        _Choice(
+            "Contraindication",
+            (
+                "Treatment stopped because a condition or risk factor "
+                "made continuing it unsafe or inappropriate."
+            ),
+        ),
+        _Choice(
+            "Adverse reactions",
+            (
+                "Treatment stopped because of adverse side effects, "
+                "allergic reactions, or negative interactions with "
+                "other medications."
+            ),
+        ),
+        _Choice("Other", "Treatment stopped for other or unknown reasons."),
+    )
+
+    other_choices = (
+        _Choice(
+            "Adverse reaction without discontinuation",
+            (
+                "Adverse side effects, allergic reactions, or negative "
+                "interactions where treatment continued or was not the "
+                "reason it stopped."
+            ),
+        ),
+        _Choice(
+            "Dosage change",
+            ("Dose was increased or decreased. No justification or cause is needed."),
+        ),
+        _Choice(
+            "Other non-discontinuation",
+            (
+                "An event that is neither a discontinuation nor any of "
+                "the reasons listed here."
+            ),
+        ),
+    )
+
+    meta_choices = (
+        _Choice(
+            "Incomplete phrase",
+            (
+                "Phrase too short to decide alone but decidable when "
+                "expanded; annotate the expanded phrase. "
+                "Use only when obvious."
+            ),
+        ),
+        _Choice(
+            "Incorrect phrase",
+            (
+                "Extracted phrase is noise or a false positive; "
+                "any real description is elsewhere. "
+                "Use only when obvious."
+            ),
+        ),
+    )
+
     return (
         _ChoiceBox(
             name="discont",
             header="Drug discontinuation",
-            choices=(
-                _Choice(
-                    "Treatment success",
-                    (
-                        "Treatment stopped because it worked, was completed, "
-                        "or the patient improved enough."
-                    ),
-                ),
-                _Choice(
-                    "Treatment inefficacy",
-                    "Treatment stopped because it was seen as ineffective.",
-                ),
-                _Choice(
-                    "Contraindication",
-                    (
-                        "Treatment stopped because a condition or risk factor "
-                        "made continuing it unsafe or inappropriate."
-                    ),
-                ),
-                _Choice(
-                    "Adverse reactions",
-                    (
-                        "Treatment stopped because of adverse side effects, "
-                        "allergic reactions, or negative interactions with "
-                        "other medications."
-                    ),
-                ),
-                _Choice("Other", "Treatment stopped for other or unknown reasons."),
-            ),
+            choices=discont_choices,
         ),
         _ChoiceBox(
             name="other",
             header="Not discontinuation",
-            choices=(
-                _Choice(
-                    "Adverse reaction without discontinuation",
-                    (
-                        "Adverse side effects, allergic reactions, or negative "
-                        "interactions where treatment continued or was not the "
-                        "reason it stopped."
-                    ),
-                ),
-                _Choice(
-                    "Dosage change",
-                    (
-                        "Dose was increased or decreased. No justification "
-                        "or cause is needed."
-                    ),
-                ),
-                _Choice(
-                    "Other non-discontinuation",
-                    (
-                        "An event that is neither a discontinuation nor any of "
-                        "the reasons listed here."
-                    ),
-                ),
-            ),
+            choices=other_choices,
         ),
         _ChoiceBox(
             name="meta",
             header="Meta",
-            choices=(
-                _Choice(
-                    "Incomplete phrase",
-                    (
-                        "Phrase too short to decide alone but decidable when "
-                        "expanded; annotate the expanded phrase. "
-                        "Use only when obvious."
-                    ),
-                ),
-                _Choice(
-                    "Incorrect phrase",
-                    (
-                        "Extracted phrase is noise or a false positive; "
-                        "any real description is elsewhere. "
-                        "Use only when obvious."
-                    ),
-                ),
-            ),
+            choices=meta_choices,
         ),
     )
 

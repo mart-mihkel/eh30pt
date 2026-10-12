@@ -11,7 +11,8 @@ from datasets import Dataset
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.oblique import Obl
 from eh30pt.modeling.collator import get_collator
-from eh30pt.modeling.trainer import _build_spec, _label_completions
+from eh30pt.modeling.training.constraints import _label_completions
+from eh30pt.modeling.training.spec import _build_spec
 from eh30pt.types import DataSplits
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
     from transformers import PreTrainedTokenizerFast, Trainer
 
-    from eh30pt.modeling.trainer import _Spec
+    from eh30pt.modeling.training.spec import _Spec
 
 _default_warmup: Final = 0.06
 _custom_warmup: Final = 0.1
@@ -209,7 +210,7 @@ def test_constrained_seq2seq_trainer_omits_processor_without_completions(
     """An empty completion set must not mask generation down to the pad token."""
     from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments
 
-    from eh30pt.modeling.trainer import ConstrainedSeq2SeqTrainer
+    from eh30pt.modeling.training.seq2seq import ConstrainedSeq2SeqTrainer
     from test.conftest import models
 
     data = Dataset.from_list(
@@ -254,8 +255,8 @@ def test_get_trainer_builds_per_architecture(
 ) -> None:
     from transformers import Trainer
 
-    import eh30pt.modeling.trainer as trainer_mod
-    from eh30pt.modeling.trainer import get_trainer
+    import eh30pt.modeling.training.factory as factory_mod
+    from eh30pt.modeling.training.factory import get_trainer
 
     out = str(tmp_path)
     seen: list[str] = []
@@ -263,9 +264,9 @@ def test_get_trainer_builds_per_architecture(
     def _metrics(_pred: object, *, compute_result: bool = True) -> dict[str, float]:
         return {"computed": 1.0} if compute_result else {}
 
-    real_encoder = trainer_mod._encoder_trainer
-    real_decoder = trainer_mod._decoder_trainer
-    real_seq2seq = trainer_mod._seq2seq_trainer
+    real_encoder = factory_mod._encoder_trainer
+    real_decoder = factory_mod._decoder_trainer
+    real_seq2seq = factory_mod._seq2seq_trainer
 
     def _record(
         kind: str, fn: Callable[[_Spec], Trainer]
@@ -277,13 +278,13 @@ def test_get_trainer_builds_per_architecture(
         return _wrap
 
     monkeypatch.setattr(
-        trainer_mod, "_encoder_trainer", _record("encoder", real_encoder)
+        factory_mod, "_encoder_trainer", _record("encoder", real_encoder)
     )
     monkeypatch.setattr(
-        trainer_mod, "_decoder_trainer", _record("decoder", real_decoder)
+        factory_mod, "_decoder_trainer", _record("decoder", real_decoder)
     )
     monkeypatch.setattr(
-        trainer_mod, "_seq2seq_trainer", _record("seq2seq", real_seq2seq)
+        factory_mod, "_seq2seq_trainer", _record("seq2seq", real_seq2seq)
     )
 
     encoder = get_trainer(
@@ -303,8 +304,8 @@ def test_get_trainer_builds_per_architecture(
 
     sentinel_decoder = object()
     sentinel_seq2seq = object()
-    monkeypatch.setattr(trainer_mod, "_decoder_trainer", lambda _spec: sentinel_decoder)
-    monkeypatch.setattr(trainer_mod, "_seq2seq_trainer", lambda _spec: sentinel_seq2seq)
+    monkeypatch.setattr(factory_mod, "_decoder_trainer", lambda _spec: sentinel_decoder)
+    monkeypatch.setattr(factory_mod, "_seq2seq_trainer", lambda _spec: sentinel_seq2seq)
 
     assert (
         get_trainer(
@@ -345,7 +346,7 @@ def test_maybe_add_early_stopping_branches(
 ) -> None:
     from transformers import EarlyStoppingCallback
 
-    from eh30pt.modeling.trainer import get_trainer
+    from eh30pt.modeling.training.factory import get_trainer
 
     out = str(tmp_path)
 

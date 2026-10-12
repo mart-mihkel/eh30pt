@@ -15,7 +15,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from eh30pt.constants import LOGDIR
 from eh30pt.logging import _UvFormatter, logger
 from eh30pt.modeling.arch import get_pipeline_task
-from eh30pt.modeling.trainer import get_trainer
+from eh30pt.modeling.training.factory import get_trainer
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.datasets import dataset_input
 from eh30pt.tracking.resume import (

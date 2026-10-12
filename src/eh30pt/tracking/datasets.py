@@ -42,7 +42,7 @@ def dataset_source(dataset: DatasetName) -> DatasetSource:
 
         return CodeDatasetSource(tags=tags)
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset.startswith("discont-classifier/"):
         tags = {
             "database": "eh30",
             "tables": [CdaEvent.__tablename__],
