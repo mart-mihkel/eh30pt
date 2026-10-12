@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from eh30pt.datasets.discontinuation.binary import DiscontBinary, load_discont_binary
 from eh30pt.datasets.discontinuation.classify import (
     DiscontClassifier,
     load_discont_classifier,
@@ -31,17 +32,18 @@ if TYPE_CHECKING:
 
 
 def _is_discont(dataset: DatasetName) -> bool:
-    """Return whether `dataset` streams its rows from Est-Health."""
     return dataset.startswith("discont-")
 
 
+def _is_classifier(dataset: DatasetName) -> bool:
+    return dataset.startswith(("discont-classifier", "discont-binary/extract-labels"))
+
+
 def _is_extract(dataset: DatasetName) -> bool:
-    """Return whether `dataset` predicts extraction fields."""
     return dataset.startswith("discont-extract/")
 
 
 def _extract_source(dataset: DatasetName) -> DataSource:
-    """Return the Est-Health query a `discont-extract` dataset names."""
     match dataset.removeprefix("discont-extract/"):
         case "trigger" | "observed" | "discont" | "switch" | "usage-gap" as source:
             return source
@@ -58,7 +60,7 @@ def get_task(dataset: DatasetName) -> DatasetTask:
     if dataset == "oblique":
         return Obl.task
 
-    if dataset == "discont-classifier/extract-labels":
+    if _is_classifier(dataset):
         return DiscontClassifier.task
 
     if _is_extract(dataset):
@@ -93,6 +95,9 @@ def get_labels(dataset: DatasetName) -> tuple[str, ...]:
     if dataset == "discont-classifier/extract-labels":
         return tuple(DiscontClassifier.id2label.values())
 
+    if dataset == "discont-binary/extract-labels":
+        return tuple(DiscontBinary.id2label.values())
+
     if _is_extract(dataset):
         msg = f"dataset '{dataset}' is an extraction dataset and has no labels"
         raise ValueError(msg)
@@ -112,6 +117,9 @@ def get_sys_prompt(dataset: DatasetName) -> str:
     if dataset == "discont-classifier/extract-labels":
         return DiscontClassifier.system_prompt
 
+    if dataset == "discont-binary/extract-labels":
+        return DiscontBinary.system_prompt
+
     if _is_extract(dataset):
         return DiscontExtract.system_prompt
 
@@ -130,6 +138,9 @@ def get_response_schema(dataset: DatasetName) -> ResponseFormatJSONSchema:
     if dataset == "discont-classifier/extract-labels":
         return DiscontClassifier.response_format()
 
+    if dataset == "discont-binary/extract-labels":
+        return DiscontBinary.response_format()
+
     if _is_extract(dataset):
         return DiscontExtract.response_format()
 
@@ -143,6 +154,8 @@ def get_few_shots(dataset: DatasetName, n_shot: int) -> list[FewShot]:
         shots = Multinerd.few_shots
     elif dataset == "discont-classifier/extract-labels":
         shots = DiscontClassifier.few_shots
+    elif dataset == "discont-binary/extract-labels":
+        shots = DiscontBinary.few_shots
     elif _is_extract(dataset):
         shots = DiscontExtract.few_shots
     elif dataset == "oblique":
@@ -201,11 +214,8 @@ def _check_splits(
         msg = f"start_after is only supported for discont datasets, got {dataset}"
         raise ValueError(msg)
 
-    if dataset != "discont-classifier/extract-labels" and labeling_projects is not None:
-        msg = (
-            "project ids are only read by 'discont-classifier/extract-labels', "
-            f"got '{dataset}'"
-        )
+    if not _is_classifier(dataset) and labeling_projects is not None:
+        msg = f"project ids are only read by the discont classifiers, got '{dataset}'"
         raise ValueError(msg)
 
 
@@ -228,20 +238,6 @@ def load_data(
     if dataset == "oblique":
         return load_obl(tokenizer, arch, n_shot, n_virtual)
 
-    if dataset == "discont-classifier/extract-labels":
-        if labeling_projects is None:
-            msg = "dataset 'discont-classifier/extract-labels' needs project ids"
-            raise ValueError(msg)
-
-        return load_discont_classifier(
-            tokenizer,
-            arch,
-            n_shot,
-            n_virtual,
-            start_after=start_after,
-            labeling_projects=labeling_projects,
-        )
-
     if _is_extract(dataset):
         return load_discont_extract(
             tokenizer,
@@ -251,6 +247,31 @@ def load_data(
             source=_extract_source(dataset),
             start_after=start_after,
         )
+
+    if _is_classifier(dataset):
+        if labeling_projects is None:
+            msg = f"dataset '{dataset}' needs project ids"
+            raise ValueError(msg)
+
+        if dataset == "discont-classifier/extract-labels":
+            load_discont_classifier(
+                tokenizer,
+                arch,
+                n_shot,
+                n_virtual,
+                start_after=start_after,
+                labeling_projects=labeling_projects,
+            )
+
+        if dataset == "discont-binary/extract-labels":
+            return load_discont_binary(
+                tokenizer,
+                arch,
+                n_shot,
+                n_virtual,
+                start_after=start_after,
+                labeling_projects=labeling_projects,
+            )
 
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)

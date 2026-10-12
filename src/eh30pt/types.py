@@ -40,7 +40,7 @@ type DatasetName = Literal[
     "multinerd",
     "oblique",
     "discont-classifier/extract-labels",
-    "discont-classifier/binary",
+    "discont-binary/extract-labels",
     "discont-extract/trigger",
     "discont-extract/observed",
     "discont-extract/discont",

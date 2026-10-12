@@ -14,7 +14,7 @@ src/eh30pt/           # the package, installed as `ehpt` command line app
   datasets/             # per-dataset pipelines, registry and common utils
   esthealth/            # esthalth database orm schemas and queries
   labeling/             # label studio tasks, configs and api client
-  modeling/             # arch detection, loading, tokenization, collation, metrics, trainer, tuning
+  modeling/             # arch detection, loading, tokenization, collation, metrics, training, tuning
   openai/               # OpenAI API wrangling helpers
   tracking/             # MLflow run management, config-hash resume
 test/                 # tests, lint-relaxed
