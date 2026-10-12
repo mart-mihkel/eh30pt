@@ -57,6 +57,7 @@ from eh30pt.cli.options.slurm import (
 )
 from eh30pt.cli.options.training import (
     batch_size_option,
+    constrain_option,
     eval_steps_option,
     head_only_option,
     learning_rate_option,
@@ -91,7 +92,7 @@ if TYPE_CHECKING:
 @click.group(
     "ehpt",
     context_settings={"help_option_names": ["-h", "--help"]},
-    help="Interface for running scripts",
+    help="Est Health 30 prompt-tuning study command line interface",
     no_args_is_help=True,
 )
 @click.rich_config(
@@ -141,6 +142,7 @@ if TYPE_CHECKING:
                         "--lora-rank",
                         "--lora-alpha",
                         "--lora-dropout",
+                        "--constrain/--no-constrain",
                     ],
                 },
                 {
@@ -227,6 +229,7 @@ def log_accelerator() -> None:
 @model_option
 @dataset_option
 @head_only_option
+@constrain_option
 @n_shot_option
 @train_steps_option
 @eval_steps_option
@@ -248,6 +251,7 @@ def fine_tune(
     model: str,
     dataset: DatasetName,
     head_only: bool,
+    constrain: bool,
     n_shot: int,
     train_steps: int,
     eval_steps: int,
@@ -295,6 +299,7 @@ def fine_tune(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
+        constrain=constrain,
     )
 
     main(
@@ -309,6 +314,7 @@ def fine_tune(
 @model_option
 @dataset_option
 @prefix_init_option
+@constrain_option
 @n_shot_option
 @train_steps_option
 @eval_steps_option
@@ -330,6 +336,7 @@ def prompt_tune(
     model: str,
     dataset: DatasetName,
     prefix_init: PrefixInit,
+    constrain: bool,
     n_shot: int,
     train_steps: int,
     eval_steps: int,
@@ -377,6 +384,7 @@ def prompt_tune(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
+        constrain=constrain,
     )
 
     main(
@@ -393,6 +401,7 @@ def prompt_tune(
 @lora_rank_option
 @lora_alpha_option
 @lora_dropout_option
+@constrain_option
 @n_shot_option
 @train_steps_option
 @eval_steps_option
@@ -416,6 +425,7 @@ def qlora(
     lora_rank: int,
     lora_alpha: int,
     lora_dropout: float,
+    constrain: bool,
     n_shot: int,
     train_steps: int,
     eval_steps: int,
@@ -469,6 +479,7 @@ def qlora(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
+        constrain=constrain,
     )
 
     main(
@@ -482,6 +493,7 @@ def qlora(
 @app.command("few-shot", help="Run test evaluation with few-shot learning")
 @model_option
 @dataset_option
+@constrain_option
 @n_shot_option
 @batch_size_option
 @arch_option
@@ -495,6 +507,7 @@ def few_shot(
     *,
     model: str,
     dataset: DatasetName,
+    constrain: bool,
     n_shot: int,
     batch_size: int,
     arch: Architecture | None,
@@ -526,7 +539,7 @@ def few_shot(
         run_id=mlflow_run_id,
     )
 
-    main(common=common, batch_size=batch_size, mlflow=mlflow)
+    main(common=common, batch_size=batch_size, constrain=constrain, mlflow=mlflow)
 
 
 @app.command(

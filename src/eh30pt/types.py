@@ -116,6 +116,7 @@ class TrainingRunConfig(RunConfig):
     train_steps: int
     learning_rate: float
     warmup_ratio: float
+    constrain: bool
 
 
 class FineTuneRunConfig(TrainingRunConfig):
@@ -141,6 +142,12 @@ class QLoRaRunConfig(TrainingRunConfig):
 
 class FewShotRunConfig(RunConfig):
     """Run configuration for few-shot evaluation."""
+
+    constrain: NotRequired[bool]
+    """
+    Whether the local trainer masks predictions to legal label completions.
+    Absent for server-backed runs, where the response schema does that instead.
+    """
 
 
 class FewShot(NamedTuple):

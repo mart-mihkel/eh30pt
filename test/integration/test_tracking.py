@@ -634,6 +634,7 @@ def test_helpers_require_run_name(
                 collate_fn=cast("DataCollator", None),
                 metrics_fn=cast("ComputeMetricsFn", None),
                 batch_size=8,
+                constrain=False,
             )
 
         with pytest.raises(ValueError, match="no mlflow run name"):

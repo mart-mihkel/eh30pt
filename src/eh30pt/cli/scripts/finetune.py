@@ -84,6 +84,7 @@ def main(
         "batch_size": training.batch_size,
         "learning_rate": training.learning_rate,
         "warmup_ratio": training.warmup_ratio,
+        "constrain": training.constrain,
         "system_prompt": sys_prompt,
         "total_parameters": total,
         "trainable_parameters": trainable,

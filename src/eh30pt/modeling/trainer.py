@@ -60,6 +60,7 @@ class _Spec(NamedTuple):
     save_steps: int
     load_best: bool
     have_accel: bool
+    constrain: bool
     label_completions: tuple[tuple[int, ...], ...]
 
 
@@ -69,6 +70,9 @@ class ConstrainedSFTTrainer(SFTTrainer):
 
     Each row's argmax is forced to its most likely legal completion, scored
     by teacher-forced likelihood over same-length candidates.
+
+    An empty `label_completions` disables the constraint, leaving the raw
+    model argmax in place.
     """
 
     def __init__(
@@ -113,11 +117,14 @@ class ConstrainedSFTTrainer(SFTTrainer):
             ignore_keys=ignore_keys,
         )
 
+        if isinstance(logits, tuple):
+            logits = logits[0] if logits else None
+
         if prediction_loss_only or logits is None or labels is None:
             return loss, logits, labels
 
-        if isinstance(logits, tuple):
-            logits = logits[0]
+        if not self._completions:
+            return loss, logits, labels
 
         return loss, _constrain_eval_logits(logits, labels, self._completions), labels
 
@@ -165,7 +172,11 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
 
 def _decoder_trainer(spec: _Spec) -> Trainer:
     """Build the label-constrained SFT Trainer for causal models."""
-    logger.debug("using constrained SFT trainer")
+    logger.debug(
+        "using %s SFT trainer",
+        "constrained" if spec.constrain else "unconstrained",
+    )
+
     args = SFTConfig(
         run_name=spec.run_name,
         report_to=spec.report_to,
@@ -214,7 +225,8 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
     Seq2SeqTrainer constraining generation to legal label token sequences.
 
     Generation is masked through `PrefixConstrainedLogitsProcessor` to tokens
-    continuing the decoded prefix toward a legal label.
+    continuing the decoded prefix toward a legal label. An empty
+    `label_completions` leaves generation unconstrained.
     """
 
     def __init__(
@@ -247,9 +259,10 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
             return _allowed_next(label_completions, pad_token_id, tail)
 
         self._gen_kwargs: dict[str, Any] = {}
-        self._logits_processor = LogitsProcessorList(
-            [PrefixConstrainedLogitsProcessor(allowed, num_beams=1)]
-        )
+        if label_completions:
+            self._gen_kwargs["logits_processor"] = LogitsProcessorList(
+                [PrefixConstrainedLogitsProcessor(allowed, num_beams=1)]
+            )
 
     def prediction_step(
         self,
@@ -262,7 +275,6 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
         """Generate with the label-constraining logits processor injected."""
         inputs = {k: v for k, v in inputs.items() if k != "truncated"}
         merged = {**self._gen_kwargs, **gen_kwargs}
-        merged.setdefault("logits_processor", self._logits_processor)
 
         return super().prediction_step(
             model,
@@ -275,7 +287,11 @@ class ConstrainedSeq2SeqTrainer(Seq2SeqTrainer):
 
 def _seq2seq_trainer(spec: _Spec) -> Trainer:
     """Build the label-constrained seq2seq Trainer for encoder-decoder models."""
-    logger.debug("using constrained seq2seq trainer")
+    logger.debug(
+        "using %s seq2seq trainer",
+        "constrained" if spec.constrain else "unconstrained",
+    )
+
     args = Seq2SeqTrainingArguments(
         run_name=spec.run_name,
         report_to=spec.report_to,
@@ -336,6 +352,7 @@ def _build_spec(
     report_to: str = "none",
     checkpoints: bool = False,
     callbacks: tuple[TrainerCallback, ...] = (),
+    constrain: bool = False,
 ) -> _Spec:
     """Resolve datasets, hyperparameters, and derived loop settings."""
     have_cuda = torch.cuda.is_available()
@@ -366,9 +383,12 @@ def _build_spec(
         save_steps=eval_steps if eval_steps > 0 else 500,
         load_best=do_checkpoints,
         have_accel=have_accel,
-        label_completions=_label_completions(data, eos_token_id=tokenizer.eos_token_id)
-        if arch != "encoder"
-        else (),
+        constrain=constrain,
+        label_completions=(
+            _label_completions(data, eos_token_id=tokenizer.eos_token_id)
+            if constrain and arch != "encoder"
+            else ()
+        ),
     )
 
 
@@ -392,6 +412,7 @@ def get_trainer(
     report_to: str = "none",
     checkpoints: bool = False,
     callbacks: tuple[TrainerCallback, ...] = (),
+    constrain: bool = False,
 ) -> Trainer:
     """Build a Trainer for the architecture, adding early stopping if requested."""
     spec = _build_spec(
@@ -411,6 +432,7 @@ def get_trainer(
         report_to=report_to,
         checkpoints=checkpoints,
         callbacks=callbacks,
+        constrain=constrain,
     )
 
     if arch == "encoder-decoder":

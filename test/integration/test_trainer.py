@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 import torch
@@ -137,6 +137,113 @@ def test_label_completions_skips_fully_masked() -> None:
     splits = DataSplits(train=split, eval=split, test=split)
 
     assert _label_completions(splits) == ()
+
+
+def test_build_spec_collects_completions_when_constrained(
+    oblique_splits: DataSplits,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    spec = _build_spec(
+        model=torch.nn.Linear(2, 2),
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=_eval_steps,
+        train_steps=_train_steps,
+        constrain=True,
+    )
+
+    assert spec.constrain is True
+    assert spec.label_completions
+
+
+def test_build_spec_drops_completions_when_unconstrained(
+    oblique_splits: DataSplits,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """An empty completion set is what makes the trainers skip constraining."""
+    spec = _build_spec(
+        model=torch.nn.Linear(2, 2),
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=_eval_steps,
+        train_steps=_train_steps,
+        constrain=False,
+    )
+
+    assert spec.constrain is False
+    assert spec.label_completions == ()
+
+
+def test_build_spec_is_unconstrained_by_default(
+    oblique_splits: DataSplits,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    spec = _build_spec(
+        model=torch.nn.Linear(2, 2),
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=_eval_steps,
+        train_steps=_train_steps,
+    )
+
+    assert spec.constrain is False
+    assert spec.label_completions == ()
+
+
+def test_constrained_seq2seq_trainer_omits_processor_without_completions(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+    tmp_path: Path,
+) -> None:
+    """An empty completion set must not mask generation down to the pad token."""
+    from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments
+
+    from eh30pt.modeling.trainer import ConstrainedSeq2SeqTrainer
+    from test.conftest import models
+
+    data = Dataset.from_list(
+        [
+            {"sentence": "Tere maailm", "removed": "Tere", "label": "vaba"},
+            {"sentence": "Kass jookseb", "removed": "Kass", "label": "seotud"},
+        ]
+    )
+    split = Obl(data, gpt2_tokenizer, "encoder-decoder")
+    model = AutoModelForSeq2SeqLM.from_pretrained(models["t5"])
+    args = Seq2SeqTrainingArguments(
+        output_dir=str(tmp_path),
+        report_to=[],
+        predict_with_generate=True,
+        max_steps=1,
+    )
+
+    def _gen_kwargs(completions: tuple[tuple[int, ...], ...]) -> dict[str, object]:
+        trainer = ConstrainedSeq2SeqTrainer(
+            model=model,
+            args=args,
+            data_collator=get_collator(gpt2_tokenizer, "encoder-decoder"),
+            train_dataset=None,
+            eval_dataset=split,
+            compute_metrics=lambda _pred: {},
+            callbacks=[],
+            label_completions=completions,
+            pad_token_id=cast("int", gpt2_tokenizer.pad_token_id),
+        )
+
+        return trainer._gen_kwargs
+
+    assert _gen_kwargs(()) == {}
+    assert "logits_processor" in _gen_kwargs(((1, 2),))
 
 
 def test_get_trainer_builds_per_architecture(

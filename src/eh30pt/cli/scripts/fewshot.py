@@ -27,6 +27,7 @@ def main(
     common: CommonSettings,
     *,
     batch_size: int,
+    constrain: bool,
     mlflow: MlflowSettings,
 ) -> None:
     """Run few-shot test evaluation of `model_path` on `dataset`."""
@@ -73,6 +74,7 @@ def main(
         "system_prompt": sys_prompt,
         "total_parameters": total,
         "trainable_parameters": 0,
+        "constrain": constrain,
     }
 
     with RunContext(mlflow, config) as ctx:
@@ -85,4 +87,5 @@ def main(
             collate_fn=collate_fn,
             metrics_fn=metrics_fn,
             batch_size=batch_size,
+            constrain=constrain,
         )

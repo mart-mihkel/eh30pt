@@ -96,3 +96,11 @@ head_only_option = click.option(
     default=False,
     help="Freeze all parameters except for classifier head",
 )
+
+constrain_option = click.option(
+    "--constrain/--no-constrain",
+    "constrain",
+    default=False,
+    show_default=True,
+    help="Constrain eval predictions to legal label token sequences",
+)

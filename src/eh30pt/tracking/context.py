@@ -493,6 +493,7 @@ class RunContext:
             run_name=run,
             report_to="mlflow",
             checkpoints=True,
+            constrain=training.constrain,
         )
 
         logger.debug("starting trainer")
@@ -522,6 +523,7 @@ class RunContext:
         collate_fn: DataCollator,
         metrics_fn: ComputeMetricsFn,
         batch_size: int,
+        constrain: bool,
     ) -> dict[str, float]:
         """Evaluate model on the test split and log the returned metrics."""
         run = self.settings.run_name
@@ -542,6 +544,7 @@ class RunContext:
             batch_size=batch_size,
             run_name=run,
             report_to="mlflow",
+            constrain=constrain,
         )
 
         logger.debug("starting test eval")

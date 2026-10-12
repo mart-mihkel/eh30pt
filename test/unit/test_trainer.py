@@ -73,3 +73,22 @@ def test_constrain_skips_length_mismatched_candidates() -> None:
     completions = ((1, 2, 3),)
 
     assert torch.equal(_constrain_eval_logits(logits, labels, completions), logits)
+
+
+def test_constrain_leaves_other_positions_and_rows_untouched() -> None:
+    """Only the argmax at label positions may change, never the rest of the row."""
+    completions = ((1, 2), (3, 4))
+    labels = torch.tensor([[-100, -100, 1, 2]])
+    logits = torch.zeros(1, 5, 6)
+    logits[0, 1] = torch.tensor([0.0, 5.0, 0.0, 0.0, 0.0, 0.0])
+    logits[0, 2] = torch.tensor([0.0, 0.0, 6.0, 0.0, 0.0, 0.0])
+
+    masked = _constrain_eval_logits(logits, labels, completions)
+
+    assert torch.equal(masked[0, 0], logits[0, 0])
+    assert torch.equal(masked[0, 3], logits[0, 3])
+    assert torch.equal(masked[0, 4], logits[0, 4])
+
+    forced_rows = masked[0, [1, 2], :]
+    assert (forced_rows == float("-inf")).sum().item() == forced_rows.numel() - 2
+    assert forced_rows.argmax(-1).tolist() == [1, 2]
