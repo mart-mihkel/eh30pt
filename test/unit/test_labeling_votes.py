@@ -187,6 +187,50 @@ def test_carve_keeps_rows_that_cannot_fill_three_splits_in_train() -> None:
         assert splits.test == []
 
 
+def test_carve_stratifies_labels_across_splits() -> None:
+    rows: list[LabeledRow[str]] = [
+        {
+            "id": task_id,
+            "text": "text",
+            "phrase": "phrase",
+            "drug": "drug",
+            "label": "yes",
+        }
+        for task_id in range(90)
+    ] + [
+        {
+            "id": task_id,
+            "text": "text",
+            "phrase": "phrase",
+            "drug": "drug",
+            "label": "no",
+        }
+        for task_id in range(90, 100)
+    ]
+    splits = carve(rows)
+
+    assert {row["label"] for row in splits.eval} == {"yes", "no"}
+    assert {row["label"] for row in splits.test} == {"yes", "no"}
+
+
+def test_carve_gives_every_class_to_eval_and_test() -> None:
+    labels = tuple(f"class-{index}" for index in range(8))
+    rows = [
+        {
+            "id": task_id,
+            "text": "text",
+            "phrase": "phrase",
+            "drug": "drug",
+            "label": labels[task_id % len(labels)],
+        }
+        for task_id in range(80)
+    ]
+    splits = carve(rows)  # ty: ignore[invalid-argument-type]
+
+    assert {row["label"] for row in splits.eval} == set(labels)
+    assert {row["label"] for row in splits.test} == set(labels)
+
+
 def test_above_drops_consumed_rows_without_moving_them() -> None:
     splits = carve(_voted_rows(100))
 

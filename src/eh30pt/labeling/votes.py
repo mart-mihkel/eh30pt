@@ -1,10 +1,10 @@
 """Turning Label Studio annotations into voted training rows, split three ways."""
 
 from collections import Counter
-from typing import TYPE_CHECKING, NamedTuple, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, NamedTuple, NotRequired, TypedDict
 
-from datasets import Dataset
 from returns.result import Failure, Success
+from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 
 from eh30pt.labeling.studio import StudioClient, group_choices
 
@@ -145,36 +145,54 @@ def stream_labeled_rows[LabelT: str](
                     raise RuntimeError(msg) from exc
 
 
+def _shuffle_split(
+    labels: list[str], size: int, seed: int
+) -> tuple[list[int], list[int]]:
+    """Split positions stratifiably, falling back to a plain shuffle."""
+    positions = range(len(labels))
+    try:
+        splitter = StratifiedShuffleSplit(n_splits=1, test_size=size, random_state=seed)
+        train_index, held_index = next(splitter.split(positions, labels))
+    except ValueError:
+        plain = ShuffleSplit(n_splits=1, test_size=size, random_state=seed)
+        train_index, held_index = next(plain.split(positions))
+    return train_index.tolist(), held_index.tolist()
+
+
 def carve[LabelT: str](
     rows: Sequence[LabeledRow[LabelT]],
     *,
     seed: int = 0,
 ) -> SplitRows[LabelT]:
-    """
-    Carve the voted rows into train, eval and test splits.
-
-    Rows are ordered by id first, so which split a row lands in depends on
-    the rows themselves rather than the order Label Studio paged them in.
-    Two tenths are held out and cut in half a second time, mirroring how
-    oblique carves eval out of what its first cut held back, and rows too
-    few to leave train at least one stay in train on their own.
-    """
+    """Carve the voted rows into stratified train, eval and test splits."""
     ordered = sorted(rows, key=lambda row: row["id"])
-    tenth = max(1, round(len(ordered) * 0.1))
-
-    if len(ordered) - tenth * 2 < 1:
+    min_rows_for_three_splits = 3
+    if len(ordered) < min_rows_for_three_splits:
         return SplitRows(train=ordered, eval=[], test=[])
 
-    dataset = Dataset.from_list(cast("list[dict[str, object]]", ordered))
-    rest = dataset.train_test_split(test_size=tenth * 2, seed=seed, keep_in_memory=True)
-    halves = rest["test"].train_test_split(
-        test_size=tenth, seed=seed, keep_in_memory=True
+    tenth = max(1, round(len(ordered) * 0.1))
+    counts = Counter(row.get("label") for row in ordered)
+    train_rows = [row for row in ordered if counts[row.get("label")] == 1]
+    pool = [row for row in ordered if counts[row.get("label")] > 1]
+    if len(pool) < min_rows_for_three_splits:
+        return SplitRows(train=ordered, eval=[], test=[])
+
+    pool_labels = [row.get("label", "") or "" for row in pool]
+    train_index, held_index = _shuffle_split(
+        pool_labels, min(tenth * 2, len(pool) - 1), seed
+    )
+    train_rows.extend(pool[index] for index in train_index)
+    held = [pool[index] for index in held_index]
+
+    held_labels = [row.get("label", "") or "" for row in held]
+    eval_index, test_index = _shuffle_split(
+        held_labels, min(tenth, len(held) - 1), seed
     )
 
     return SplitRows(
-        train=_rows_of(rest["train"]),
-        eval=_rows_of(halves["train"]),
-        test=_rows_of(halves["test"]),
+        train=train_rows,
+        eval=[held[index] for index in eval_index],
+        test=[held[index] for index in test_index],
     )
 
 
@@ -197,15 +215,7 @@ def above[LabelT: str](
         return [row for row in rows if row["id"] > consumed]
 
     return SplitRows(
-        train=keep(splits.train), eval=keep(splits.eval), test=keep(splits.test)
+        train=keep(splits.train),
+        eval=keep(splits.eval),
+        test=keep(splits.test),
     )
-
-
-def _rows_of[LabelT: str](dataset: Dataset) -> list[LabeledRow[LabelT]]:
-    """
-    Return the rows of one carved split as typed rows.
-
-    Every row comes from `labeled_row`, which fills all four fields, so the
-    arrow columns round trip back into the full typed dict.
-    """
-    return cast("list[LabeledRow[LabelT]]", dataset.to_list())

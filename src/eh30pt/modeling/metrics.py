@@ -133,58 +133,24 @@ class MetricsAccumulator(Callable):
 
 
 class StreamingClassificationMetrics:
-    """Accumulate per-pair counts and derive metrics."""
+    """Accumulate prediction pairs and derive metrics with scikit-learn."""
 
     def __init__(self) -> None:
-        """Initialize empty pair counts."""
-        self._pair_counts: Counter[tuple[str, str]] = Counter()
-        self._total: int = 0
-        self._correct: int = 0
+        """Initialize empty label and prediction lists."""
+        self._labels: list[str] = []
+        self._predictions: list[str] = []
 
     def update(self, label: str, prediction: str) -> None:
-        """Count one gold label and prediction pair."""
-        self._pair_counts[(label, prediction)] += 1
-        self._total += 1
-
-        if label == prediction:
-            self._correct += 1
+        """Record one gold label and prediction pair."""
+        self._labels.append(label)
+        self._predictions.append(prediction)
 
     def finalize(self) -> dict[str, float]:
         """Derive accuracy and macro precision, recall, and f1."""
-        if self._total == 0:
+        if not self._labels:
             return {"accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0}
 
-        classes = sorted(
-            {label for label, _ in self._pair_counts}
-            | {prediction for _, prediction in self._pair_counts},
-        )
-
-        label_totals: Counter[str] = Counter()
-        pred_totals: Counter[str] = Counter()
-        for (label, prediction), count in self._pair_counts.items():
-            label_totals[label] += count
-            pred_totals[prediction] += count
-
-        precisions: list[float] = []
-        recalls: list[float] = []
-        f1s: list[float] = []
-        for cls in classes:
-            true_positive = self._pair_counts.get((cls, cls), 0)
-            predicted = pred_totals.get(cls, 0)
-            actual = label_totals.get(cls, 0)
-
-            precisions.append(true_positive / predicted if predicted else 0.0)
-            recalls.append(true_positive / actual if actual else 0.0)
-
-            denom = actual + predicted
-            f1s.append(2 * true_positive / denom if denom else 0.0)
-
-        return {
-            "accuracy": self._correct / self._total,
-            "precision": float(np.mean(precisions)),
-            "recall": float(np.mean(recalls)),
-            "f1": float(np.mean(f1s)),
-        }
+        return compute_classification_metrics(self._labels, self._predictions)
 
 
 def _batch_to_numpy(eval_pred: EvalPrediction) -> tuple[np.ndarray, np.ndarray]:
