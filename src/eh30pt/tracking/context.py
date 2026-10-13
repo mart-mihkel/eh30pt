@@ -1,6 +1,5 @@
 """An open MLflow run plus its local checkpoint directory."""
 
-import logging
 import re
 import traceback
 from pathlib import Path
@@ -13,7 +12,7 @@ from mlflow.tracking import MlflowClient
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
-from eh30pt.logging import _UvFormatter, logger
+from eh30pt.logging import logger, rich_handler
 from eh30pt.modeling.arch import get_pipeline_task
 from eh30pt.modeling.training.factory import get_trainer
 from eh30pt.settings import MlflowSettings
@@ -26,6 +25,7 @@ from eh30pt.tracking.resume import (
 )
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Mapping
     from types import TracebackType
 
@@ -172,8 +172,7 @@ class RunContext:
         path = self.dir / "run.log"
         path.parent.mkdir(parents=True, exist_ok=True)
         file = path.open("a", encoding="utf-8")
-        handler: logging.Handler = logging.StreamHandler(cast("TextIO", file))
-        handler.setFormatter(_UvFormatter(use_color=False))
+        handler = rich_handler(file, show_time=True, show_path=True)
         logger.addHandler(handler)
         self._run_log = _RunLog(handler=handler, file=file)
 
