@@ -2,7 +2,7 @@
 
 import pytest
 
-from eh30pt.cli.scripts.labeling import _dataset_name
+from eh30pt.cli.scripts.create_task import _dataset_name
 
 
 def test_dataset_name_returns_the_tracked_dataset() -> None:

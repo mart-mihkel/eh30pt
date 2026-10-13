@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -18,8 +17,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from eh30pt.labeling.studio import ProjectRef
-
-pytestmark = pytest.mark.slow
 
 _preds = pl.DataFrame(
     {
@@ -43,10 +40,7 @@ _preds = pl.DataFrame(
 
 @pytest.fixture
 def studio() -> LabelStudioSettings:
-    """Return settings for a live server, xfailing when none is configured."""
-    if os.getenv("LABEL_STUDIO_TOKEN") is None:
-        pytest.xfail("LABEL_STUDIO_TOKEN is not set")
-
+    """Return settings for a live server, xfailing when none is reachable."""
     settings = LabelStudioSettings()
     with StudioClient(settings) as client:
         if isinstance(client.projects(), Failure):
@@ -135,7 +129,7 @@ def test_export_labels_writes_annotations_to_parquet(
 ) -> None:
     import polars as pl
 
-    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.cli.scripts.export_labels import main
     from eh30pt.labeling.studio import StudioResult
 
     labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
@@ -146,40 +140,51 @@ def test_export_labels_writes_annotations_to_parquet(
         imported = client.tasks(project.id).unwrap()
 
         first: StudioResult = {
+            "id": "1",
             "from_name": "discont",
             "to_name": "text",
             "type": "choices",
             "value": {"choices": ["Adverse reactions"]},
         }
+
         second: StudioResult = {
+            "id": "2",
             "from_name": "meta",
             "to_name": "text",
             "type": "choices",
-            "value": {"choices": ["Incomplete phrase"]},
+            "value": {"choices": ["Dosage change"]},
         }
+
         client.annotate(imported[0]["id"], [first, second]).unwrap()
 
     assert (
-        export_labels(settings=studio, projects=[project.id], output=output) == output
+        main(
+            settings=studio,
+            projects=[project.id],
+            dataset="discont-extract/trigger",
+            output=output,
+        )
+        == output
     )
 
     frame = pl.read_parquet(output)
 
     assert frame.columns == [
-        "task",
-        "annotation",
+        "project_id",
+        "task_id",
+        "annotation_id",
+        "result_id",
         "text",
         "phrase",
-        "drug",
         "reason",
-        "discont",
-        "other",
-        "meta",
+        "drug",
+        "label",
+        "annotator",
     ]
-    assert frame.height == 1
-    assert frame["discont"].to_list() == [["Adverse reactions"]]
-    assert frame["meta"].to_list() == [["Incomplete phrase"]]
-    assert frame["drug"].to_list() == ["aspiriini"]
+    _rows = 2
+    assert frame.height == _rows
+    assert frame["label"].to_list() == ["Adverse reactions", "Dosage change"]
+    assert frame["drug"].to_list() == ["aspiriini", "aspiriini"]
 
 
 def test_export_labels_combines_projects_into_one_frame(
@@ -187,13 +192,14 @@ def test_export_labels_combines_projects_into_one_frame(
 ) -> None:
     import polars as pl
 
-    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.cli.scripts.export_labels import main
     from eh30pt.labeling.studio import StudioResult
 
     labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     output = tmp_path / "labels.parquet"
 
     choice: StudioResult = {
+        "id": "1",
         "from_name": "discont",
         "to_name": "text",
         "type": "choices",
@@ -212,9 +218,10 @@ def test_export_labels_combines_projects_into_one_frame(
             client.annotate(second[0]["id"], [choice]).unwrap()
 
             assert (
-                export_labels(
+                main(
                     settings=studio,
                     projects=[project.id, other.id],
+                    dataset="discont-extract/trigger",
                     output=output,
                 )
                 == output
@@ -226,4 +233,4 @@ def test_export_labels_combines_projects_into_one_frame(
 
     _rows = 2
     assert frame.height == _rows
-    assert frame["discont"].to_list() == [["Treatment success"], ["Treatment success"]]
+    assert frame["label"].to_list() == ["Treatment success", "Treatment success"]

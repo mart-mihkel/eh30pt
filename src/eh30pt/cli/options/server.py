@@ -61,11 +61,3 @@ provider_option = click.option(
     show_default=True,
     help="Server provider",
 )
-
-from_id_option = click.option(
-    "--from-id",
-    "from_id",
-    type=click.IntRange(min=0),
-    default=None,
-    help="Only stream rows with id greater than this value",
-)

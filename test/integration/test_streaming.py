@@ -347,7 +347,7 @@ def test_stream_evaluate_consumes_windows(
 def test_run_labeling_builds_span_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
     from eh30pt.labeling.tasks.extract import _locate_span
 
     _ = mlflow_client
@@ -524,7 +524,7 @@ def test_run_labeling_builds_span_tasks(
 def test_run_labeling_builds_choice_tasks_for_classification_dataset(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-oblique-exp")
@@ -589,7 +589,7 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
 def test_run_labeling_reads_struct_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-struct-exp")
@@ -645,7 +645,7 @@ def test_run_labeling_reads_struct_predictions(
 def test_run_labeling_rejects_non_extraction_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-plain-exp")
@@ -670,7 +670,7 @@ def test_run_labeling_rejects_non_extraction_predictions(
 def test_run_labeling_rejects_non_object_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-number-exp")
@@ -695,7 +695,7 @@ def test_run_labeling_rejects_non_object_predictions(
 def test_run_labeling_without_shards_is_empty(
     mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-empty-exp")
@@ -717,7 +717,7 @@ def test_run_labeling_without_shards_is_empty(
 
 
 def test_run_labeling_without_run_id_raises() -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     with pytest.raises(ValueError, match="no mlflow run id"):
         run_labeling(
@@ -729,7 +729,7 @@ def test_run_labeling_without_run_id_raises() -> None:
 def test_run_labeling_infers_dataset_from_run(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-infer-exp")
@@ -760,7 +760,7 @@ def test_run_labeling_infers_dataset_from_run(
 def test_run_labeling_without_dataset_in_run_raises(
     mlflow_client: MlflowClient,
 ) -> None:
-    from eh30pt.cli.scripts.labeling import run_labeling
+    from eh30pt.cli.scripts.create_task import run_labeling
 
     _ = mlflow_client
     mlflow.set_experiment("export-no-dataset-exp")

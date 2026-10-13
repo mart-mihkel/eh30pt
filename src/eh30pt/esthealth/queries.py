@@ -31,7 +31,6 @@ def _assert_page_size(page_size: int) -> None:
 
 def select_observed_events(
     session: Session,
-    *,
     page_size: int = 100_000,
     limit: int | None = None,
     start_after: int | None = None,
@@ -39,9 +38,7 @@ def select_observed_events(
     """Yield random sample (id, text) rows with id above start_after."""
     _assert_page_size(page_size)
 
-    last_id: int | None = start_after
     yielded = 0
-
     while True:
         if limit is not None and yielded >= limit:
             return
@@ -54,9 +51,8 @@ def select_observed_events(
             .order_by(CdaObservedEvent.id)
             .limit(batch_size)
         )
-
-        if last_id is not None:
-            stmt = stmt.where(CdaObservedEvent.id > last_id)
+        if start_after is not None:
+            stmt = stmt.where(CdaObservedEvent.id > start_after)
 
         page = session.execute(stmt).all()
 
@@ -66,8 +62,8 @@ def select_observed_events(
         for row in page:
             row_id = cast("int", row[0])
             row_text = cast("str | None", row[1])
-            last_id = row_id
             yielded += 1
+            start_after = row_id
 
             yield EventTextRow(id=row_id, text=row_text)
 
@@ -75,12 +71,7 @@ def select_observed_events(
             return
 
 
-def select_dg_events(
-    session: Session,
-    *,
-    event_type: DgEventType,
-    start_after: int | None = None,
-) -> list[EventTextRow]:
+def select_dg_events(session: Session, event_type: DgEventType) -> list[EventTextRow]:
     """Return (id, text) rows of one dg event type with id above start_after."""
     logger.debug("querying %s dg events", event_type)
 
@@ -89,9 +80,6 @@ def select_dg_events(
         .where(CdaDgEvent.event_type == event_type)
         .order_by(CdaDgEvent.id)
     )
-
-    if start_after is not None:
-        stmt = stmt.where(CdaDgEvent.id > start_after)
 
     page = session.execute(stmt).all()
 
@@ -103,7 +91,6 @@ def select_dg_events(
 
 def select_trigger_events(
     session: Session,
-    *,
     page_size: int = 100_000,
     limit: int | None = None,
     start_after: int | None = None,
@@ -111,9 +98,7 @@ def select_trigger_events(
     """Yield high-recall candidate (id, text) rows with id above start_after."""
     _assert_page_size(page_size)
 
-    last_id: int | None = start_after
     yielded = 0
-
     while True:
         if limit is not None and yielded >= limit:
             return
@@ -126,9 +111,8 @@ def select_trigger_events(
             .order_by(CdaTriggerEvent.id)
             .limit(batch_size)
         )
-
-        if last_id is not None:
-            stmt = stmt.where(CdaTriggerEvent.id > last_id)
+        if start_after is not None:
+            stmt = stmt.where(CdaTriggerEvent.id > start_after)
 
         page = session.execute(stmt).all()
 
@@ -138,8 +122,8 @@ def select_trigger_events(
         for row in page:
             row_id = cast("int", row[0])
             row_text = cast("str | None", row[1])
-            last_id = row_id
             yielded += 1
+            start_after = row_id
 
             yield EventTextRow(id=row_id, text=row_text)
 

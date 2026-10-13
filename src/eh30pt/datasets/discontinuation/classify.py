@@ -1,50 +1,38 @@
 """Drug discontinuation reason classification dataset."""
 
-from functools import cache
 from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
     ClassVar,
-    Literal,
+    TypedDict,
     cast,
 )
 
+import polars as pl
 from datasets.iterable_dataset import IterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.labeling.loaders.extract import (
-    LabeledRow,
-    SplitRows,
-    above,
-    carve,
-    stream_labeled_rows,
-)
-from eh30pt.logging import logger
-from eh30pt.settings import LabelStudioSettings
-from eh30pt.types import DataSplits, FewShot
+from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
+from eh30pt.types import DataSplits, DiscontClassifierLabel, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
+    from pathlib import Path
 
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
     from eh30pt.types import Architecture
 
 
-type DiscontClassifierLabel = Literal[
-    "Adverse reactions",
-    "Treatment success",
-    "Treatment inefficacy",
-    "Contraindication/unsafe co-usage",
-    "Other",
-    "Adverse reaction without discontinuation",
-    "Dosage change",
-    "Other non-discontinuation",
-]
+class DiscontClassifierRow(TypedDict):
+    """One discontinuation event carrying one of the ten classifier labels."""
 
-DiscontClassifierRow = LabeledRow[DiscontClassifierLabel]
-"""One discontinuation event carrying one of the eight reason labels."""
+    id: int
+    text: str
+    phrase: str
+    drug: str
+    label: str
 
 
 class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
@@ -59,6 +47,8 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         5: "Adverse reaction without discontinuation",
         6: "Dosage change",
         7: "Other non-discontinuation",
+        8: "Incomplete phrase",
+        9: "Incorrect phrase",
     }
 
     label2id: ClassVar[Mapping[str, int]] = {
@@ -70,6 +60,8 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reaction without discontinuation": 5,
         "Dosage change": 6,
         "Other non-discontinuation": 7,
+        "Incomplete phrase": 8,
+        "Incorrect phrase": 9,
     }
 
     system_prompt = dedent(
@@ -88,6 +80,8 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         6. Adverse reaction without discontinuation: Adverse side effects, allergic reactions, or negative interactions where treatment continued.
         7. Dosage change: The drug dose was increased or decreased rather than stopped.
         8. Other non-discontinuation: An event that is neither a discontinuation nor any of the reasons above.
+        9. Incomplete phrase: The extracted phrase is too short to decide the event alone; flag it for expansion instead of classifying.
+        10. Incorrect phrase: The extracted phrase is noise or a false positive; the real description, if any, is elsewhere.
 
         Only choose one category per input. If the reason is ambiguous or fits none of the categories above, select "Other". Respond only with the category name.
         """  # noqa: E501
@@ -114,6 +108,14 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             user="patsient jätkab ravi muutuseta",
             label="Other non-discontinuation",
         ),
+        FewShot(
+            user="katkestas",
+            label="Incomplete phrase",
+        ),
+        FewShot(
+            user="ilm on ilus",
+            label="Incorrect phrase",
+        ),
     ]
 
     @staticmethod
@@ -128,13 +130,13 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     def __init__(
         self,
-        rows: Callable[[], Iterator[DiscontClassifierRow]],
+        rows: Sequence[DiscontClassifierRow],
         tokenizer: PreTrainedTokenizerFast,
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
     ) -> None:
-        """Store the row factory with its tokenization settings."""
+        """Store the split rows with their tokenization settings."""
         self._rows = rows
         self._tokenizer = tokenizer
         self._arch = arch
@@ -143,13 +145,13 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
         """Yield tokenized rows for the split."""
-        for row in self._rows():
+        for row in self._rows:
             encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
             yield cast("dict[str, list[int] | bool | int]", dict(encoded))
 
     def samples(self) -> Iterator[FewShot]:
         """Yield prompt and label pairs for the split."""
-        for row in self._rows():
+        for row in self._rows:
             yield FewShot(
                 user=self._format_user(row),
                 label=row.get("label", ""),
@@ -195,17 +197,18 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         return cls._format_user_prompt(row["text"], phrase, drug)
 
 
-def _map_label(choice: str) -> DiscontClassifierLabel | None:
-    """
-    Return the choice when it names a classifier label, or None otherwise.
-
-    The discont box and the classifier share one label set, so mapping is a
-    membership check rather than a translation table.
-    """
-    if choice not in DiscontClassifier.id2label.values():
-        return None
-
-    return cast("DiscontClassifierLabel", choice)
+def _rows(frame: pl.DataFrame) -> list[DiscontClassifierRow]:
+    """Return each row of a split frame as a typed classifier row."""
+    return [
+        {
+            "id": row["task_id"],
+            "text": row["text"],
+            "phrase": row["phrase"],
+            "drug": row["drug"],
+            "label": row["label"],
+        }
+        for row in frame.to_dicts()
+    ]
 
 
 def load_discont_classifier(
@@ -214,47 +217,16 @@ def load_discont_classifier(
     n_shot: int = 0,
     n_virtual: int = 0,
     *,
-    start_after: int | None = None,
+    data_path: Path,
     seed: int,
-    labeling_projects: Sequence[int],
 ) -> DataSplits:
-    """
-    Load the voted Label Studio rows as train, eval and test splits.
-
-    The projects are read once, when the first split iterates, and all three
-    splits then share that single fetch.
-    """
-
-    @cache
-    def voted() -> SplitRows[DiscontClassifierLabel]:
-        logger.debug("reading the voted rows of projects %s", labeling_projects)
-        rows = list(
-            stream_labeled_rows(
-                LabelStudioSettings(),
-                labeling_projects,
-                _map_label,
-            )
-        )
-        splits = above(carve(rows, seed=seed), start_after)
-        logger.debug(
-            "carved %d voted rows with seed %d into train=%d eval=%d test=%d",
-            len(rows),
-            seed,
-            len(splits.train),
-            len(splits.eval),
-            len(splits.test),
-        )
-
-        return splits
+    """Load the exported Label Studio rows as train, eval and test splits."""
+    df = pl.read_parquet(data_path)
+    df = ExtractionFrameSchema.validate(df)
+    train, eval_, test = stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
 
     return DataSplits(
-        train=DiscontClassifier(
-            lambda: iter(voted().train), tokenizer, arch, n_shot, n_virtual
-        ),
-        eval=DiscontClassifier(
-            lambda: iter(voted().eval), tokenizer, arch, n_shot, n_virtual
-        ),
-        test=DiscontClassifier(
-            lambda: iter(voted().test), tokenizer, arch, n_shot, n_virtual
-        ),
+        train=DiscontClassifier(_rows(train), tokenizer, arch, n_shot, n_virtual),
+        eval=DiscontClassifier(_rows(eval_), tokenizer, arch, n_shot, n_virtual),
+        test=DiscontClassifier(_rows(test), tokenizer, arch, n_shot, n_virtual),
     )

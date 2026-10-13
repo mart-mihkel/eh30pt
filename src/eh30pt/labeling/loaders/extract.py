@@ -1,272 +1,133 @@
 """Turning Label Studio annotations into training rows, split three ways."""
 
-from collections import Counter
-from typing import TYPE_CHECKING, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, NamedTuple, TypedDict, cast, get_args
 
-from returns.result import Failure, Success
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
+import pandera.polars as pa
+import polars as pl
 
-from eh30pt.labeling.studio import StudioClient, group_choices
-from eh30pt.logging import logger
+from eh30pt.types import DiscontClassifierLabel
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Sequence
 
+    from pandera.typing.polars import DataFrame
+
+    from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
     from eh30pt.labeling.studio import StudioTask
-    from eh30pt.settings import LabelStudioSettings
+    from eh30pt.labeling.types import ChoiceValue
 
 
-class LabeledRow[LabelT: str](TypedDict):
-    """One Label Studio task, carrying its picked annotation as a row."""
+class _DataSplits(NamedTuple):
+    """The row lists the labeled rows are carved into."""
 
-    id: int
+    train: list[DiscontClassifierRow]
+    eval: list[DiscontClassifierRow]
+    test: list[DiscontClassifierRow]
+
+
+class _ExtractionData(TypedDict):
     text: str
     phrase: str
+    reason: str
     drug: str
-    label: LabelT
 
 
-class SplitRows[LabelT: str](NamedTuple):
-    """The row lists the voted rows are carved into."""
+class ExtractionFrameSchema(pa.DataFrameModel):
+    """One row per annotated choice, labeled with classifier reasons."""
 
-    train: list[LabeledRow[LabelT]]
-    eval: list[LabeledRow[LabelT]]
-    test: list[LabeledRow[LabelT]]
-
-
-type Fold[LabelT: str] = Callable[[str], LabelT | None]
-"""
-Folds one Label Studio choice onto a dataset's own label.
-
-Returning None drops the choice.
-"""
-
-
-def labeled_row[LabelT: str](
-    *,
-    task_id: int,
-    text: str,
-    phrase: str,
-    drug: str,
-    discont: Sequence[str],
-    other: Sequence[str],
-    fold: Fold[LabelT],
-) -> LabeledRow[LabelT] | None:
-    """
-    Map one annotation to a training row, or None to drop it.
-
-    The first choice trains: meta flags never disqualify, and several choices
-    across or within the boxes fall back to the first one, preferring the
-    discontinuation box. Only annotations without any mappable choice are out.
-    """
-    if not text or not phrase or not drug:
-        return None
-
-    choices = discont or other
-    if not choices:
-        return None
-
-    label = fold(choices[0])
-    if label is None:
-        return None
-
-    return {
-        "id": task_id,
-        "text": text,
-        "phrase": phrase,
-        "drug": drug,
-        "label": label,
-    }
+    project_id: pl.Int64
+    task_id: pl.Int64
+    annotation_id: pl.Int64
+    result_id: pl.String
+    text: pl.String
+    phrase: pl.String
+    reason: pl.String
+    drug: pl.String
+    label: pl.String = pa.Field(isin=get_args(DiscontClassifierLabel.__value__))
+    annotator: pl.Int64
 
 
-def labeled_rows[LabelT: str](
+def extraction_frame(
     tasks: Sequence[StudioTask],
-    fold: Fold[LabelT],
-) -> Iterator[LabeledRow[LabelT]]:
-    """
-    Yield one training row per task from its first usable annotation.
-
-    Tasks mix machine span highlights, which carry no choices, with human
-    choice annotations, so the first annotation mapping to a row wins and
-    anything before it is skipped. Tasks without one train nothing.
-    """
-    seen = 0
-    dropped = 0
+    project: int,
+) -> DataFrame[ExtractionFrameSchema]:
+    """Build one row per annotation with a label list column per control."""
+    rows = []
     for task in tasks:
-        seen += 1
-        data = task["data"]
+        data = cast("_ExtractionData", task["data"])
 
-        pick: LabeledRow[LabelT] | None = None
-        for annotation in sorted(task["annotations"], key=lambda item: item["id"]):
-            grouped = group_choices(annotation, ("discont", "other"))
-            pick = labeled_row(
-                task_id=task["id"],
-                text=data.get("text", ""),
-                phrase=data.get("phrase", ""),
-                drug=data.get("drug", ""),
-                discont=grouped["discont"],
-                other=grouped["other"],
-                fold=fold,
-            )
+        for annt in task["annotations"]:
+            choice_res = [res for res in annt["result"] if res["type"] == "choices"]
 
-            if pick is not None:
-                break
+            for res in choice_res:
+                val = res["value"]
+                if "choices" not in val:
+                    raise RuntimeError
 
-        if pick is None:
-            dropped += 1
-            continue
+                val = cast("ChoiceValue", val)
+                for choice in val["choices"]:
+                    row = {
+                        "project_id": project,
+                        "task_id": task["id"],
+                        "annotation_id": annt["id"],
+                        "result_id": res["id"],
+                        "text": data["text"],
+                        "phrase": data["phrase"],
+                        "reason": data["reason"],
+                        "drug": data["drug"],
+                        "label": choice,
+                        "annotator": annt["completed_by"],
+                    }
 
-        yield pick
+                    rows.append(row)
 
-    logger.debug(
-        "kept %d of %d tasks (%d without a usable choice)",
-        seen - dropped,
-        seen,
-        dropped,
-    )
+    return ExtractionFrameSchema.validate(pl.DataFrame(rows))
 
 
-def stream_labeled_rows[LabelT: str](
-    settings: LabelStudioSettings,
-    labeling_projects: Sequence[int],
-    fold: Fold[LabelT],
-) -> Iterator[LabeledRow[LabelT]]:
-    """Stream voted training rows from Label Studio projects, connecting lazily."""
-    with StudioClient(settings) as studio:
-        tallies: list[tuple[int, int, int]] = []
-        for project in labeling_projects:
-            match studio.tasks(project):
-                case Success(tasks):
-                    rows = list(labeled_rows(tasks, fold))
-                    tallies.append((project, len(tasks), len(rows)))
-                    yield from rows
-                case Failure(exc):
-                    msg = f"could not read tasks of project {project}: {exc}"
-                    raise RuntimeError(msg) from exc
-
-        logger.debug(
-            "voted rows per project (tasks -> rows): %s",
-            ", ".join(
-                f"{project}: {task_count} -> {row_count}"
-                for project, task_count, row_count in tallies
-            ),
-        )
-
-
-def _shuffle_split(
-    labels: list[str],
-    size: int,
-    seed: int,
+def stratify(
+    df: DataFrame[ExtractionFrameSchema],
     *,
-    stage: str,
-) -> tuple[list[int], list[int]]:
-    """Split positions stratifiably, falling back to a plain shuffle."""
-    positions = range(len(labels))
-    try:
-        splitter = StratifiedShuffleSplit(n_splits=1, test_size=size, random_state=seed)
-        train_index, held_index = next(splitter.split(positions, labels))
-    except ValueError as exc:
-        logger.warning(
-            "stratified %s split failed (%s), falling back to a plain shuffle",
-            stage,
-            exc,
-        )
-
-        plain = ShuffleSplit(n_splits=1, test_size=size, random_state=seed)
-        train_index, held_index = next(plain.split(positions))
-    else:
-        logger.debug(
-            "stratified %s split held out %d of %d rows with seed %d",
-            stage,
-            len(held_index),
-            len(labels),
-            seed,
-        )
-
-    return train_index.tolist(), held_index.tolist()
-
-
-def carve[LabelT: str](
-    rows: Sequence[LabeledRow[LabelT]],
-    *,
+    on: str,
+    ratios: tuple[float, float, float],
     seed: int,
-) -> SplitRows[LabelT]:
-    """Carve the voted rows into stratified 70/20/10 train, eval and test splits."""
-    ordered = sorted(rows, key=lambda row: row["id"])
-    logger.debug("carving %d voted rows with seed %d", len(ordered), seed)
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """Split rows into train, eval and test, keeping every group proportional."""
+    if round(sum(ratios), 6) != 1.0:
+        msg = f"split ratios must sum to one, got {ratios}"
+        raise ValueError(msg)
 
-    min_rows_for_three_splits = 3
-    if len(ordered) < min_rows_for_three_splits:
-        logger.debug("too few rows for three splits, keeping everything in train")
-        return SplitRows(train=ordered, eval=[], test=[])
+    shuffled = df.sample(fraction=1.0, shuffle=True, seed=seed)
+    groups = shuffled.partition_by(on, maintain_order=True, as_dict=True)
 
-    n_eval = max(1, round(len(ordered) * 0.2))
-    n_test = max(1, round(len(ordered) * 0.1))
-    counts = Counter(row.get("label") for row in ordered)
-    train_rows = [row for row in ordered if counts[row.get("label")] == 1]
-    pool = [row for row in ordered if counts[row.get("label")] > 1]
-    logger.debug(
-        "%d singleton rows stay in train, carving %d pooled rows",
-        len(train_rows),
-        len(pool),
-    )
+    train: list[pl.DataFrame] = []
+    eval_: list[pl.DataFrame] = []
+    test: list[pl.DataFrame] = []
+    overflow = 0
 
-    if len(pool) < min_rows_for_three_splits:
-        logger.debug("pool too small for three splits, keeping everything in train")
-        return SplitRows(train=ordered, eval=[], test=[])
+    for group in groups.values():
+        size = group.height
 
-    pool_labels = [row.get("label", "") or "" for row in pool]
-    train_index, held_index = _shuffle_split(
-        pool_labels,
-        min(n_eval + n_test, len(pool) - 1),
-        seed,
-        stage="train/held",
-    )
+        if size < len(ratios):
+            target = overflow % len(ratios)
+            overflow += 1
+            empty = group.head(0)
+            parts = [empty, empty, empty]
+            parts[target] = group
+        else:
+            n_train = round(size * ratios[0])
+            n_eval = round(size * ratios[1])
+            parts = [
+                group.head(n_train),
+                group.slice(n_train, n_eval),
+                group.slice(n_train + n_eval),
+            ]
 
-    train_rows.extend(pool[index] for index in train_index)
-    held = [pool[index] for index in held_index]
+        train.append(parts[0])
+        eval_.append(parts[1])
+        test.append(parts[2])
 
-    held_labels = [row.get("label", "") or "" for row in held]
-    eval_index, test_index = _shuffle_split(
-        held_labels, min(n_test, len(held) - 1), seed, stage="eval/test"
-    )
-
-    splits = SplitRows(
-        train=train_rows,
-        eval=[held[index] for index in eval_index],
-        test=[held[index] for index in test_index],
-    )
-
-    logger.debug(
-        "split rows into train=%d eval=%d test=%d",
-        len(splits.train),
-        len(splits.eval),
-        len(splits.test),
-    )
-
-    return splits
-
-
-def above[LabelT: str](
-    splits: SplitRows[LabelT],
-    start_after: int | None,
-) -> SplitRows[LabelT]:
-    """
-    Drop the rows at or below `start_after` from every split.
-
-    The filter runs after the carve, so a resumed run sees the same rows in
-    the same splits it saw before, only without the consumed ones.
-    """
-    if start_after is None:
-        return splits
-
-    consumed: int = start_after
-
-    def keep(rows: list[LabeledRow[LabelT]]) -> list[LabeledRow[LabelT]]:
-        return [row for row in rows if row["id"] > consumed]
-
-    return SplitRows(
-        train=keep(splits.train),
-        eval=keep(splits.eval),
-        test=keep(splits.test),
+    return (
+        pl.concat(train, how="vertical"),
+        pl.concat(eval_, how="vertical"),
+        pl.concat(test, how="vertical"),
     )

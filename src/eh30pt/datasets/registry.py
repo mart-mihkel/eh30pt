@@ -16,7 +16,7 @@ from eh30pt.datasets.oblique import Obl, load_obl
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from pathlib import Path
 
     from openai.types.shared_params import ResponseFormatJSONSchema
     from transformers import PreTrainedTokenizerFast
@@ -205,21 +205,6 @@ def get_extract_fields(dataset: DatasetName) -> tuple[str, ...]:
     return tuple(field for field in required if isinstance(field, str))
 
 
-def _check_splits(
-    dataset: DatasetName,
-    start_after: int | None,
-    labeling_projects: Sequence[int] | None,
-) -> None:
-    """Raise when the split options do not fit the dataset."""
-    if start_after is not None and not _is_discont(dataset):
-        msg = f"start_after is only supported for discont datasets, got {dataset}"
-        raise ValueError(msg)
-
-    if not _is_classifier(dataset) and labeling_projects is not None:
-        msg = f"project ids are only read by the discont classifiers, got '{dataset}'"
-        raise ValueError(msg)
-
-
 def load_data(
     tokenizer: PreTrainedTokenizerFast,
     dataset: DatasetName,
@@ -227,12 +212,13 @@ def load_data(
     *,
     n_shot: int = 0,
     n_virtual: int = 0,
+    data_path: Path | None = None,
     seed: int | None = None,
-    start_after: int | None = None,
-    labeling_projects: Sequence[int] | None = None,
 ) -> DataSplits:
     """Load dataset splits, streaming only rows with id above start_after."""
-    _check_splits(dataset, start_after, labeling_projects)
+    if not _is_classifier(dataset) and data_path is not None:
+        msg = f"labels file is only read by the discont classifiers, got '{dataset}'"
+        raise ValueError(msg)
 
     if dataset == "multinerd":
         return load_multinerd(tokenizer, arch, n_shot, n_virtual)
@@ -247,12 +233,11 @@ def load_data(
             n_shot,
             n_virtual,
             source=_extract_source(dataset),
-            start_after=start_after,
         )
 
     if _is_classifier(dataset):
-        if labeling_projects is None:
-            msg = f"dataset '{dataset}' needs project ids"
+        if data_path is None:
+            msg = f"dataset '{dataset}' needs a labels file, pass --data-path"
             raise ValueError(msg)
 
         split_seed = 0 if seed is None else seed
@@ -265,9 +250,8 @@ def load_data(
                 arch,
                 n_shot,
                 n_virtual,
-                start_after=start_after,
+                data_path=data_path,
                 seed=split_seed,
-                labeling_projects=labeling_projects,
             )
 
         if dataset == "discont-binary/extract-labels":
@@ -276,9 +260,8 @@ def load_data(
                 arch,
                 n_shot,
                 n_virtual,
-                start_after=start_after,
+                data_path=data_path,
                 seed=split_seed,
-                labeling_projects=labeling_projects,
             )
 
     msg = f"invalid dataset {dataset}"

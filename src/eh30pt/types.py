@@ -68,6 +68,19 @@ type DgEventType = Literal[
     "usage_gap",
 ]
 
+type DiscontClassifierLabel = Literal[
+    "Adverse reactions",
+    "Treatment success",
+    "Treatment inefficacy",
+    "Contraindication/unsafe co-usage",
+    "Other",
+    "Adverse reaction without discontinuation",
+    "Dosage change",
+    "Other non-discontinuation",
+    "Incomplete phrase",
+    "Incorrect phrase",
+]
+
 type DataSource = Literal[
     "observed",
     "trigger",

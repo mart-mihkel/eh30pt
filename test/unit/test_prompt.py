@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
 import pytest
@@ -29,10 +30,9 @@ from eh30pt.datasets.registry import (
 
 if TYPE_CHECKING:
     from datasets.arrow_dataset import Dataset
-    from sqlalchemy.orm import Session
     from transformers import PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, DatasetName, DataSource
+    from eh30pt.types import Architecture, DatasetName
 
 
 def test_oblique_format_user_prompt() -> None:
@@ -127,7 +127,7 @@ def test_extract_schema_limits_field_lengths() -> None:
 def test_registry() -> None:
     _obl_fewshots = 5
     _multinerd_labels = 15
-    _classifier_labels = 8
+    _classifier_labels = 10
 
     assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
     assert len(get_labels("multinerd")) == _multinerd_labels
@@ -242,36 +242,30 @@ def test_response_schemas_serialize_to_json() -> None:
 
 
 @pytest.mark.parametrize("dataset", ["multinerd", "oblique"])
-def test_load_data_rejects_start_after_for_static_datasets(
+def test_load_data_rejects_a_data_path_for_static_datasets(
     dataset: DatasetName,
 ) -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    with pytest.raises(ValueError, match="only supported for discont"):
-        load_data(tokenizer, dataset, "decoder", start_after=100)
+    with pytest.raises(ValueError, match="labels file is only read by"):
+        load_data(tokenizer, dataset, "decoder", data_path=Path("labels.parquet"))
 
 
-@pytest.mark.parametrize("dataset", ["multinerd", "oblique"])
-def test_load_data_rejects_labeling_projects_for_static_datasets(
-    dataset: DatasetName,
-) -> None:
-    tokenizer = cast("PreTrainedTokenizerFast", None)
-    with pytest.raises(ValueError, match="project ids are only read by"):
-        load_data(tokenizer, dataset, "decoder", labeling_projects=[1])
-
-
-def test_load_data_rejects_labeling_projects_for_extract_datasets() -> None:
+def test_load_data_rejects_a_data_path_for_extract_datasets() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    with pytest.raises(ValueError, match="project ids are only read by"):
+    with pytest.raises(ValueError, match="labels file is only read by"):
         load_data(
-            tokenizer, "discont-extract/trigger", "decoder", labeling_projects=[1]
+            tokenizer,
+            "discont-extract/trigger",
+            "decoder",
+            data_path=Path("labels.parquet"),
         )
 
 
-def test_load_data_requires_projects_for_the_classifier() -> None:
+def test_load_data_requires_a_data_path_for_the_classifier() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    with pytest.raises(ValueError, match="needs project ids"):
+    with pytest.raises(ValueError, match="needs a labels file"):
         load_data(tokenizer, "discont-classifier/extract-labels", "decoder")
 
 
@@ -327,7 +321,7 @@ def test_get_few_shots_covers_datasets() -> None:
     assert len(get_few_shots("discont-classifier/extract-labels", _n_shots)) == _n_shots
     assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
 
-    with pytest.raises(ValueError, match="only 8 defined"):
+    with pytest.raises(ValueError, match="only 10 defined"):
         get_few_shots(
             "discont-classifier/extract-labels", len(DiscontClassifier.few_shots) + 1
         )
@@ -392,7 +386,7 @@ def test_discont_tokenize_rejects_too_many_shots() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="more few shot examples"):
-        DiscontClassifier(lambda: iter([]), tokenizer, "decoder").tokenize(
+        DiscontClassifier([], tokenizer, "decoder").tokenize(
             {"id": 1, "text": "x", "phrase": "x", "drug": "y", "label": "Other"},
             tokenizer,
             n_shot=100,
@@ -418,19 +412,7 @@ def test_multinerd_tokenize_rejects_too_many_shots() -> None:
         )
 
 
-def test_select_source_rejects_invalid() -> None:
-    from eh30pt.datasets.discontinuation.streaming import _select_source
-
-    with pytest.raises(ValueError, match="invalid discontinuation data source"):
-        _select_source(
-            cast("DataSource", "unknown"),
-            cast("Session", None),
-            page_size=10,
-            start_after=None,
-        )
-
-
 def test_no_extract_row_factory_is_empty() -> None:
-    from eh30pt.datasets.discontinuation.extract import _no_extract_rows
+    from eh30pt.datasets.discontinuation.extract import _no_rows
 
-    assert list(_no_extract_rows()) == []
+    assert list(_no_rows()) == []

@@ -17,8 +17,8 @@ from eh30pt.cli.options.common import (
     seed_option,
 )
 from eh30pt.cli.options.labeling import (
+    data_path_option,
     label_studio_url_option,
-    optional_project_ids_option,
     project_ids_option,
     project_title_option,
 )
@@ -37,7 +37,6 @@ from eh30pt.cli.options.mlflow import (
 from eh30pt.cli.options.server import (
     completion_dataset_option,
     concurrency_option,
-    from_id_option,
     log_interval_option,
     prompt_argument,
     provider_option,
@@ -125,6 +124,7 @@ if TYPE_CHECKING:
                         "--n-shot",
                         "--project",
                         "--from-id",
+                        "--data-path",
                     ],
                 },
                 {
@@ -239,7 +239,7 @@ def log_accelerator() -> None:
 @patience_option
 @tolerance_option
 @arch_option
-@optional_project_ids_option
+@data_path_option
 @experiment_option
 @run_name_option
 @run_id_option
@@ -261,7 +261,7 @@ def fine_tune(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    labeling_projects: tuple[int, ...] | None,
+    data_path: Path | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
@@ -281,7 +281,7 @@ def fine_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        labeling_projects=list(labeling_projects) if labeling_projects else None,
+        data_path=data_path,
         seed=seed,
     )
 
@@ -325,7 +325,7 @@ def fine_tune(
 @patience_option
 @tolerance_option
 @arch_option
-@optional_project_ids_option
+@data_path_option
 @experiment_option
 @run_name_option
 @run_id_option
@@ -347,7 +347,7 @@ def prompt_tune(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    labeling_projects: tuple[int, ...] | None,
+    data_path: Path | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
@@ -367,7 +367,7 @@ def prompt_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        labeling_projects=list(labeling_projects) if labeling_projects else None,
+        data_path=data_path,
         seed=seed,
     )
 
@@ -413,7 +413,7 @@ def prompt_tune(
 @patience_option
 @tolerance_option
 @arch_option
-@optional_project_ids_option
+@data_path_option
 @experiment_option
 @run_name_option
 @run_id_option
@@ -437,7 +437,7 @@ def qlora(
     patience: int,
     tolerance: float,
     arch: Architecture | None,
-    labeling_projects: tuple[int, ...] | None,
+    data_path: Path | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
@@ -457,7 +457,7 @@ def qlora(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
-        labeling_projects=list(labeling_projects) if labeling_projects else None,
+        data_path=data_path,
         seed=seed,
     )
 
@@ -500,6 +500,7 @@ def qlora(
 @n_shot_option
 @batch_size_option
 @arch_option
+@data_path_option
 @experiment_option
 @run_name_option
 @run_id_option
@@ -514,6 +515,7 @@ def few_shot(
     n_shot: int,
     batch_size: int,
     arch: Architecture | None,
+    data_path: Path | None,
     mlflow_experiment: str,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
@@ -533,6 +535,7 @@ def few_shot(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        data_path=data_path,
         seed=seed,
     )
 
@@ -654,7 +657,6 @@ def completion(
 @n_shot_option
 @system_prompt_option
 @concurrency_option
-@from_id_option
 @run_name_option
 @run_id_option
 @experiment_option
@@ -669,7 +671,6 @@ def evaluate(
     n_shot: int,
     system_prompt: str | None,
     concurrency: int,
-    from_id: int | None,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
@@ -696,11 +697,7 @@ def evaluate(
         run_id=mlflow_run_id,
     )
 
-    stream = StreamSettings(
-        log_interval=log_interval,
-        concurrency=concurrency,
-        from_id=from_id,
-    )
+    stream = StreamSettings(log_interval=log_interval, concurrency=concurrency)
 
     asyncio.run(
         main(
@@ -721,7 +718,6 @@ def evaluate(
 @n_shot_option
 @system_prompt_option
 @concurrency_option
-@from_id_option
 @run_name_option
 @run_id_option
 @experiment_option
@@ -736,7 +732,6 @@ def generate(
     n_shot: int,
     system_prompt: str | None,
     concurrency: int,
-    from_id: int | None,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
@@ -763,11 +758,7 @@ def generate(
         run_id=mlflow_run_id,
     )
 
-    stream = StreamSettings(
-        shard_size=shard_size,
-        concurrency=concurrency,
-        from_id=from_id,
-    )
+    stream = StreamSettings(shard_size=shard_size, concurrency=concurrency)
 
     asyncio.run(
         main(
@@ -787,7 +778,6 @@ def generate(
 @provider_option
 @lang_extract_n_shot_option
 @system_prompt_option
-@from_id_option
 @run_name_option
 @run_id_option
 @experiment_option
@@ -802,7 +792,6 @@ def langextract(
     provider: Provider,
     n_shot: int,
     system_prompt: str | None,
-    from_id: int | None,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
@@ -827,11 +816,7 @@ def langextract(
         run_id=mlflow_run_id,
     )
 
-    stream = StreamSettings(
-        shard_size=shard_size,
-        concurrency=concurrency,
-        from_id=from_id,
-    )
+    stream = StreamSettings(shard_size=shard_size, concurrency=concurrency)
 
     asyncio.run(
         main(
@@ -863,7 +848,7 @@ def create_task(
     log_level: LogLevel,
 ) -> None:
     """Create a Label Studio project and import the run's tasks into it."""
-    from eh30pt.cli.scripts.labeling import main
+    from eh30pt.cli.scripts.create_task import main
     from eh30pt.settings import LabelStudioSettings
 
     logger.setLevel(log_level.upper())
@@ -891,24 +876,31 @@ def create_task(
     help="Export finished annotations from Label Studio projects",
 )
 @project_ids_option
+@dataset_option
 @output_option
 @label_studio_url_option
 @log_level_option
 def export_labels(
     *,
     labeling_projects: tuple[int, ...],
+    dataset: DatasetName,
     output: Path | None,
     label_studio_url: str,
     log_level: LogLevel,
 ) -> None:
     """Read finished annotations into one Parquet frame."""
-    from eh30pt.cli.scripts.labeling import export_labels
+    from eh30pt.cli.scripts.export_labels import main
     from eh30pt.settings import LabelStudioSettings
 
     logger.setLevel(log_level.upper())
 
     studio = LabelStudioSettings(url=label_studio_url)
-    export_labels(settings=studio, projects=list(labeling_projects), output=output)
+    main(
+        settings=studio,
+        projects=list(labeling_projects),
+        dataset=dataset,
+        output=output,
+    )
 
 
 if __name__ == "__main__":

@@ -2,13 +2,13 @@
 
 import pytest
 
+from eh30pt.labeling.loaders.extract import extraction_frame
 from eh30pt.labeling.studio import (
     StudioClient,
     _number,
     _object,
     _results,
     _tasks,
-    annotation_frame,
 )
 from eh30pt.settings import LabelStudioSettings
 
@@ -58,7 +58,7 @@ def test_results_and_tasks_read_their_own_page_keys() -> None:
         _tasks({"results": []}, "a page")
 
 
-def test_annotation_frame_groups_choices_by_control() -> None:
+def test_extraction_frame_lists_one_row_per_choice() -> None:
     tasks = [
         {
             "id": 7,
@@ -67,14 +67,23 @@ def test_annotation_frame_groups_choices_by_control() -> None:
             "annotations": [
                 {
                     "id": 3,
+                    "completed_by": 42,
                     "result": [
                         {
-                            "from_name": "discont",
+                            "id": "res-1",
+                            "from_name": "label",
                             "to_name": "text",
                             "type": "choices",
-                            "value": {"choices": ["Other"]},
+                            "value": {"choices": ["Other", "Dosage change"]},
                         },
+                    ],
+                },
+                {
+                    "id": 4,
+                    "completed_by": 7,
+                    "result": [
                         {
+                            "id": "res-2",
                             "from_name": "span",
                             "to_name": "text",
                             "type": "labels",
@@ -87,35 +96,16 @@ def test_annotation_frame_groups_choices_by_control() -> None:
                         },
                     ],
                 },
-                {
-                    "id": 4,
-                    "result": [
-                        {
-                            "from_name": "unknown",
-                            "to_name": "text",
-                            "type": "choices",
-                            "value": {"choices": ["Whatever"]},
-                        },
-                    ],
-                },
             ],
         },
     ]
 
-    frame = annotation_frame(tasks, ("discont", "other", "meta"))  # ty: ignore[invalid-argument-type]
+    frame = extraction_frame(tasks, project=5)  # ty: ignore[invalid-argument-type]
 
-    assert frame.columns == [
-        "task",
-        "annotation",
-        "text",
-        "phrase",
-        "drug",
-        "reason",
-        "discont",
-        "other",
-        "meta",
-    ]
-    assert frame["task"].to_list() == [7, 7]
-    assert frame["annotation"].to_list() == [3, 4]
-    assert frame["discont"].to_list() == [["Other"], []]
-    assert frame["other"].to_list() == [[], []]
+    assert frame["project_id"].to_list() == [5, 5]
+    assert frame["task_id"].to_list() == [7, 7]
+    assert frame["annotation_id"].to_list() == [3, 3]
+    assert frame["result_id"].to_list() == ["res-1", "res-1"]
+    assert frame["label"].to_list() == ["Other", "Dosage change"]
+    assert frame["text"].to_list() == ["t", "t"]
+    assert frame["annotator"].to_list() == [42, 42]

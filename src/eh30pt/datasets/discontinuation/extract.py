@@ -6,10 +6,17 @@ from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, TypedDict, cast
 
 from datasets.iterable_dataset import IterableDataset
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
-from eh30pt.datasets.discontinuation.streaming import _stream_rows
 from eh30pt.datasets.mixin import DatasetMixin
+from eh30pt.esthealth.queries import (
+    EventTextRow,
+    select_dg_events,
+    select_observed_events,
+    select_trigger_events,
+)
 from eh30pt.logging import logger
 from eh30pt.settings import PostgresSettings
 from eh30pt.types import DataSplits, ExtractShot, FewShot
@@ -181,29 +188,46 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         )
 
 
-def _no_extract_rows() -> Iterator[DiscontExtractRow]:
+def _select(source: DataSource, session: Session) -> Iterator[EventTextRow]:
+    """Yield (id, text) rows from a dg event type, trigger filter, or sample."""
+    if source == "discont":
+        return iter(select_dg_events(session, event_type="discontinuation"))
+
+    if source == "switch":
+        return iter(select_dg_events(session, event_type="switch"))
+
+    if source == "usage-gap":
+        return iter(select_dg_events(session, event_type="usage_gap"))
+
+    if source == "observed":
+        return select_observed_events(session)
+
+    if source == "trigger":
+        return select_trigger_events(session)
+
+    msg = f"invalid discontinuation data source '{source}'"
+    raise ValueError(msg)
+
+
+def _no_rows() -> Iterator[DiscontExtractRow]:
     """Yield no rows for the empty train and eval splits."""
     return iter(())
 
 
-def _stream_extract_rows(
-    url: str,
-    page_size: int,
-    source: DataSource,
-    *,
-    start_after: int | None = None,
-) -> Iterator[DiscontExtractRow]:
-    """Stream extract rows with id above start_after, connecting lazily."""
-    yield from cast(
-        "Iterator[DiscontExtractRow]",
-        _stream_rows(
-            url,
-            source,
-            page_size=page_size,
-            start_after=start_after,
-            message="streaming high-recall discontinuation events",
-        ),
-    )
+def _stream_rows(url: str, source: DataSource) -> Iterator[DiscontExtractRow]:
+    """Stream (id, text) rows with id above start_after, connecting lazily."""
+    engine = create_engine(url)
+    with Session(engine) as session:
+        skipped = 0
+        for row in _select(source, session):
+            if row.text is None:
+                skipped += 1
+                continue
+
+            yield {"id": row.id, "text": row.text}
+
+        if skipped:
+            logger.debug("skipped %d textless events", skipped)
 
 
 def load_discont_extract(
@@ -212,9 +236,7 @@ def load_discont_extract(
     n_shot: int = 0,
     n_virtual: int = 0,
     *,
-    page_size: int = 1000,
     source: DataSource,
-    start_after: int | None = None,
 ) -> DataSplits:
     """Load extract candidates as splits with only test populated."""
     if arch != "decoder":
@@ -223,16 +245,10 @@ def load_discont_extract(
 
     logger.debug("extract rows stream from Est-Health on first iteration")
     url = PostgresSettings().connection_url
-    test_rows = partial(
-        _stream_extract_rows,
-        url,
-        page_size=page_size,
-        source=source,
-        start_after=start_after,
-    )
+    test_rows = partial(_stream_rows, url, source=source)
 
     return DataSplits(
-        train=DiscontExtract(_no_extract_rows, tokenizer, arch, n_shot, n_virtual),
-        eval=DiscontExtract(_no_extract_rows, tokenizer, arch, n_shot, n_virtual),
+        train=DiscontExtract(_no_rows, tokenizer, arch, n_shot, n_virtual),
+        eval=DiscontExtract(_no_rows, tokenizer, arch, n_shot, n_virtual),
         test=DiscontExtract(test_rows, tokenizer, arch, n_shot, n_virtual),
     )

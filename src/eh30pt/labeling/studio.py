@@ -1,9 +1,8 @@
 """Label Studio API client for creating projects and importing tasks."""
 
-from typing import TYPE_CHECKING, NamedTuple, Self, TypedDict, cast
+from typing import TYPE_CHECKING, NamedTuple, NotRequired, Self, TypedDict, cast
 
 import httpx
-import polars as pl
 from returns.result import safe
 
 from eh30pt.logging import logger
@@ -34,6 +33,7 @@ class ImportedTasks(NamedTuple):
 class StudioResult(TypedDict):
     """One entry of an annotation result."""
 
+    id: str
     from_name: str
     to_name: str
     type: str
@@ -45,24 +45,19 @@ class StudioAnnotation(TypedDict):
 
     id: int
     result: list[StudioResult]
+    completed_by: NotRequired[int | None]
 
 
 class StudioTask(TypedDict):
     """One imported task as the server reports it."""
 
     id: int
-    inner_id: int
     data: dict[str, str]
     annotations: list[StudioAnnotation]
 
 
 def _json(response: httpx.Response, what: str) -> object:
-    """
-    Return the JSON body of a successful response.
-
-    Label Studio answers a delete with 204 and no body, so a success without
-    content is reported as an empty object rather than parsed.
-    """
+    """Return the JSON body of a successful response."""
     if not response.is_success:
         body = response.text[:200]
         msg = f"label studio refused to {what}: {response.status_code} {body}"
@@ -115,78 +110,6 @@ def _tasks(payload: object, what: str) -> list[dict[str, object]]:
     return cast("list[dict[str, object]]", tasks)
 
 
-def _chosen_labels(result: StudioResult) -> tuple[str, ...]:
-    """Return the labels a result selected, empty for non-choice results."""
-    if result["type"] != "choices":
-        return ()
-
-    value = cast("ChoiceValue", result["value"])
-    return tuple(value.get("choices", ()))
-
-
-def group_choices(
-    annotation: StudioAnnotation, controls: Sequence[str]
-) -> dict[str, tuple[str, ...]]:
-    """Group one annotation's chosen labels by control, in control order."""
-    chosen: dict[str, list[str]] = {control: [] for control in controls}
-    for result in annotation["result"]:
-        labels = chosen.get(result["from_name"])
-        if labels is None:
-            continue
-
-        labels.extend(_chosen_labels(result))
-
-    return {control: tuple(chosen[control]) for control in controls}
-
-
-def annotation_frame(
-    tasks: Sequence[StudioTask], controls: Sequence[str]
-) -> pl.DataFrame:
-    """Build one row per annotation with a label list column per control."""
-    rows: list[int] = []
-    annotations: list[int] = []
-    texts: list[str] = []
-    phrases: list[str] = []
-    drugs: list[str] = []
-    reasons: list[str] = []
-    grouped: list[list[tuple[str, ...]]] = []
-
-    for task in tasks:
-        data = task["data"]
-        for annotation in task["annotations"]:
-            chosen = group_choices(annotation, controls)
-
-            rows.append(task["id"])
-            annotations.append(annotation["id"])
-            texts.append(data.get("text", ""))
-            phrases.append(data.get("phrase", ""))
-            drugs.append(data.get("drug", ""))
-            reasons.append(data.get("reason", ""))
-            grouped.append([chosen[control] for control in controls])
-
-    frame = pl.DataFrame(
-        {
-            "task": pl.Series("task", rows, dtype=pl.Int64),
-            "annotation": pl.Series("annotation", annotations, dtype=pl.Int64),
-            "text": pl.Series("text", texts, dtype=pl.String),
-            "phrase": pl.Series("phrase", phrases, dtype=pl.String),
-            "drug": pl.Series("drug", drugs, dtype=pl.String),
-            "reason": pl.Series("reason", reasons, dtype=pl.String),
-        },
-    )
-
-    for column, control in enumerate(controls):
-        labels = pl.Series(
-            control,
-            [row[column] for row in grouped],
-            dtype=pl.List(pl.String),
-        )
-
-        frame = frame.with_columns(labels)
-
-    return frame
-
-
 class StudioClient:
     """Label Studio client authenticating with the configured API token."""
 
@@ -206,13 +129,7 @@ class StudioClient:
         self._client.close()
 
     def _authorization(self) -> str:
-        """
-        Return the Authorization header of the next request.
-
-        A legacy token is sent as the user token itself, which is what a
-        development Label Studio pins on its dev user, while a personal access
-        token refreshes into a short lived access token first.
-        """
+        """Return the Authorization header of the next request."""
         match self._settings.auth:
             case "legacy":
                 return f"Token {self._settings.token.get_secret_value()}"
@@ -220,13 +137,7 @@ class StudioClient:
                 return f"Bearer {self._access_token()}"
 
     def _access_token(self) -> str:
-        """
-        Return an access token, exchanging the personal token for one.
-
-        Label Studio issues personal access tokens as refresh tokens, so every
-        call needs a short-lived access token exchanged through a second
-        request.
-        """
+        """Return an access token, exchanging the personal token for one."""
         if self._access is not None:
             return self._access
 
@@ -283,12 +194,7 @@ class StudioClient:
     def _task_pages(
         self, project: int, *, page_size: int
     ) -> Iterator[dict[str, object]]:
-        """
-        Yield every page of the task list, which does not use 'results'.
-
-        The task list is paginated with page and page_size and carries its
-        items under 'tasks', unlike the rest of the API.
-        """
+        """Yield every page of the task list, which does not use 'results'."""
         page = 1
         while True:
             params = {
@@ -389,7 +295,6 @@ class StudioClient:
         collected = [
             StudioTask(
                 id=_number(page, "id", "a task"),
-                inner_id=_number(page, "inner_id", "a task"),
                 data=cast("dict[str, str]", page.get("data", {})),
                 annotations=cast("list[StudioAnnotation]", page.get("annotations", [])),
             )

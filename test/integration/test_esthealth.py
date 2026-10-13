@@ -181,8 +181,3 @@ def test_select_dg_events_returns_rows(session: Session) -> None:
 
         assert stored
         assert all(item == event_type for item in stored)
-
-        first = rows[0].id
-        rest = select_dg_events(session, event_type=event_type, start_after=first)
-
-        assert all(row.id > first for row in rest)

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
+import polars as pl
 import pytest
 from datasets import Dataset
 
@@ -24,7 +25,8 @@ from eh30pt.datasets.oblique import Obl, OblRow
 from eh30pt.types import Architecture, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
+    from pathlib import Path
 
     from transformers import PreTrainedTokenizerFast
 
@@ -83,29 +85,24 @@ def shots() -> list[FewShot]:
 
 
 @pytest.fixture
-def counted_rows() -> Callable[[list[int]], Iterator[DiscontClassifierRow]]:
-    """Return rows while recording each fresh iteration."""
-
-    def _rows(calls: list[int]) -> Iterator[DiscontClassifierRow]:
-        calls.append(1)
-
-        yield {
+def classifier_rows() -> list[DiscontClassifierRow]:
+    """Return the classifier rows used for iteration checks."""
+    return [
+        {
             "id": 1,
             "text": "katkestas ravi peavalu tõttu",
             "phrase": "katkestas ravi",
             "drug": "aspiriin",
             "label": "Adverse reactions",
-        }
-
-        yield {
+        },
+        {
             "id": 2,
             "text": "lõpetas kuuri paranedes",
             "phrase": "lõpetas kuuri",
             "drug": "statiin",
             "label": "Treatment success",
-        }
-
-    return _rows
+        },
+    ]
 
 
 def test_format_few_shot_legacy(
@@ -393,14 +390,11 @@ def test_getitem_forbidden(
         ds[0]
 
 
-def test_classifier_streams_rows_lazily(
-    counted_rows: Callable[[list[int]], Iterator[DiscontClassifierRow]],
+def test_classifier_reiterates_its_rows(
+    classifier_rows: list[DiscontClassifierRow],
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    calls: list[int] = []
-    ds = DiscontClassifier(lambda: counted_rows(calls), bert_tokenizer, "decoder")
-
-    assert calls == []
+    ds = DiscontClassifier(classifier_rows, bert_tokenizer, "decoder")
 
     first = list(ds.samples())
     s1 = FewShot(
@@ -421,12 +415,10 @@ def test_classifier_streams_rows_lazily(
         id=2,
     )
 
-    assert calls == [1]
     assert first == [s1, s2]
 
     second = list(ds.samples())
 
-    assert calls == [1, 1]
     assert [sample.user for sample in second] == [sample.user for sample in first]
 
 
@@ -468,15 +460,44 @@ def test_load_discont_extract_opens_no_connection(
     assert list(splits.eval.samples()) == []
 
 
-def test_load_classifier_opens_no_connection(
-    bert_tokenizer: PreTrainedTokenizerFast, monkeypatch: pytest.MonkeyPatch
+def test_load_classifier_reads_exported_labels_without_a_server(
+    bert_tokenizer: PreTrainedTokenizerFast, tmp_path: Path
 ) -> None:
-    """Building the splits reads no project, the first iteration reads them."""
-    monkeypatch.setenv("LABEL_STUDIO_URL", "http://localhost:1")
+    """Splits stream from an export-labels parquet, never touching the API."""
+    n_tasks = 10
+    labels = tmp_path / "labels.parquet"
+    pl.DataFrame(
+        {
+            "project_id": [5] * n_tasks,
+            "task_id": list(range(1, n_tasks + 1)),
+            "annotation_id": list(range(1, n_tasks + 1)),
+            "result_id": [f"res-{i}" for i in range(1, n_tasks + 1)],
+            "text": ["katkestas ravi"] * n_tasks,
+            "phrase": ["katkestas"] * n_tasks,
+            "drug": ["ravim"] * n_tasks,
+            "reason": ["põhjus"] * n_tasks,
+            "label": ["Adverse reactions"] * n_tasks,
+            "annotator": [42] * n_tasks,
+        }
+    ).write_parquet(labels)
 
     splits = load_discont_classifier(
-        bert_tokenizer, "decoder", seed=0, labeling_projects=[1]
+        bert_tokenizer, "decoder", seed=0, data_path=labels
     )
+    samples = [sample for split in splits for sample in split.samples()]
 
-    with pytest.raises(RuntimeError, match="could not read tasks of project 1"):
-        _ = list(splits.eval.samples())
+    assert len(samples) == n_tasks
+    assert {sample.label for sample in samples} == {"Adverse reactions"}
+    assert sorted(
+        sample_id for sample in samples if (sample_id := sample.id) is not None
+    ) == list(range(1, n_tasks + 1))
+
+
+def test_load_classifier_rejects_a_missing_data_path(
+    bert_tokenizer: PreTrainedTokenizerFast, tmp_path: Path
+) -> None:
+    """A labels path pointing nowhere fails at load, before any iteration."""
+    with pytest.raises(FileNotFoundError):
+        load_discont_classifier(
+            bert_tokenizer, "decoder", seed=0, data_path=tmp_path / "missing.parquet"
+        )

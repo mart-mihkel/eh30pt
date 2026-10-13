@@ -1,14 +1,11 @@
 """Tests for the binary yes/no discontinuation dataset."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from eh30pt.datasets.discontinuation.binary import (
-    DiscontBinary,
-    DiscontBinaryLabel,
-    _map_label,
-)
+from eh30pt.datasets.discontinuation.binary import DiscontBinary
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.datasets.registry import (
     get_few_shots,
@@ -18,7 +15,6 @@ from eh30pt.datasets.registry import (
     get_task,
     load_data,
 )
-from eh30pt.labeling.loaders.extract import labeled_row, labeled_rows
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -49,7 +45,7 @@ def test_prompt_only_asks_yes_or_no() -> None:
 
 
 def test_every_studio_reason_folds_onto_a_label() -> None:
-    """The eight reasons partition cleanly into the two answers."""
+    """The ten labels partition cleanly into the two answers."""
     stopping = (
         "Adverse reactions",
         "Treatment success",
@@ -62,6 +58,10 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         "Dosage change",
         "Other non-discontinuation",
     )
+    flagged = (
+        "Incomplete phrase",
+        "Incorrect phrase",
+    )
 
     assert set(DiscontBinary.reason2label) == set(DiscontClassifier.id2label.values())
     assert set(DiscontBinary.reason2label.values()) == {"yes", "no"}
@@ -70,6 +70,9 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         assert DiscontBinary.reason2label[reason] == "yes"
 
     for reason in continued:
+        assert DiscontBinary.reason2label[reason] == "no"
+
+    for reason in flagged:
         assert DiscontBinary.reason2label[reason] == "no"
 
 
@@ -83,83 +86,15 @@ def test_few_shots_agree_with_the_folding() -> None:
         assert label == DiscontBinary.reason2label[by_user[user]]
 
 
-@pytest.mark.parametrize("control", ["discont", "other"])
-def test_labeled_row_folds_a_reason_the_same_from_either_box(control: str) -> None:
-    """Only the reason decides the answer, never which box it was chosen in."""
-    discont = ("Adverse reactions",) if control == "discont" else ()
-    other = ("Dosage change",) if control == "other" else ()
-    row = labeled_row(
-        task_id=1,
-        text="text",
-        phrase="phrase",
-        drug="drug",
-        discont=discont,
-        other=other,
-        fold=_map_label,
-    )
-    expected: DiscontBinaryLabel = "yes" if control == "discont" else "no"
-
-    assert row == {
-        "id": 1,
-        "text": "text",
-        "phrase": "phrase",
-        "drug": "drug",
-        "label": expected,
-    }
-
-
-def test_labeled_rows_take_the_first_usable_choice() -> None:
-    """Disagreeing annotations keep the task on the first choice."""
-
-    def ballot(annotation_id: int, reason: str) -> dict[str, object]:
-        return {
-            "id": annotation_id,
-            "result": [
-                {
-                    "from_name": "discont",
-                    "to_name": "text",
-                    "type": "choices",
-                    "value": {"choices": [reason]},
-                }
-            ],
-        }
-
-    tasks = [
-        {
-            "id": 1,
-            "inner_id": 1,
-            "data": {"text": "t", "phrase": "p", "drug": "d"},
-            "annotations": [
-                ballot(1, "Adverse reactions"),
-                ballot(2, "Dosage change"),
-            ],
-        },
-    ]
-
-    # The reasons fold to different labels, but the first choice still trains.
-    rows = labeled_rows(tasks, _map_label)  # ty: ignore[invalid-argument-type]
-
-    assert [(row["id"], row["label"]) for row in rows] == [(1, "yes")]
-
-
-def test_map_label_drops_a_reason_the_folding_does_not_know() -> None:
-    assert _map_label("Something new") is None
-
-
-def test_map_label_folds_the_renamed_contraindication() -> None:
-    assert _map_label("Contraindication/unsafe co-usage") == "yes"
-    assert _map_label("Contraindication") is None
-
-
-def test_load_data_requires_projects_for_the_binary_dataset() -> None:
+def test_load_data_requires_a_data_path_for_the_binary_dataset() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    with pytest.raises(ValueError, match="needs project ids"):
+    with pytest.raises(ValueError, match="needs a labels file"):
         load_data(tokenizer, _dataset, "decoder")
 
 
-def test_load_data_rejects_projects_on_a_dataset_without_them() -> None:
+def test_load_data_rejects_a_data_path_on_a_dataset_without_labels() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    with pytest.raises(ValueError, match="project ids are only read by"):
-        load_data(tokenizer, "oblique", "decoder", labeling_projects=[1])
+    with pytest.raises(ValueError, match="labels file is only read by"):
+        load_data(tokenizer, "oblique", "decoder", data_path=Path("labels.parquet"))

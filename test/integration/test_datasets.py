@@ -98,17 +98,15 @@ def test_discont_splits_iterate_tokenized_rows(
 ) -> None:
     """Classifier and extract splits tokenize in-memory rows."""
     classifier = DiscontClassifier(
-        lambda: iter(
-            [
-                {
-                    "id": 1,
-                    "text": "tekkis iiveldus",
-                    "phrase": "tekkis iiveldus",
-                    "drug": "aspiriin",
-                    "label": "Adverse reactions",
-                }
-            ]
-        ),
+        [
+            {
+                "id": 1,
+                "text": "tekkis iiveldus",
+                "phrase": "tekkis iiveldus",
+                "drug": "aspiriin",
+                "label": "Adverse reactions",
+            }
+        ],
         gpt2_tokenizer,
         "decoder",
     )

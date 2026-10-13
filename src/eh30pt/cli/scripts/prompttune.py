@@ -59,7 +59,7 @@ def main(
         n_shot=common.n_shot,
         n_virtual=n_virtual,
         seed=common.seed,
-        labeling_projects=common.labeling_projects,
+        data_path=common.data_path,
     )
 
     model = prepare_pt_model(prefix_init, tokenizer, common.model, arch, common.dataset)

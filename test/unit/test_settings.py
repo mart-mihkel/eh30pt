@@ -97,9 +97,6 @@ def test_stream_rejects_non_positive() -> None:
     with pytest.raises(ValidationError, match="log_interval"):
         StreamSettings(log_interval=-1)
 
-    with pytest.raises(ValidationError, match="from_id"):
-        StreamSettings(from_id=-1)
-
 
 def test_mlflow_rejects_empty() -> None:
     with pytest.raises(ValidationError, match="tracking_uri"):

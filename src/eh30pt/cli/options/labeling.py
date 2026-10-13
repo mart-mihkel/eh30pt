@@ -1,5 +1,7 @@
 """Label Studio round-trip options."""
 
+from pathlib import Path
+
 import rich_click as click
 
 label_studio_url_option = click.option(
@@ -31,12 +33,10 @@ project_ids_option = click.option(
     help="Label Studio project ids to read",
 )
 
-optional_project_ids_option = click.option(
-    "--project",
-    "-p",
-    "labeling_projects",
-    type=int,
+data_path_option = click.option(
+    "--data-path",
+    "data_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    multiple=True,
-    help="Label Studio project ids training the run",
+    help="Exported label-studio parquet for discontinuation datasets",
 )

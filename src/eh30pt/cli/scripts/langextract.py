@@ -201,7 +201,6 @@ async def main(
         dataset,
         "decoder",
         n_shot=n_shot,
-        start_after=stream.from_id,
     )
 
     if system_prompt is None:
@@ -257,10 +256,6 @@ async def main(
             logger.info("continuing run '%s' at shard %d", ctx.run_id, start_shard)
         else:
             start_shard = 0
-
-        if stream.from_id is not None:
-            logger.info("streaming rows with id greater than %d", stream.from_id)
-            ctx.record_from_id(stream.from_id)
 
         batch: list[GenerateRecord] = []
 

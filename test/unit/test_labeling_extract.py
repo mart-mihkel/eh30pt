@@ -9,9 +9,9 @@ import pytest
 from eh30pt.datasets.registry import get_task
 from eh30pt.labeling.tasks.extract import (
     _assert_span_fields,
+    extraction_config,
+    extraction_controls,
     extraction_labeling,
-    span_config,
-    span_controls,
 )
 from eh30pt.types import DatasetName
 
@@ -33,7 +33,7 @@ def test_every_extraction_dataset_is_exportable() -> None:
 
 
 def test_span_config_highlights_phrase_reason_and_drug() -> None:
-    config = span_config()
+    config = extraction_config()
 
     assert 'value="phrase" background="#ffe08a"' in config
     assert 'value="reason" background="#a9c6ff"' in config
@@ -42,7 +42,7 @@ def test_span_config_highlights_phrase_reason_and_drug() -> None:
 
 
 def test_span_config_has_three_choice_boxes() -> None:
-    config = span_config()
+    config = extraction_config()
 
     assert '<Header value="Drug discontinuation" />' in config
     assert '<Header value="Not discontinuation" />' in config
@@ -72,7 +72,7 @@ def test_span_config_has_three_choice_boxes() -> None:
 
 def test_span_config_boxes_lie_side_by_side() -> None:
     """Boxes only render in a row when they share one flex parent."""
-    config = span_config()
+    config = extraction_config()
 
     _boxes = 3
 
@@ -87,7 +87,7 @@ def test_span_config_boxes_lie_side_by_side() -> None:
 
 def test_span_config_highlights_the_header_of_a_used_box() -> None:
     """Only a colour changes when a choice is picked, so the layout cannot move."""
-    config = span_config()
+    config = extraction_config()
 
     _boxes = 3
 
@@ -109,16 +109,16 @@ def test_span_config_highlights_the_header_of_a_used_box() -> None:
 
 
 def test_span_controls_match_the_rendered_boxes() -> None:
-    config = span_config()
+    config = extraction_config()
 
-    assert span_controls() == ("discont", "other", "meta")
-    for name in span_controls():
+    assert extraction_controls() == ("discont", "other", "meta")
+    for name in extraction_controls():
         assert f'<Choices name="{name}" toName="text"' in config
 
 
 def test_span_config_boxes_do_not_share_a_label() -> None:
     """Two boxes offering one identical string would export as one label."""
-    config = span_config()
+    config = extraction_config()
 
     labels = re.findall(r'<Choice value="([^"]+)"', config)
 
@@ -129,4 +129,4 @@ def test_extraction_labeling_without_shards_is_empty() -> None:
     labeling = extraction_labeling("discont-extract/trigger", pl.DataFrame(), "run-1")
 
     assert labeling.tasks == []
-    assert labeling.config == span_config()
+    assert labeling.config == extraction_config()

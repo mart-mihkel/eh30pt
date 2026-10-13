@@ -1,5 +1,6 @@
 """Environment settings."""
 
+from pathlib import Path
 from typing import ClassVar, Literal
 from urllib.parse import quote
 
@@ -83,7 +84,6 @@ class StreamSettings(BaseModel):
     concurrency: int = Field(default=8, ge=1)
     shard_size: int = Field(default=10_000, ge=1)
     log_interval: int = Field(default=1000, ge=1)
-    from_id: int | None = Field(default=None, ge=0)
 
 
 class LabelStudioSettings(BaseSettings):
@@ -143,5 +143,5 @@ class CommonSettings(BaseModel):
     dataset: DatasetName
     arch: Architecture | None = None
     n_shot: int = Field(default=0, ge=0)
-    labeling_projects: list[int] | None = None
+    data_path: Path | None = None
     seed: int | None = None

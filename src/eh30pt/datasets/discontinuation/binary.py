@@ -1,31 +1,25 @@
 """Binary drug discontinuation classification dataset."""
 
-from functools import cache
 from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
     ClassVar,
     Literal,
+    TypedDict,
     cast,
 )
 
+import polars as pl
 from datasets.iterable_dataset import IterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.labeling.loaders.extract import (
-    LabeledRow,
-    SplitRows,
-    above,
-    carve,
-    stream_labeled_rows,
-)
-from eh30pt.logging import logger
-from eh30pt.settings import LabelStudioSettings
+from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
 from eh30pt.types import DataSplits, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
+    from pathlib import Path
 
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
@@ -35,8 +29,14 @@ if TYPE_CHECKING:
 type DiscontBinaryLabel = Literal["yes", "no"]
 
 
-DiscontBinaryRow = LabeledRow[DiscontBinaryLabel]
-"""One discontinuation event answered yes or no."""
+class DiscontBinaryRow(TypedDict):
+    """One discontinuation event answered yes or no."""
+
+    id: int
+    text: str
+    phrase: str
+    drug: str
+    label: str
 
 
 class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
@@ -61,10 +61,9 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reaction without discontinuation": "no",
         "Dosage change": "no",
         "Other non-discontinuation": "no",
+        "Incomplete phrase": "no",
+        "Incorrect phrase": "no",
     }
-    """
-    How each reason label folds down to the binary question.
-    """
 
     system_prompt = dedent(
         """
@@ -87,6 +86,8 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         FewShot(user="iiveldus tekkis, aga ravi jätkub", label="no"),
         FewShot(user="vähendasime statiini doosi", label="no"),
         FewShot(user="patsient jätkab ravi muutuseta", label="no"),
+        FewShot(user="katkestas", label="no"),
+        FewShot(user="ilm on ilus", label="no"),
     ]
 
     @staticmethod
@@ -101,13 +102,13 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     def __init__(
         self,
-        rows: Callable[[], Iterator[DiscontBinaryRow]],
+        rows: Sequence[DiscontBinaryRow],
         tokenizer: PreTrainedTokenizerFast,
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
     ) -> None:
-        """Store the row factory with its tokenization settings."""
+        """Store the split rows with their tokenization settings."""
         self._rows = rows
         self._tokenizer = tokenizer
         self._arch = arch
@@ -116,13 +117,13 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
         """Yield tokenized rows for the split."""
-        for row in self._rows():
+        for row in self._rows:
             encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
             yield cast("dict[str, list[int] | bool | int]", dict(encoded))
 
     def samples(self) -> Iterator[FewShot]:
         """Yield prompt and label pairs for the split."""
-        for row in self._rows():
+        for row in self._rows:
             yield FewShot(
                 user=self._format_user(row),
                 label=row.get("label", ""),
@@ -163,8 +164,25 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         return cls._format_user_prompt(row["text"], phrase, drug)
 
 
-def _map_label(choice: str) -> DiscontBinaryLabel | None:
-    return DiscontBinary.reason2label.get(choice)
+def _map(df: pl.DataFrame) -> pl.DataFrame:
+    """Fold each reason label down to the binary answer it implies."""
+    return df.with_columns(
+        pl.col("label").replace_strict(DiscontBinary.reason2label, default=None),
+    ).drop_nulls("label")
+
+
+def _rows(frame: pl.DataFrame) -> list[DiscontBinaryRow]:
+    """Return each row of a split frame as a typed classifier row."""
+    return [
+        {
+            "id": row["task_id"],
+            "text": row["text"],
+            "phrase": row["phrase"],
+            "drug": row["drug"],
+            "label": row["label"],
+        }
+        for row in frame.to_dicts()
+    ]
 
 
 def load_discont_binary(
@@ -173,48 +191,16 @@ def load_discont_binary(
     n_shot: int = 0,
     n_virtual: int = 0,
     *,
-    start_after: int | None = None,
+    data_path: Path,
     seed: int,
-    labeling_projects: Sequence[int],
 ) -> DataSplits:
-    """
-    Load the voted Label Studio rows as train, eval and test splits.
-
-    The projects are read once, when the first split iterates, and all three
-    splits then share that single fetch.
-    """
-
-    @cache
-    def voted() -> SplitRows[DiscontBinaryLabel]:
-        logger.debug("reading the voted rows of projects %s", labeling_projects)
-        rows = list(
-            stream_labeled_rows(
-                LabelStudioSettings(),
-                labeling_projects,
-                _map_label,
-            )
-        )
-
-        splits = above(carve(rows, seed=seed), start_after)
-        logger.debug(
-            "carved %d voted rows with seed %d into train=%d eval=%d test=%d",
-            len(rows),
-            seed,
-            len(splits.train),
-            len(splits.eval),
-            len(splits.test),
-        )
-
-        return splits
+    """Load the exported Label Studio rows as train, eval and test splits."""
+    df = pl.read_parquet(data_path)
+    df = ExtractionFrameSchema.validate(df)
+    train, eval_, test = stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
 
     return DataSplits(
-        train=DiscontBinary(
-            lambda: iter(voted().train), tokenizer, arch, n_shot, n_virtual
-        ),
-        eval=DiscontBinary(
-            lambda: iter(voted().eval), tokenizer, arch, n_shot, n_virtual
-        ),
-        test=DiscontBinary(
-            lambda: iter(voted().test), tokenizer, arch, n_shot, n_virtual
-        ),
+        train=DiscontBinary(_rows(_map(train)), tokenizer, arch, n_shot, n_virtual),
+        eval=DiscontBinary(_rows(_map(eval_)), tokenizer, arch, n_shot, n_virtual),
+        test=DiscontBinary(_rows(_map(test)), tokenizer, arch, n_shot, n_virtual),
     )

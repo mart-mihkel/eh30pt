@@ -48,7 +48,7 @@ def main(
         arch,
         n_shot=common.n_shot,
         seed=common.seed,
-        labeling_projects=common.labeling_projects,
+        data_path=common.data_path,
     )
 
     sys_prompt = get_sys_prompt(common.dataset)

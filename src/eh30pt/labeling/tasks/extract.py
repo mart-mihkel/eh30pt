@@ -207,13 +207,13 @@ def _boxes() -> tuple[_ChoiceBox, ...]:
     )
 
 
-def span_controls() -> tuple[str, ...]:
-    """Return the choice control names of the span interface."""
+def extraction_controls() -> tuple[str, ...]:
+    """Return the choice control names of the extract interface."""
     return tuple(box.name for box in _boxes())
 
 
-def span_config() -> str:
-    """Build the Label Studio interface for highlighting extracted spans."""
+def extraction_config() -> str:
+    """Build the Label Studio interface for extraction labeling."""
     view = ET.Element("View")
     ET.SubElement(view, "Text", name="text", value="$text")
 
@@ -250,7 +250,7 @@ def span_config() -> str:
     return ET.tostring(view, encoding="unicode")
 
 
-def span_task(
+def extraction_task(
     user: str,
     phrase: str,
     reason: str,
@@ -317,7 +317,7 @@ def extraction_labeling(
 
     tasks: list[Task] = []
     if df.height == 0:
-        return Labeling(tasks=tasks, config=span_config())
+        return Labeling(tasks=tasks, config=extraction_config())
 
     df = _decoded(df)
     before = df.height
@@ -336,7 +336,7 @@ def extraction_labeling(
     skipped = 0
     rows = df.select("user", "phrase", "reason", "drug")
     for user, phrase, reason, drug in rows.iter_rows():
-        task = span_task(user, phrase, reason, drug, run)
+        task = extraction_task(user, phrase, reason, drug, run)
         if task is None:
             skipped += 1
             continue
@@ -348,4 +348,4 @@ def extraction_labeling(
             "dropped %d rows without a locatable phrase, reason or drug", skipped
         )
 
-    return Labeling(tasks=tasks, config=span_config())
+    return Labeling(tasks=tasks, config=extraction_config())

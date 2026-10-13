@@ -44,7 +44,12 @@ def main(
     metrics_fn = MetricsAccumulator(tokenizer, arch)
 
     splits = load_data(
-        tokenizer, common.dataset, arch, n_shot=common.n_shot, seed=common.seed
+        tokenizer,
+        common.dataset,
+        arch,
+        n_shot=common.n_shot,
+        seed=common.seed,
+        data_path=common.data_path,
     )
 
     sys_prompt = get_sys_prompt(common.dataset)
