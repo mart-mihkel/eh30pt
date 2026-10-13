@@ -1,5 +1,6 @@
 """Drug discontinuation reason classification dataset."""
 
+from collections import Counter
 from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
@@ -14,6 +15,7 @@ from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
+from eh30pt.logging import format_counts, logger
 from eh30pt.types import DataSplits, DiscontClassifierLabel, FewShot
 
 if TYPE_CHECKING:
@@ -224,6 +226,12 @@ def load_discont_classifier(
     df = pl.read_parquet(data_path)
     df = ExtractionFrameSchema.validate(df)
     train, eval_, test = stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
+    logger.debug(
+        "classifier splits train=(%s) eval=(%s) test=(%s)",
+        format_counts(Counter(train["label"])),
+        format_counts(Counter(eval_["label"])),
+        format_counts(Counter(test["label"])),
+    )
 
     return DataSplits(
         train=DiscontClassifier(_rows(train), tokenizer, arch, n_shot, n_virtual),

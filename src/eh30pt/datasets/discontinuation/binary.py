@@ -1,5 +1,6 @@
 """Binary drug discontinuation classification dataset."""
 
+from collections import Counter
 from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
@@ -15,6 +16,7 @@ from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
+from eh30pt.logging import format_counts, logger
 from eh30pt.types import DataSplits, FewShot
 
 if TYPE_CHECKING:
@@ -197,10 +199,20 @@ def load_discont_binary(
     """Load the exported Label Studio rows as train, eval and test splits."""
     df = pl.read_parquet(data_path)
     df = ExtractionFrameSchema.validate(df)
-    train, eval_, test = stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
+    train, eval_, test = (
+        _map(frame)
+        for frame in stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
+    )
+
+    logger.debug(
+        "binary splits train=(%s) eval=(%s) test=(%s)",
+        format_counts(Counter(train["label"])),
+        format_counts(Counter(eval_["label"])),
+        format_counts(Counter(test["label"])),
+    )
 
     return DataSplits(
-        train=DiscontBinary(_rows(_map(train)), tokenizer, arch, n_shot, n_virtual),
-        eval=DiscontBinary(_rows(_map(eval_)), tokenizer, arch, n_shot, n_virtual),
-        test=DiscontBinary(_rows(_map(test)), tokenizer, arch, n_shot, n_virtual),
+        train=DiscontBinary(_rows(train), tokenizer, arch, n_shot, n_virtual),
+        eval=DiscontBinary(_rows(eval_), tokenizer, arch, n_shot, n_virtual),
+        test=DiscontBinary(_rows(test), tokenizer, arch, n_shot, n_virtual),
     )

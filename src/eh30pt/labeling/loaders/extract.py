@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple, TypedDict, cast, get_args
 import pandera.polars as pa
 import polars as pl
 
+from eh30pt.logging import logger
 from eh30pt.types import DiscontClassifierLabel
 
 if TYPE_CHECKING:
@@ -126,8 +127,17 @@ def stratify(
         eval_.append(parts[1])
         test.append(parts[2])
 
-    return (
+    splits = (
         pl.concat(train, how="vertical"),
         pl.concat(eval_, how="vertical"),
         pl.concat(test, how="vertical"),
     )
+    logger.debug(
+        "stratified %d rows into train=%d eval=%d test=%d",
+        df.height,
+        splits[0].height,
+        splits[1].height,
+        splits[2].height,
+    )
+
+    return splits
