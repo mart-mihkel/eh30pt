@@ -50,7 +50,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         4: "kaheldav",
     }
 
-    label2id: ClassVar[Mapping[OblLabel, int]] = {
+    label2id: ClassVar[Mapping[str, int]] = {
         "seotud": 0,
         "ebaloomulik": 1,
         "liigne koma": 2,

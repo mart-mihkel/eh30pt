@@ -47,7 +47,7 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         1: "no",
     }
 
-    label2id: ClassVar[Mapping[DiscontBinaryLabel, int]] = {
+    label2id: ClassVar[Mapping[str, int]] = {
         "yes": 0,
         "no": 1,
     }

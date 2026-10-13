@@ -61,7 +61,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         7: "Other non-discontinuation",
     }
 
-    label2id: ClassVar[Mapping[DiscontClassifierLabel, int]] = {
+    label2id: ClassVar[Mapping[str, int]] = {
         "Adverse reactions": 0,
         "Treatment success": 1,
         "Treatment inefficacy": 2,

@@ -88,7 +88,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         14: "VEHI",
     }
 
-    label2id: ClassVar[Mapping[MultinerdTag, int]] = {
+    label2id: ClassVar[Mapping[str, int]] = {
         "PER": 0,
         "ORG": 1,
         "LOC": 2,
