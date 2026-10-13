@@ -59,6 +59,12 @@ def registry_name(*parts: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "-", "-".join(parts))
 
 
+def logged_model_name(value: str) -> str:
+    """Shorten `value` to its last path segment, folded into a valid name."""
+    short = value.rstrip("/").split("/")[-1]
+    return re.sub(r"[^A-Za-z0-9_-]", "-", short)
+
+
 class RunContext:
     """An open MLflow run plus its local checkpoint directory."""
 
@@ -331,20 +337,27 @@ class RunContext:
         logger.info("restored %d checkpoints of run '%s'", len(names), self.run_id)
         return True
 
+    @property
+    def model_name(self) -> str:
+        """Return the logged model name, from the `--model` flag."""
+        return logged_model_name(self.config["base_model"])
+
     def log_model_artifacts(
         self,
         model: PreTrainedModel | PeftModel,
         tokenizer: PreTrainedTokenizerFast,
         task: PipelineTask,
-        name: str = MlflowSettings.model_path,
-    ) -> None:
-        """Log model and tokenizer as a flavored model so the run shows it."""
-        mlflow.transformers.log_model(
+        name: str | None = None,
+    ) -> str:
+        """Log model and tokenizer, returning the logged model id."""
+        info = mlflow.transformers.log_model(
             transformers_model={"model": model, "tokenizer": tokenizer},
             task=task,
-            name=name,
+            name=logged_model_name(name) if name is not None else self.model_name,
             pip_requirements=["accelerate", "peft", "torch", "transformers"],
         )
+
+        return info.model_id
 
     def log_artifact(
         self,
@@ -395,6 +408,7 @@ class RunContext:
         test_metrics: Mapping[str, float],
         metric: str = "test_f1",
         mode: Literal["max", "min"] = "max",
+        logged_model_id: str | None = None,
     ) -> int | None:
         """Register the run's model only when it beats the best alias."""
         try:
@@ -435,9 +449,14 @@ class RunContext:
 
             return None
 
+        if logged_model_id is not None:
+            source = f"models:/{logged_model_id}"
+        else:
+            source = f"runs:/{self.run_id}/{MlflowSettings.model_path}"
+
         raw_version = self._client.create_model_version(
             name,
-            source=f"runs:/{self.run_id}/{MlflowSettings.model_path}",
+            source=source,
             run_id=self.run_id,
         ).version
 
@@ -565,8 +584,14 @@ class RunContext:
     ) -> None:
         """Log test metrics and artifacts, registering the model when it leads."""
         self.log_metrics(dict(test_metrics))
-        self.log_model_artifacts(model, tokenizer, task)
-        self.register_best_model(registered_name, test_metrics, metric, mode)
+        logged_model_id = self.log_model_artifacts(model, tokenizer, task)
+        self.register_best_model(
+            registered_name,
+            test_metrics,
+            metric,
+            mode,
+            logged_model_id,
+        )
 
     def log_prompt_version(
         self,

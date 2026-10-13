@@ -10,7 +10,7 @@ from mlflow.data.code_dataset_source import CodeDatasetSource
 from mlflow.data.http_dataset_source import HTTPDatasetSource
 from mlflow.data.huggingface_dataset_source import HuggingFaceDatasetSource
 
-from eh30pt.tracking.context import registry_name
+from eh30pt.tracking.context import logged_model_name, registry_name
 from eh30pt.tracking.datasets import dataset_input
 from eh30pt.tracking.resume import _identity_view, build_run_name
 from eh30pt.tracking.shards import write_shard
@@ -86,6 +86,12 @@ def test_registry_name_folds_the_dataset_source_slash() -> None:
     name = registry_name("discont-extract/trigger", "decoder")
 
     assert name == "discont-extract-trigger-decoder"
+
+
+def test_logged_model_name_keeps_the_short_model_name() -> None:
+    """Drop the hub org prefix, folding what MLflow forbids into hyphens."""
+    assert logged_model_name("Qwen/Qwen3.5-0.8B") == "Qwen3-5-0-8B"
+    assert logged_model_name("some-model") == "some-model"
 
 
 def test_registry_name_keeps_model_version_dots() -> None:

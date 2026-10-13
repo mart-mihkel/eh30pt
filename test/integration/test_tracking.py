@@ -245,7 +245,9 @@ def test_log_model_artifacts_links_flavored_model_to_run(
     )
 
     mlflow_settings = MlflowSettings(
-        tracking_uri=mlflow_client.tracking_uri, experiment="model-exp"
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="model-exp",
+        run_name="named-run",
     )
     with RunContext(mlflow_settings, config=run_config) as ctx:
         ctx.log_model_artifacts(model, tokenizer, task="text-classification")
@@ -259,6 +261,7 @@ def test_log_model_artifacts_links_flavored_model_to_run(
 
     assert len(models) == 1
     assert models[0].source_run_id == run_id
+    assert models[0].name == "some-model"
 
 
 def test_run_context_opens_fresh_run(
