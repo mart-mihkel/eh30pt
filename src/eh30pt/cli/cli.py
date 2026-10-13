@@ -142,7 +142,7 @@ if TYPE_CHECKING:
                         "--lora-rank",
                         "--lora-alpha",
                         "--lora-dropout",
-                        "--constrain/--no-constrain",
+                        "--constrain",
                     ],
                 },
                 {
@@ -282,6 +282,7 @@ def fine_tune(
         arch=arch,
         n_shot=n_shot,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
+        seed=seed,
     )
 
     mlflow = MlflowSettings(
@@ -367,6 +368,7 @@ def prompt_tune(
         arch=arch,
         n_shot=n_shot,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
+        seed=seed,
     )
 
     mlflow = MlflowSettings(
@@ -456,6 +458,7 @@ def qlora(
         arch=arch,
         n_shot=n_shot,
         labeling_projects=list(labeling_projects) if labeling_projects else None,
+        seed=seed,
     )
 
     lora = LoRASettings(
@@ -530,6 +533,7 @@ def few_shot(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        seed=seed,
     )
 
     mlflow = MlflowSettings(

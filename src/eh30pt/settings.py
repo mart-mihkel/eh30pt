@@ -144,3 +144,4 @@ class CommonSettings(BaseModel):
     arch: Architecture | None = None
     n_shot: int = Field(default=0, ge=0)
     labeling_projects: list[int] | None = None
+    seed: int | None = None

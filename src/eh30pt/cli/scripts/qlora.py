@@ -52,6 +52,7 @@ def main(
         common.dataset,
         arch,
         n_shot=common.n_shot,
+        seed=common.seed,
         labeling_projects=common.labeling_projects,
     )
 

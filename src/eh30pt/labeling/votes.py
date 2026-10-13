@@ -7,6 +7,7 @@ from returns.result import Failure, Success
 from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 
 from eh30pt.labeling.studio import StudioClient, group_choices
+from eh30pt.logging import logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -102,7 +103,11 @@ def labeled_rows[LabelT: str](
     Votes are counted after folding, so annotators who disagreed on the label
     but folded it the same way still produce a row.
     """
+    seen = 0
+    dropped_empty = 0
+    dropped_tied = 0
     for task in tasks:
+        seen += 1
         data = task["data"]
         rows: list[LabeledRow[LabelT]] = []
         for annotation in sorted(task["annotations"], key=lambda item: item["id"]):
@@ -122,11 +127,24 @@ def labeled_rows[LabelT: str](
 
         counts = Counter(row["label"] for row in rows)
         top = counts.most_common(2)
-        if not top or (len(top) > 1 and top[0][1] == top[1][1]):
+        if not top:
+            dropped_empty += 1
+            continue
+
+        if len(top) > 1 and top[0][1] == top[1][1]:
+            dropped_tied += 1
             continue
 
         winner = top[0][0]
         yield next(row for row in rows if row["label"] == winner)
+
+    logger.debug(
+        "voted %d of %d tasks (%d without a mappable annotation, %d tied)",
+        seen - dropped_empty - dropped_tied,
+        seen,
+        dropped_empty,
+        dropped_tied,
+    )
 
 
 def stream_labeled_rows[LabelT: str](
@@ -136,64 +154,117 @@ def stream_labeled_rows[LabelT: str](
 ) -> Iterator[LabeledRow[LabelT]]:
     """Stream voted training rows from Label Studio projects, connecting lazily."""
     with StudioClient(settings) as studio:
+        tallies: list[tuple[int, int, int]] = []
         for project in labeling_projects:
             match studio.tasks(project):
                 case Success(tasks):
-                    yield from labeled_rows(tasks, fold)
+                    rows = list(labeled_rows(tasks, fold))
+                    tallies.append((project, len(tasks), len(rows)))
+                    yield from rows
                 case Failure(exc):
                     msg = f"could not read tasks of project {project}: {exc}"
                     raise RuntimeError(msg) from exc
 
+        logger.debug(
+            "voted rows per project (tasks -> rows): %s",
+            ", ".join(
+                f"{project}: {task_count} -> {row_count}"
+                for project, task_count, row_count in tallies
+            ),
+        )
+
 
 def _shuffle_split(
-    labels: list[str], size: int, seed: int
+    labels: list[str],
+    size: int,
+    seed: int,
+    *,
+    stage: str,
 ) -> tuple[list[int], list[int]]:
     """Split positions stratifiably, falling back to a plain shuffle."""
     positions = range(len(labels))
     try:
         splitter = StratifiedShuffleSplit(n_splits=1, test_size=size, random_state=seed)
         train_index, held_index = next(splitter.split(positions, labels))
-    except ValueError:
+    except ValueError as exc:
+        logger.warning(
+            "stratified %s split failed (%s), falling back to a plain shuffle",
+            stage,
+            exc,
+        )
+
         plain = ShuffleSplit(n_splits=1, test_size=size, random_state=seed)
         train_index, held_index = next(plain.split(positions))
+    else:
+        logger.debug(
+            "stratified %s split held out %d of %d rows with seed %d",
+            stage,
+            len(held_index),
+            len(labels),
+            seed,
+        )
+
     return train_index.tolist(), held_index.tolist()
 
 
 def carve[LabelT: str](
     rows: Sequence[LabeledRow[LabelT]],
     *,
-    seed: int = 0,
+    seed: int,
 ) -> SplitRows[LabelT]:
-    """Carve the voted rows into stratified train, eval and test splits."""
+    """Carve the voted rows into stratified 70/20/10 train, eval and test splits."""
     ordered = sorted(rows, key=lambda row: row["id"])
+    logger.debug("carving %d voted rows with seed %d", len(ordered), seed)
     min_rows_for_three_splits = 3
     if len(ordered) < min_rows_for_three_splits:
+        logger.debug("too few rows for three splits, keeping everything in train")
         return SplitRows(train=ordered, eval=[], test=[])
 
-    tenth = max(1, round(len(ordered) * 0.1))
+    n_eval = max(1, round(len(ordered) * 0.2))
+    n_test = max(1, round(len(ordered) * 0.1))
     counts = Counter(row.get("label") for row in ordered)
     train_rows = [row for row in ordered if counts[row.get("label")] == 1]
     pool = [row for row in ordered if counts[row.get("label")] > 1]
+    logger.debug(
+        "%d singleton rows stay in train, carving %d pooled rows",
+        len(train_rows),
+        len(pool),
+    )
+
     if len(pool) < min_rows_for_three_splits:
+        logger.debug("pool too small for three splits, keeping everything in train")
         return SplitRows(train=ordered, eval=[], test=[])
 
     pool_labels = [row.get("label", "") or "" for row in pool]
     train_index, held_index = _shuffle_split(
-        pool_labels, min(tenth * 2, len(pool) - 1), seed
+        pool_labels,
+        min(n_eval + n_test, len(pool) - 1),
+        seed,
+        stage="train/held",
     )
+
     train_rows.extend(pool[index] for index in train_index)
     held = [pool[index] for index in held_index]
 
     held_labels = [row.get("label", "") or "" for row in held]
     eval_index, test_index = _shuffle_split(
-        held_labels, min(tenth, len(held) - 1), seed
+        held_labels, min(n_test, len(held) - 1), seed, stage="eval/test"
     )
 
-    return SplitRows(
+    splits = SplitRows(
         train=train_rows,
         eval=[held[index] for index in eval_index],
         test=[held[index] for index in test_index],
     )
+
+    logger.debug(
+        "split rows into train=%d eval=%d test=%d",
+        len(splits.train),
+        len(splits.eval),
+        len(splits.test),
+    )
+
+    return splits
 
 
 def above[LabelT: str](

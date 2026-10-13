@@ -13,6 +13,7 @@ from eh30pt.datasets.discontinuation.extract import (
 )
 from eh30pt.datasets.multinerd import Multinerd, load_multinerd
 from eh30pt.datasets.oblique import Obl, load_obl
+from eh30pt.logging import logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -226,6 +227,7 @@ def load_data(
     *,
     n_shot: int = 0,
     n_virtual: int = 0,
+    seed: int | None = None,
     start_after: int | None = None,
     labeling_projects: Sequence[int] | None = None,
 ) -> DataSplits:
@@ -253,13 +255,18 @@ def load_data(
             msg = f"dataset '{dataset}' needs project ids"
             raise ValueError(msg)
 
+        split_seed = 0 if seed is None else seed
+        if seed is None:
+            logger.debug("no split seed, carving discont splits with seed 0")
+
         if dataset == "discont-classifier/extract-labels":
-            load_discont_classifier(
+            return load_discont_classifier(
                 tokenizer,
                 arch,
                 n_shot,
                 n_virtual,
                 start_after=start_after,
+                seed=split_seed,
                 labeling_projects=labeling_projects,
             )
 
@@ -270,6 +277,7 @@ def load_data(
                 n_shot,
                 n_virtual,
                 start_after=start_after,
+                seed=split_seed,
                 labeling_projects=labeling_projects,
             )
 

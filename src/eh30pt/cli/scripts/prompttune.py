@@ -58,6 +58,7 @@ def main(
         arch,
         n_shot=common.n_shot,
         n_virtual=n_virtual,
+        seed=common.seed,
         labeling_projects=common.labeling_projects,
     )
 

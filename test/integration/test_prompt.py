@@ -474,7 +474,9 @@ def test_load_classifier_opens_no_connection(
     """Building the splits reads no project, the first iteration reads them."""
     monkeypatch.setenv("LABEL_STUDIO_URL", "http://localhost:1")
 
-    splits = load_discont_classifier(bert_tokenizer, "decoder", labeling_projects=[1])
+    splits = load_discont_classifier(
+        bert_tokenizer, "decoder", seed=0, labeling_projects=[1]
+    )
 
     with pytest.raises(RuntimeError, match="could not read tasks of project 1"):
         _ = list(splits.eval.samples())

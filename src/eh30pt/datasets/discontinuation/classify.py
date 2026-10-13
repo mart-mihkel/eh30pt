@@ -212,6 +212,7 @@ def load_discont_classifier(
     n_virtual: int = 0,
     *,
     start_after: int | None = None,
+    seed: int,
     labeling_projects: Sequence[int],
 ) -> DataSplits:
     """
@@ -231,8 +232,17 @@ def load_discont_classifier(
                 _map_label,
             )
         )
+        splits = above(carve(rows, seed=seed), start_after)
+        logger.debug(
+            "carved %d voted rows with seed %d into train=%d eval=%d test=%d",
+            len(rows),
+            seed,
+            len(splits.train),
+            len(splits.eval),
+            len(splits.test),
+        )
 
-        return above(carve(rows), start_after)
+        return splits
 
     return DataSplits(
         train=DiscontClassifier(

@@ -161,17 +161,17 @@ def _voted_rows(count: int) -> list[LabeledRow[str]]:
 
 def test_carve_puts_every_row_in_exactly_one_split() -> None:
     rows = _voted_rows(100)
-    splits = carve(rows)
+    splits = carve(rows, seed=0)
 
-    assert [len(splits.train), len(splits.eval), len(splits.test)] == [80, 10, 10]
+    assert [len(splits.train), len(splits.eval), len(splits.test)] == [70, 20, 10]
     assert sorted(row["id"] for row in (*splits.train, *splits.eval, *splits.test)) == [
         row["id"] for row in rows
     ]
 
 
 def test_carve_shuffles_the_splits_reproducibly() -> None:
-    splits = carve(_voted_rows(100))
-    reordered = carve(list(reversed(_voted_rows(100))))
+    splits = carve(_voted_rows(100), seed=0)
+    reordered = carve(list(reversed(_voted_rows(100))), seed=0)
 
     assert [row["id"] for row in splits.test] == [row["id"] for row in reordered.test]
     assert sorted(row["id"] for row in splits.test) != list(range(90, 100))
@@ -180,7 +180,7 @@ def test_carve_shuffles_the_splits_reproducibly() -> None:
 def test_carve_keeps_rows_that_cannot_fill_three_splits_in_train() -> None:
     for count in (0, 1, 2):
         rows = _voted_rows(count)
-        splits = carve(rows)
+        splits = carve(rows, seed=0)
 
         assert splits.train == rows
         assert splits.eval == []
@@ -207,7 +207,7 @@ def test_carve_stratifies_labels_across_splits() -> None:
         }
         for task_id in range(90, 100)
     ]
-    splits = carve(rows)
+    splits = carve(rows, seed=0)
 
     assert {row["label"] for row in splits.eval} == {"yes", "no"}
     assert {row["label"] for row in splits.test} == {"yes", "no"}
@@ -225,14 +225,21 @@ def test_carve_gives_every_class_to_eval_and_test() -> None:
         }
         for task_id in range(80)
     ]
-    splits = carve(rows)  # ty: ignore[invalid-argument-type]
+    splits = carve(rows, seed=0)  # ty: ignore[invalid-argument-type]
 
     assert {row["label"] for row in splits.eval} == set(labels)
     assert {row["label"] for row in splits.test} == set(labels)
 
 
+def test_carve_varies_splits_with_seed() -> None:
+    first = carve(_voted_rows(100), seed=0)
+    second = carve(_voted_rows(100), seed=1)
+
+    assert [row["id"] for row in first.test] != [row["id"] for row in second.test]
+
+
 def test_above_drops_consumed_rows_without_moving_them() -> None:
-    splits = carve(_voted_rows(100))
+    splits = carve(_voted_rows(100), seed=0)
 
     assert above(splits, start_after=None) is splits
 
