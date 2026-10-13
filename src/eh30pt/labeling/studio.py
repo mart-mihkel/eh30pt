@@ -198,6 +198,7 @@ class StudioClient:
 
     def __enter__(self) -> Self:
         """Enter the client context."""
+        logger.debug("connecting to label studio at '%s'", self._settings.url)
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -317,13 +318,16 @@ class StudioClient:
     def projects(self, *, page_size: int = 100) -> list[ProjectRef]:
         """List the projects of the server."""
         pages = self._pages("/api/projects/", page_size=page_size)
-        return [
+        refs = [
             ProjectRef(
                 id=_number(page, "id", "a project"),
                 title=str(page.get("title", "")),
             )
             for page in pages
         ]
+
+        logger.debug("found %d projects", len(refs))
+        return refs
 
     @safe
     def create(self, title: str, label_config: str) -> ProjectRef:
@@ -382,7 +386,7 @@ class StudioClient:
     @safe
     def tasks(self, project: int, *, page_size: int = 100) -> list[StudioTask]:
         """Collect every task of a project with its annotations."""
-        return [
+        collected = [
             StudioTask(
                 id=_number(page, "id", "a task"),
                 inner_id=_number(page, "inner_id", "a task"),
@@ -391,6 +395,15 @@ class StudioClient:
             )
             for page in self._task_pages(project, page_size=page_size)
         ]
+
+        logger.debug(
+            "collected %d tasks with %d annotations from project %d",
+            len(collected),
+            sum(len(task["annotations"]) for task in collected),
+            project,
+        )
+
+        return collected
 
     @safe
     def annotate(self, task: int, result: Sequence[StudioResult]) -> int:
@@ -401,4 +414,7 @@ class StudioClient:
             "the created annotation",
         )
 
-        return _number(body, "id", "the created annotation")
+        annotation = _number(body, "id", "the created annotation")
+        logger.debug("annotated task %d as annotation %d", task, annotation)
+
+        return annotation

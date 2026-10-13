@@ -9,9 +9,9 @@ from mlflow.tracking import MlflowClient
 from returns.result import Failure, Success
 
 from eh30pt.constants import LOGDIR
-from eh30pt.labeling.extract import span_controls
 from eh30pt.labeling.registry import build_labeling
 from eh30pt.labeling.studio import StudioClient, annotation_frame
+from eh30pt.labeling.tasks.extract import span_controls
 from eh30pt.logging import logger
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.resume import _stored_identity

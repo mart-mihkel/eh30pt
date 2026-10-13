@@ -6,9 +6,9 @@ import polars as pl
 import pytest
 
 from eh30pt.datasets.registry import get_labels
-from eh30pt.labeling.classify import choice_config
-from eh30pt.labeling.extract import span_config
 from eh30pt.labeling.registry import build_labeling
+from eh30pt.labeling.tasks.classify import choice_config
+from eh30pt.labeling.tasks.extract import span_config
 
 if TYPE_CHECKING:
     from eh30pt.types import DatasetName

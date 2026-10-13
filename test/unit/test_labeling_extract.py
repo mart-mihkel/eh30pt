@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 
 from eh30pt.datasets.registry import get_task
-from eh30pt.labeling.extract import (
+from eh30pt.labeling.tasks.extract import (
     _assert_span_fields,
     extraction_labeling,
     span_config,
@@ -55,7 +55,7 @@ def test_span_config_has_three_choice_boxes() -> None:
     for label in (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication",
+        "Contraindication/unsafe co-usage",
         "Adverse reactions",
         "Adverse reaction without discontinuation",
         "Dosage change",

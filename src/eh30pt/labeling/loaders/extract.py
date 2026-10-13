@@ -1,7 +1,7 @@
-"""Turning Label Studio annotations into voted training rows, split three ways."""
+"""Turning Label Studio annotations into training rows, split three ways."""
 
 from collections import Counter
-from typing import TYPE_CHECKING, NamedTuple, NotRequired, TypedDict
+from typing import TYPE_CHECKING, NamedTuple, TypedDict
 
 from returns.result import Failure, Success
 from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
@@ -17,19 +17,13 @@ if TYPE_CHECKING:
 
 
 class LabeledRow[LabelT: str](TypedDict):
-    """
-    One Label Studio task, carrying the annotation that won its vote.
-
-    Only `id`, `text` and `label` are certain: `phrase` and `drug` arrive with
-    the extraction that preceded the labeling, and rows streamed straight from
-    the events query predate that extraction entirely.
-    """
+    """One Label Studio task, carrying its picked annotation as a row."""
 
     id: int
     text: str
-    phrase: NotRequired[str]
-    drug: NotRequired[str]
-    label: NotRequired[LabelT]
+    phrase: str
+    drug: str
+    label: LabelT
 
 
 class SplitRows[LabelT: str](NamedTuple):
@@ -44,8 +38,7 @@ type Fold[LabelT: str] = Callable[[str], LabelT | None]
 """
 Folds one Label Studio choice onto a dataset's own label.
 
-Returning None drops the choice, which is how a dataset ignores labels it
-does not know about rather than inventing one for them.
+Returning None drops the choice.
 """
 
 
@@ -57,23 +50,20 @@ def labeled_row[LabelT: str](
     drug: str,
     discont: Sequence[str],
     other: Sequence[str],
-    meta: Sequence[str],
     fold: Fold[LabelT],
 ) -> LabeledRow[LabelT] | None:
     """
-    Map one first-per-task annotation to a training row, or None to drop it.
+    Map one annotation to a training row, or None to drop it.
 
-    Only a lone choice trains: anything flagged by meta, asserting in both
-    boxes at once, or carrying zero or several labels, is left out.
+    The first choice trains: meta flags never disqualify, and several choices
+    across or within the boxes fall back to the first one, preferring the
+    discontinuation box. Only annotations without any mappable choice are out.
     """
     if not text or not phrase or not drug:
         return None
 
-    if meta or (discont and other):
-        return None
-
     choices = discont or other
-    if len(choices) != 1:
+    if not choices:
         return None
 
     label = fold(choices[0])
@@ -94,56 +84,45 @@ def labeled_rows[LabelT: str](
     fold: Fold[LabelT],
 ) -> Iterator[LabeledRow[LabelT]]:
     """
-    Yield one training row per task from its annotations' majority vote.
+    Yield one training row per task from its first usable annotation.
 
-    Every mappable annotation votes once; ties and tasks without a mappable
-    annotation train nothing. The winning row is the earliest annotation behind
-    the winning label.
-
-    Votes are counted after folding, so annotators who disagreed on the label
-    but folded it the same way still produce a row.
+    Tasks mix machine span highlights, which carry no choices, with human
+    choice annotations, so the first annotation mapping to a row wins and
+    anything before it is skipped. Tasks without one train nothing.
     """
     seen = 0
-    dropped_empty = 0
-    dropped_tied = 0
+    dropped = 0
     for task in tasks:
         seen += 1
         data = task["data"]
-        rows: list[LabeledRow[LabelT]] = []
+
+        pick: LabeledRow[LabelT] | None = None
         for annotation in sorted(task["annotations"], key=lambda item: item["id"]):
-            grouped = group_choices(annotation, ("discont", "other", "meta"))
-            row = labeled_row(
+            grouped = group_choices(annotation, ("discont", "other"))
+            pick = labeled_row(
                 task_id=task["id"],
                 text=data.get("text", ""),
                 phrase=data.get("phrase", ""),
                 drug=data.get("drug", ""),
                 discont=grouped["discont"],
                 other=grouped["other"],
-                meta=grouped["meta"],
                 fold=fold,
             )
-            if row is not None:
-                rows.append(row)
 
-        counts = Counter(row["label"] for row in rows)
-        top = counts.most_common(2)
-        if not top:
-            dropped_empty += 1
+            if pick is not None:
+                break
+
+        if pick is None:
+            dropped += 1
             continue
 
-        if len(top) > 1 and top[0][1] == top[1][1]:
-            dropped_tied += 1
-            continue
-
-        winner = top[0][0]
-        yield next(row for row in rows if row["label"] == winner)
+        yield pick
 
     logger.debug(
-        "voted %d of %d tasks (%d without a mappable annotation, %d tied)",
-        seen - dropped_empty - dropped_tied,
+        "kept %d of %d tasks (%d without a usable choice)",
+        seen - dropped,
         seen,
-        dropped_empty,
-        dropped_tied,
+        dropped,
     )
 
 
@@ -215,6 +194,7 @@ def carve[LabelT: str](
     """Carve the voted rows into stratified 70/20/10 train, eval and test splits."""
     ordered = sorted(rows, key=lambda row: row["id"])
     logger.debug("carving %d voted rows with seed %d", len(ordered), seed)
+
     min_rows_for_three_splits = 3
     if len(ordered) < min_rows_for_three_splits:
         logger.debug("too few rows for three splits, keeping everything in train")

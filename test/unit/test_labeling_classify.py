@@ -3,7 +3,7 @@
 import polars as pl
 
 from eh30pt.datasets.registry import get_labels
-from eh30pt.labeling.classify import (
+from eh30pt.labeling.tasks.classify import (
     choice_config,
     choice_task,
     classification_labeling,

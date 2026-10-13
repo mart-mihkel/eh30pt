@@ -9,8 +9,8 @@ import polars as pl
 import pytest
 from returns.result import Failure
 
-from eh30pt.labeling.extract import extraction_labeling
 from eh30pt.labeling.studio import StudioClient
+from eh30pt.labeling.tasks.extract import extraction_labeling
 from eh30pt.settings import LabelStudioSettings
 
 if TYPE_CHECKING:

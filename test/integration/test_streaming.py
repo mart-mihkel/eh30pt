@@ -348,7 +348,7 @@ def test_run_labeling_builds_span_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.labeling import run_labeling
-    from eh30pt.labeling.extract import _locate_span
+    from eh30pt.labeling.tasks.extract import _locate_span
 
     _ = mlflow_client
     mlflow.set_experiment("export-exp")
@@ -497,7 +497,7 @@ def test_run_labeling_builds_span_tasks(
     discontinuation = (
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication",
+        "Contraindication/unsafe co-usage",
         "Adverse reactions",
         "Other",
     )

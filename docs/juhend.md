@@ -11,7 +11,7 @@
 
 - Treatment success
 - Treatment inefficacy
-- Contraindication
+- Contraindication/unsafe co-usage
 
 **Metamärgendused fraasi kvaliteedi kohta**
 
@@ -65,7 +65,7 @@
 - ..kolesterool vajab endiselt langetamist ja siiani pole ravimi X tarvitamine eesmärkväärtust saavutanud, siis teeme YZ-ti → ??
 - ravi jäi pooleli, kuna X mõjub paremini → ??
 
-**Contraindication**: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
+**Contraindication/unsafe co-usage**: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
 
 **Dosage change**: Increase or decrease of a drug dosage. No justification or cause is needed
 

@@ -3,8 +3,8 @@
 from typing import TYPE_CHECKING
 
 from eh30pt.datasets.registry import get_task
-from eh30pt.labeling.classify import classification_labeling
-from eh30pt.labeling.extract import extraction_labeling
+from eh30pt.labeling.tasks.classify import classification_labeling
+from eh30pt.labeling.tasks.extract import extraction_labeling
 
 if TYPE_CHECKING:
     import polars as pl

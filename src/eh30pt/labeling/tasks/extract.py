@@ -130,7 +130,7 @@ def _boxes() -> tuple[_ChoiceBox, ...]:
             "Treatment stopped because it was seen as ineffective.",
         ),
         _Choice(
-            "Contraindication",
+            "Contraindication/unsafe co-usage",
             (
                 "Treatment stopped because a condition or risk factor "
                 "made continuing it unsafe or inappropriate."

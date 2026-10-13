@@ -2,7 +2,7 @@
 
 from typing import Final
 
-from eh30pt.labeling.votes import (
+from eh30pt.labeling.loaders.extract import (
     LabeledRow,
     above,
     carve,
@@ -26,7 +26,6 @@ def test_labeled_row_maps_a_lone_choice() -> None:
         drug="drug",
         discont=("discontinued",),
         other=(),
-        meta=(),
         fold=_fold,
     )
 
@@ -39,15 +38,45 @@ def test_labeled_row_maps_a_lone_choice() -> None:
     }
 
 
-def test_labeled_row_drops_flagged_or_ambiguous_annotations() -> None:
-    for discont, other, meta in (
-        ((), (), ()),  # no choice at all
-        (("discontinued", "discontinued"), (), ()),  # two choices
-        ((), ("discontinued", "continued"), ()),  # two choices
-        (("discontinued",), ("continued",), ()),  # asserted in both boxes
-        (("discontinued",), (), ("Incomplete phrase",)),  # flagged by meta
-        (("unmapped choice",), (), ()),  # the fold rejects it
-        ((), (), ()),
+def test_labeled_row_ignores_meta_flags() -> None:
+    row = labeled_row(
+        task_id=1,
+        text="text",
+        phrase="phrase",
+        drug="drug",
+        discont=(),
+        other=("continued",),
+        fold=_fold,
+    )
+
+    assert row is not None
+    assert row["label"] == "no"
+
+
+def test_labeled_row_picks_the_first_choice() -> None:
+    for discont, other, label in (
+        (("discontinued", "continued"), (), "yes"),  # two choices, first wins
+        ((), ("continued", "discontinued"), "no"),  # two choices, first wins
+        (("discontinued",), ("continued",), "yes"),  # both boxes, discont first
+    ):
+        row = labeled_row(
+            task_id=1,
+            text="text",
+            phrase="phrase",
+            drug="drug",
+            discont=discont,
+            other=other,
+            fold=_fold,
+        )
+
+        assert row is not None
+        assert row["label"] == label
+
+
+def test_labeled_row_drops_annotations_without_a_mappable_choice() -> None:
+    for discont, other in (
+        ((), ()),  # no choice at all, such as a machine span highlight
+        (("unmapped choice",), ()),  # the fold rejects the first choice
     ):
         assert (
             labeled_row(
@@ -57,7 +86,6 @@ def test_labeled_row_drops_flagged_or_ambiguous_annotations() -> None:
                 drug="d",
                 discont=discont,
                 other=other,
-                meta=meta,
                 fold=_fold,
             )
             is None
@@ -78,7 +106,6 @@ def test_labeled_row_drops_rows_missing_extracted_fields() -> None:
                 drug=drug,
                 discont=("discontinued",),
                 other=(),
-                meta=(),
                 fold=_fold,
             )
             is None
@@ -108,14 +135,49 @@ def _task(task_id: int, ballots: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
-def test_labeled_rows_take_the_majority_vote() -> None:
+def _span_ballot(annotation_id: int, label: str) -> dict[str, object]:
+    return {
+        "id": annotation_id,
+        "result": [
+            {
+                "from_name": "span",
+                "to_name": "text",
+                "type": "labels",
+                "value": {
+                    "start": 0,
+                    "end": 5,
+                    "text": "katke",
+                    "labels": [label],
+                },
+            }
+        ],
+    }
+
+
+def test_labeled_rows_take_the_first_usable_annotation() -> None:
     tasks = [
         _task(
             1,
             [
-                _ballot(1, "discont", "unmapped choice"),
-                _ballot(2, "discont", "discontinued"),
-                _ballot(3, "discont", "continued"),
+                _ballot(1, "discont", "discontinued"),
+                _ballot(2, "other", "continued"),
+            ],
+        ),
+    ]
+
+    rows = list(labeled_rows(tasks, _fold))  # ty: ignore[invalid-argument-type]
+
+    assert [(row["id"], row["label"]) for row in rows] == [(1, "yes")]
+
+
+def test_labeled_rows_skip_machine_span_annotations() -> None:
+    tasks = [
+        _task(
+            1,
+            [
+                _span_ballot(1, "phrase"),
+                _span_ballot(2, "reason"),
+                _span_ballot(3, "drug"),
                 _ballot(4, "discont", "discontinued"),
             ],
         ),
@@ -126,22 +188,45 @@ def test_labeled_rows_take_the_majority_vote() -> None:
     assert [(row["id"], row["label"]) for row in rows] == [(1, "yes")]
 
 
-def test_labeled_rows_drop_tied_tasks() -> None:
-    tasks = [
-        _task(
-            1, [_ballot(1, "discont", "discontinued"), _ballot(2, "other", "continued")]
-        )
-    ]
-
-    assert list(labeled_rows(tasks, _fold)) == []  # ty: ignore[invalid-argument-type]
-
-
 def test_labeled_rows_skip_unmappable_annotations() -> None:
     tasks = [_task(1, [{"id": 1, "result": []}, _ballot(2, "other", "continued")])]
 
     rows = list(labeled_rows(tasks, _fold))  # ty: ignore[invalid-argument-type]
 
     assert [(row["id"], row["label"]) for row in rows] == [(1, "no")]
+
+
+def test_labeled_rows_keep_meta_flagged_choices() -> None:
+    tasks = [
+        {
+            "id": 1,
+            "inner_id": 1,
+            "data": {"text": "t", "phrase": "p", "drug": "d"},
+            "annotations": [
+                {
+                    "id": 1,
+                    "result": [
+                        {
+                            "from_name": "discont",
+                            "to_name": "text",
+                            "type": "choices",
+                            "value": {"choices": ["discontinued"]},
+                        },
+                        {
+                            "from_name": "meta",
+                            "to_name": "text",
+                            "type": "choices",
+                            "value": {"choices": ["Incomplete phrase"]},
+                        },
+                    ],
+                }
+            ],
+        },
+    ]
+
+    rows = list(labeled_rows(tasks, _fold))  # ty: ignore[invalid-argument-type]
+
+    assert [(row["id"], row["label"]) for row in rows] == [(1, "yes")]
 
 
 def _voted_rows(count: int) -> list[LabeledRow[str]]:

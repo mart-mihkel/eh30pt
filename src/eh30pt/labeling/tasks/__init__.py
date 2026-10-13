@@ -1,0 +1,1 @@
+"""Label Studio task construction."""

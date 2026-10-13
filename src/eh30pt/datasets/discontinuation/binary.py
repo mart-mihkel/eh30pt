@@ -13,7 +13,7 @@ from datasets.iterable_dataset import IterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.labeling.votes import (
+from eh30pt.labeling.loaders.extract import (
     LabeledRow,
     SplitRows,
     above,
@@ -56,7 +56,7 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reactions": "yes",
         "Treatment success": "yes",
         "Treatment inefficacy": "yes",
-        "Contraindication": "yes",
+        "Contraindication/unsafe co-usage": "yes",
         "Other": "yes",
         "Adverse reaction without discontinuation": "no",
         "Dosage change": "no",
@@ -194,6 +194,7 @@ def load_discont_binary(
                 _map_label,
             )
         )
+
         splits = above(carve(rows, seed=seed), start_after)
         logger.debug(
             "carved %d voted rows with seed %d into train=%d eval=%d test=%d",

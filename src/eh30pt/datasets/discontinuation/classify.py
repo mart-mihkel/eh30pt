@@ -13,7 +13,7 @@ from datasets.iterable_dataset import IterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.labeling.votes import (
+from eh30pt.labeling.loaders.extract import (
     LabeledRow,
     SplitRows,
     above,
@@ -36,7 +36,7 @@ type DiscontClassifierLabel = Literal[
     "Adverse reactions",
     "Treatment success",
     "Treatment inefficacy",
-    "Contraindication",
+    "Contraindication/unsafe co-usage",
     "Other",
     "Adverse reaction without discontinuation",
     "Dosage change",
@@ -54,7 +54,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         0: "Adverse reactions",
         1: "Treatment success",
         2: "Treatment inefficacy",
-        3: "Contraindication",
+        3: "Contraindication/unsafe co-usage",
         4: "Other",
         5: "Adverse reaction without discontinuation",
         6: "Dosage change",
@@ -65,7 +65,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reactions": 0,
         "Treatment success": 1,
         "Treatment inefficacy": 2,
-        "Contraindication": 3,
+        "Contraindication/unsafe co-usage": 3,
         "Other": 4,
         "Adverse reaction without discontinuation": 5,
         "Dosage change": 6,
@@ -83,7 +83,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         1. Adverse reactions: Discontinuation due to adverse side effects, allergic reactions, or negative interactions with other medications.
         2. Treatment success: Discontinuation due to successful treatment completion or sufficient improvement in health.
         3. Treatment inefficacy: Perceived ineffectiveness of the treatment or loss of belief in its efficacy.
-        4. Contraindication: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
+        4. Contraindication/unsafe co-usage: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
         5. Other: Other medical reasons not explicitly covered by the other categories.
         6. Adverse reaction without discontinuation: Adverse side effects, allergic reactions, or negative interactions where treatment continued.
         7. Dosage change: The drug dose was increased or decreased rather than stopped.
@@ -97,7 +97,10 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         FewShot(user="ei talu", label="Adverse reactions"),
         FewShot(user="vererõhk püsivalt normis", label="Treatment success"),
         FewShot(user="valu ei leevenenud, ebaefektiivne", label="Treatment inefficacy"),
-        FewShot(user="soovib rasestuda, katkestab ravi", label="Contraindication"),
+        FewShot(
+            user="soovib rasestuda, katkestab ravi",
+            label="Contraindication/unsafe co-usage",
+        ),
         FewShot(user="patsient viidi üle insuliinravile", label="Other"),
         FewShot(
             user="iiveldus tekkis, aga ravi jätkub",

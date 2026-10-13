@@ -18,7 +18,7 @@ from eh30pt.datasets.registry import (
     get_task,
     load_data,
 )
-from eh30pt.labeling.votes import labeled_row, labeled_rows
+from eh30pt.labeling.loaders.extract import labeled_row, labeled_rows
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -54,7 +54,7 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         "Adverse reactions",
         "Treatment success",
         "Treatment inefficacy",
-        "Contraindication",
+        "Contraindication/unsafe co-usage",
         "Other",
     )
     continued = (
@@ -95,7 +95,6 @@ def test_labeled_row_folds_a_reason_the_same_from_either_box(control: str) -> No
         drug="drug",
         discont=discont,
         other=other,
-        meta=(),
         fold=_map_label,
     )
     expected: DiscontBinaryLabel = "yes" if control == "discont" else "no"
@@ -109,8 +108,8 @@ def test_labeled_row_folds_a_reason_the_same_from_either_box(control: str) -> No
     }
 
 
-def test_labeled_row_keeps_distinct_reasons_apart() -> None:
-    """Two reasons that disagree on yes/no must not collapse into one vote."""
+def test_labeled_rows_take_the_first_usable_choice() -> None:
+    """Disagreeing annotations keep the task on the first choice."""
 
     def ballot(annotation_id: int, reason: str) -> dict[str, object]:
         return {
@@ -137,14 +136,19 @@ def test_labeled_row_keeps_distinct_reasons_apart() -> None:
         },
     ]
 
-    # Both fold to different labels, so the task ties and trains nothing.
+    # The reasons fold to different labels, but the first choice still trains.
     rows = labeled_rows(tasks, _map_label)  # ty: ignore[invalid-argument-type]
 
-    assert list(rows) == []
+    assert [(row["id"], row["label"]) for row in rows] == [(1, "yes")]
 
 
 def test_map_label_drops_a_reason_the_folding_does_not_know() -> None:
     assert _map_label("Something new") is None
+
+
+def test_map_label_folds_the_renamed_contraindication() -> None:
+    assert _map_label("Contraindication/unsafe co-usage") == "yes"
+    assert _map_label("Contraindication") is None
 
 
 def test_load_data_requires_projects_for_the_binary_dataset() -> None:
