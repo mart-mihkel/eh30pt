@@ -49,19 +49,9 @@ class _TqdmSafeStream:
         return self._stream.isatty()
 
 
-def rich_handler(
-    stream: TextIO,
-    *,
-    show_time: bool = False,
-    show_path: bool = False,
-) -> RichHandler:
+def rich_handler(stream: TextIO) -> RichHandler:
     """Build a rich handler writing to a stream."""
-    return RichHandler(
-        console=Console(file=stream),
-        show_time=show_time,
-        show_path=show_path,
-        rich_tracebacks=True,
-    )
+    return RichHandler(console=Console(file=stream), rich_tracebacks=True)
 
 
 def setup_logging() -> None:

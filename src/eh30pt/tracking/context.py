@@ -172,7 +172,7 @@ class RunContext:
         path = self.dir / "run.log"
         path.parent.mkdir(parents=True, exist_ok=True)
         file = path.open("a", encoding="utf-8")
-        handler = rich_handler(file, show_time=True, show_path=True)
+        handler = rich_handler(file)
         logger.addHandler(handler)
         self._run_log = _RunLog(handler=handler, file=file)
 
