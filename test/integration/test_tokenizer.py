@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import pytest
-from transformers import BertConfig, GPT2Config, T5Config
 
-from eh30pt.constants import UNSET_MAX_LENGTH
+from eh30pt.constants import PAD_MULTIPLE, UNSET_MAX_LENGTH
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.modeling.tokenizer import cap_tokenizer_length, load_tokenizer
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerFast
-
-_bert_max_length: Final = 512
-_expected_budget: Final = 504
+    from transformers import PreTrainedConfig, PreTrainedTokenizerFast
 
 
 @pytest.fixture
@@ -30,51 +26,63 @@ def fresh_bert() -> PreTrainedTokenizerFast:
     return load_tokenizer("hf-internal-testing/tiny-random-bert")
 
 
-def test_cap_prefers_model_positions(fresh_gpt2: PreTrainedTokenizerFast) -> None:
-    config = GPT2Config(n_positions=512)
-    cap_tokenizer_length(fresh_gpt2, config)
-    assert fresh_gpt2.model_max_length == config.n_positions
+def test_cap_prefers_model_positions(
+    fresh_gpt2: PreTrainedTokenizerFast,
+    gpt2_config: PreTrainedConfig,
+) -> None:
+    cap_tokenizer_length(fresh_gpt2, gpt2_config)
+    assert fresh_gpt2.model_max_length == gpt2_config.n_positions
 
 
-def test_cap_uses_embedding_limit(fresh_bert: PreTrainedTokenizerFast) -> None:
-    config = BertConfig()
-    fresh_bert.model_max_length = 2 * config.max_position_embeddings
-    cap_tokenizer_length(fresh_bert, config)
-    assert fresh_bert.model_max_length == config.max_position_embeddings
+def test_cap_uses_embedding_limit(
+    fresh_bert: PreTrainedTokenizerFast,
+    bert_config: PreTrainedConfig,
+) -> None:
+    limit = bert_config.max_position_embeddings
+    fresh_bert.model_max_length = 2 * limit
+    cap_tokenizer_length(fresh_bert, bert_config)
+    assert fresh_bert.model_max_length == limit
 
 
 def test_cap_keeps_shorter_tokenizer_limit(
     fresh_gpt2: PreTrainedTokenizerFast,
+    gpt2_config: PreTrainedConfig,
 ) -> None:
-    config = GPT2Config(n_positions=512)
-    fresh_gpt2.model_max_length = config.n_positions // 4
-    cap_tokenizer_length(fresh_gpt2, config)
-    assert fresh_gpt2.model_max_length == config.n_positions // 4
+    limit = gpt2_config.n_positions // 4
+    fresh_gpt2.model_max_length = limit
+    cap_tokenizer_length(fresh_gpt2, gpt2_config)
+    assert fresh_gpt2.model_max_length == limit
 
 
 def test_cap_skips_models_without_limit(
     fresh_gpt2: PreTrainedTokenizerFast,
+    t5_config: PreTrainedConfig,
 ) -> None:
     before = fresh_gpt2.model_max_length
-    cap_tokenizer_length(fresh_gpt2, T5Config())
+    cap_tokenizer_length(fresh_gpt2, t5_config)
     assert fresh_gpt2.model_max_length == before
 
 
 def test_cap_applies_to_unset_tokenizer_limit(
     fresh_bert: PreTrainedTokenizerFast,
+    bert_config: PreTrainedConfig,
 ) -> None:
-    config = BertConfig()
     fresh_bert.model_max_length = UNSET_MAX_LENGTH
-    cap_tokenizer_length(fresh_bert, config)
-    assert fresh_bert.model_max_length == config.max_position_embeddings
+    cap_tokenizer_length(fresh_bert, bert_config)
+    assert fresh_bert.model_max_length == bert_config.max_position_embeddings
 
 
 def test_model_max_len_reserves_virtual_tokens_and_floors_to_pad_multiple(
     bert_tokenizer: PreTrainedTokenizerFast,
+    bert_config: PreTrainedConfig,
 ) -> None:
-    assert bert_tokenizer.model_max_length == _bert_max_length
+    n_virtual = 6
+    assert bert_tokenizer.model_max_length == bert_config.max_position_embeddings
 
-    assert DatasetMixin._model_max_len(bert_tokenizer, 6) == _expected_budget
+    expected = (
+        (bert_tokenizer.model_max_length - n_virtual) // PAD_MULTIPLE
+    ) * PAD_MULTIPLE
+    assert DatasetMixin._model_max_len(bert_tokenizer, n_virtual) == expected
 
 
 def test_model_max_len_returns_none_for_unset_sentinel(

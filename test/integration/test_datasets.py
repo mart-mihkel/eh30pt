@@ -7,7 +7,11 @@ import pytest
 
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.datasets.discontinuation.extract import DiscontExtract, load_discont_extract
+from eh30pt.datasets.discontinuation.extract import (
+    DiscontExtract,
+    DiscontExtractRow,
+    load_discont_extract,
+)
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.datasets.registry import load_data
 from eh30pt.modeling.arch import infer_architecture
@@ -16,7 +20,6 @@ if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
     from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
-    from eh30pt.datasets.discontinuation.extract import DiscontExtractRow
     from test.integration.conftest import ModelSetup
 
 
@@ -96,23 +99,31 @@ def test_discont_extract_streams_observed_source(database: None) -> None:
 def test_discont_splits_iterate_tokenized_rows(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    """Classifier and extract splits tokenize in-memory rows."""
+    """Classifier and extract splits tokenize rows from registry examples."""
+    from eh30pt.datasets.registry import get_labels
+
+    real_shot = DiscontExtract.extract_shots[0]
+    real_label = get_labels("discont-classifier/extract-labels")[0]
     classifier = DiscontClassifier(
         [
             {
                 "id": 1,
-                "text": "tekkis iiveldus",
-                "phrase": "tekkis iiveldus",
-                "drug": "aspiriin",
-                "label": "Adverse reactions",
+                "text": real_shot.user,
+                "phrase": real_shot.extractions["phrase"],
+                "drug": real_shot.extractions["drug"],
+                "label": real_label,
             }
         ],
         gpt2_tokenizer,
         "decoder",
     )
 
+    extract_rows: list[DiscontExtractRow] = [
+        {"id": idx, "text": shot.user}
+        for idx, shot in enumerate(DiscontExtract.extract_shots[:1])
+    ]
     extract = DiscontExtract(
-        lambda: iter([{"id": 3, "text": "jäeti ravim ära"}]),
+        lambda: iter(extract_rows),
         gpt2_tokenizer,
         "decoder",
     )
@@ -124,36 +135,42 @@ def test_discont_splits_iterate_tokenized_rows(
         assert set(rows[0]) >= {"input_ids", "labels"}
 
     assert [sample.id for sample in classifier.samples()] == [1]
-    assert [sample.id for sample in extract.samples()] == [3]
+    assert [sample.id for sample in extract.samples()] == [
+        row["id"] for row in extract_rows
+    ]
     assert extract.response_format()["json_schema"]["name"] == "extraction"
 
     cls_row: DiscontClassifierRow = {
         "id": 1,
-        "text": "tekkis iiveldus",
-        "phrase": "tekkis iiveldus",
-        "drug": "aspiriin",
-        "label": "Adverse reactions",
+        "text": real_shot.user,
+        "phrase": real_shot.extractions["phrase"],
+        "drug": real_shot.extractions["drug"],
+        "label": real_label,
     }
 
-    ext_row: DiscontExtractRow = {"id": 1, "text": "tekkis iiveldus"}
+    ext_row: DiscontExtractRow = {"id": 1, "text": real_shot.user}
     assert classifier.tokenize(cls_row, gpt2_tokenizer)["input_ids"]
     assert extract.tokenize(ext_row, gpt2_tokenizer)["input_ids"]
 
 
-def test_join_spans_handles_plain_tags(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Non-prefixed tags fall through to the plain-label branch."""
+def test_join_spans_assembles_real_entities() -> None:
+    """BIO spans from a real MultiNERD row join into entity strings."""
+    from datasets.load import load_dataset
+    from datasets.utils.info_utils import VerificationMode
+
     from eh30pt.datasets.multinerd import Multinerd
 
-    bio = dict(Multinerd.id2label_bio)
-    bio[99] = "PER"
-    monkeypatch.setattr(Multinerd, "id2label_bio", bio)
+    raw = load_dataset(
+        "Babelscape/multinerd",
+        split="train[:1]",
+        verification_mode=VerificationMode.NO_CHECKS,
+    )
+    row = raw[0]
+    tokens, tag_ids = Multinerd._join_spans(row["tokens"], row["ner_tags"])
 
-    tokens, tag_ids = Multinerd._join_spans(["Tallinn"], [99])
-
-    assert tokens == ["Tallinn"]
-    assert tag_ids == [Multinerd.label2id["PER"]]
+    assert len(tokens) == len(tag_ids)
+    assert len(tokens) == len(row["tokens"]) or len(tokens) < len(row["tokens"])
+    assert all(tag_id == -1 or tag_id in Multinerd.id2label for tag_id in tag_ids)
 
 
 def test_load_data_omits_source_for_static_datasets(

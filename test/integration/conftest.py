@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, cast
+from urllib.parse import unquote, urlsplit
 
 import datasets
 import pytest
+from datasets.load import load_dataset
+from datasets.utils.info_utils import VerificationMode
+from sqlalchemy import create_engine, text
+from testcontainers.community.postgres import PostgresContainer
+from transformers import AutoConfig
 
+from eh30pt.datasets.multinerd import Multinerd
+from eh30pt.datasets.oblique import load_obl
+from eh30pt.datasets.registry import get_labels
+from eh30pt.modeling.arch import infer_architecture
+from eh30pt.modeling.loader import load_model
+from eh30pt.modeling.tokenizer import load_tokenizer
+from eh30pt.types import DataSplits
 from test.conftest import models
 
 if TYPE_CHECKING:
@@ -16,7 +31,7 @@ if TYPE_CHECKING:
     from datasets.splits import Split
     from transformers import PreTrainedConfig, PreTrainedModel, PreTrainedTokenizerFast
 
-    from eh30pt.types import DatasetName, DataSplits
+    from eh30pt.types import DatasetName
 
 datasets.disable_caching()
 
@@ -38,8 +53,6 @@ def _make_config_fixture(
 ) -> Callable[[], PreTrainedTokenizerFast]:
     @pytest.fixture(scope="session")
     def fixture() -> PreTrainedTokenizerFast:
-        from transformers import AutoConfig
-
         return AutoConfig.from_pretrained(path)
 
     return fixture
@@ -50,8 +63,6 @@ def _make_tokenizer_fixture(
 ) -> Callable[[], PreTrainedTokenizerFast]:
     @pytest.fixture(scope="session")
     def fixture() -> PreTrainedTokenizerFast:
-        from eh30pt.modeling.tokenizer import load_tokenizer
-
         return load_tokenizer(path)
 
     return fixture
@@ -61,16 +72,9 @@ def _make_dataset_fixture(
     dataset: DatasetName,
     model: str,
 ) -> Callable[[pytest.FixtureRequest], DataSplits]:
+
     @pytest.fixture(scope="session")
     def fixture(request: pytest.FixtureRequest) -> DataSplits:
-        from datasets.load import load_dataset
-        from datasets.utils.info_utils import VerificationMode
-
-        from eh30pt.datasets.multinerd import Multinerd
-        from eh30pt.datasets.oblique import load_obl
-        from eh30pt.modeling.arch import infer_architecture
-        from eh30pt.types import DataSplits
-
         config: PreTrainedConfig = request.getfixturevalue(f"{model}_config")
         tokenizer: PreTrainedTokenizerFast = request.getfixturevalue(
             f"{model}_tokenizer"
@@ -109,9 +113,6 @@ def _make_model_fixture(
 ) -> Callable[[pytest.FixtureRequest], PreTrainedModel]:
     @pytest.fixture(scope="session")
     def fixture(request: pytest.FixtureRequest) -> PreTrainedModel:
-        from eh30pt.modeling.arch import infer_architecture
-        from eh30pt.modeling.loader import load_model
-
         config: PreTrainedConfig = request.getfixturevalue(f"{model}_config")
         tokenizer: PreTrainedTokenizerFast = request.getfixturevalue(
             f"{model}_tokenizer"
@@ -146,8 +147,6 @@ _matrix_ids = [f"{dataset}-{model}" for dataset, model in _matrix]
 
 @pytest.fixture(params=_matrix, scope="session", ids=_matrix_ids)
 def model_setup(request: pytest.FixtureRequest) -> ModelSetup:
-    from eh30pt.datasets.registry import get_labels
-
     dataset, model = request.param
     return ModelSetup(
         request.getfixturevalue(f"{model}_config"),
@@ -161,13 +160,6 @@ def model_setup(request: pytest.FixtureRequest) -> ModelSetup:
 @pytest.fixture(scope="session")
 def database() -> Iterator[None]:
     """Seeded postgres for Est-Health tests, exposed through PostgresSettings."""
-    import os
-    from pathlib import Path
-    from urllib.parse import unquote, urlsplit
-
-    from sqlalchemy import create_engine, text
-    from testcontainers.community.postgres import PostgresContainer
-
     seed_dir = Path(__file__).parents[2] / "sql"
     statements: list[str] = [
         part.strip()
@@ -184,6 +176,7 @@ def database() -> Iterator[None]:
         "POSTGRES_PASSWORD",
         "TESTCONTAINERS_RYUK_DISABLED",
     )
+
     saved: dict[str, str | None] = {var: os.environ.get(var) for var in env_vars}
     os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
 

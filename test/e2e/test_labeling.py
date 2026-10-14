@@ -8,7 +8,8 @@ import polars as pl
 import pytest
 from returns.result import Failure
 
-from eh30pt.labeling.studio import StudioClient
+from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
+from eh30pt.labeling.studio import StudioClient, StudioResult
 from eh30pt.labeling.tasks.extract import extraction_labeling
 from eh30pt.settings import LabelStudioSettings
 
@@ -125,12 +126,11 @@ def test_delete_removes_the_project(studio: LabelStudioSettings) -> None:
 
 
 def test_export_labels_writes_annotations_to_parquet(
-    studio: LabelStudioSettings, project: ProjectRef, tmp_path: Path
+    studio: LabelStudioSettings,
+    project: ProjectRef,
+    tmp_path: Path,
 ) -> None:
-    import polars as pl
-
     from eh30pt.cli.scripts.export_labels import main
-    from eh30pt.labeling.studio import StudioResult
 
     labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     output = tmp_path / "labels.parquet"
@@ -157,43 +157,27 @@ def test_export_labels_writes_annotations_to_parquet(
 
         client.annotate(imported[0]["id"], [first, second]).unwrap()
 
-    assert (
-        main(
-            settings=studio,
-            projects=[project.id],
-            dataset="discont-extract/trigger",
-            output=output,
-        )
-        == output
+    main(
+        settings=studio,
+        projects=[project.id],
+        dataset="discont-extract/trigger",
+        output=output,
     )
 
-    frame = pl.read_parquet(output)
+    df = ExtractionFrameSchema.validate(pl.read_parquet(output))
 
-    assert frame.columns == [
-        "project_id",
-        "task_id",
-        "annotation_id",
-        "result_id",
-        "text",
-        "phrase",
-        "reason",
-        "drug",
-        "label",
-        "annotator",
-    ]
     _rows = 2
-    assert frame.height == _rows
-    assert frame["label"].to_list() == ["Adverse reactions", "Dosage change"]
-    assert frame["drug"].to_list() == ["aspiriini", "aspiriini"]
+    assert df.height == _rows
+    assert df["label"].to_list() == ["Adverse reactions", "Dosage change"]
+    assert df["drug"].to_list() == ["aspiriini", "aspiriini"]
 
 
 def test_export_labels_combines_projects_into_one_frame(
-    studio: LabelStudioSettings, project: ProjectRef, tmp_path: Path
+    studio: LabelStudioSettings,
+    project: ProjectRef,
+    tmp_path: Path,
 ) -> None:
-    import polars as pl
-
     from eh30pt.cli.scripts.export_labels import main
-    from eh30pt.labeling.studio import StudioResult
 
     labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
     output = tmp_path / "labels.parquet"
@@ -217,20 +201,17 @@ def test_export_labels_combines_projects_into_one_frame(
             client.annotate(first[0]["id"], [choice]).unwrap()
             client.annotate(second[0]["id"], [choice]).unwrap()
 
-            assert (
-                main(
-                    settings=studio,
-                    projects=[project.id, other.id],
-                    dataset="discont-extract/trigger",
-                    output=output,
-                )
-                == output
+            main(
+                settings=studio,
+                projects=[project.id, other.id],
+                dataset="discont-extract/trigger",
+                output=output,
             )
         finally:
             client.delete(other.id).unwrap()
 
-    frame = pl.read_parquet(output)
+    df = ExtractionFrameSchema.validate(pl.read_parquet(output))
 
     _rows = 2
-    assert frame.height == _rows
-    assert frame["label"].to_list() == ["Treatment success", "Treatment success"]
+    assert df.height == _rows
+    assert df["label"].to_list() == ["Treatment success", "Treatment success"]

@@ -28,17 +28,17 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from transformers import (
-        DataCollator,
         PreTrainedModel,
         PreTrainedTokenizerFast,
     )
 
     from eh30pt.settings import TrainingSettings
-    from eh30pt.types import ComputeMetricsFn, DataSplits, RunConfig
+    from eh30pt.types import DataSplits, RunConfig
 
 
 _winning_f1: Final = 0.7
 _second_version: Final = 2
+_finish_f1: Final = 0.8
 
 
 @pytest.fixture
@@ -62,17 +62,34 @@ def mlflow_client(
 @pytest.fixture
 def run_config() -> RunConfig:
     """Return a run config with representative identity and volatile fields."""
+    from eh30pt.datasets.registry import get_sys_prompt
+    from test.conftest import models
+
     return {
         "method": "fine-tune",
         "dataset": "oblique",
         "architecture": "encoder",
-        "base_model": "some-model",
+        "base_model": models["bert"],
         "n_shot": 0,
         "batch_size": 8,
-        "system_prompt": "original prompt",
+        "system_prompt": get_sys_prompt("oblique"),
         "total_parameters": 100,
         "trainable_parameters": 10,
     }
+
+
+def _real_records(n: int = 1, start_id: int = 0) -> list[GenerateRecord]:
+    from eh30pt.datasets.registry import get_few_shots
+
+    shots = get_few_shots("oblique", 2)
+    return [
+        GenerateRecord(
+            id=start_id + idx,
+            user=shots[idx % len(shots)].user,
+            prediction=shots[idx % len(shots)].label,
+        )
+        for idx in range(n)
+    ]
 
 
 def _track_experiment(name: str = "experiment") -> str:
@@ -261,7 +278,9 @@ def test_log_model_artifacts_links_flavored_model_to_run(
 
     assert len(models) == 1
     assert models[0].source_run_id == run_id
-    assert models[0].name == "some-model"
+    from eh30pt.tracking.context import logged_model_name
+
+    assert models[0].name == logged_model_name(run_config["base_model"])
 
 
 def test_run_context_opens_fresh_run(
@@ -512,7 +531,7 @@ def test_log_shard_logs_and_removes_local_copy(
     tmp_path: Path,
 ) -> None:
     mlflow.set_experiment("shard-exp")
-    batch: list[GenerateRecord] = [GenerateRecord(id=0, user="a", prediction="x")]
+    batch = _real_records(1)
     index = 3
 
     mlflow_settings = MlflowSettings(
@@ -541,7 +560,7 @@ def test_log_shard_removes_local_copy_on_log_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     mlflow.set_experiment("shard-failure-exp")
-    batch: list[GenerateRecord] = [GenerateRecord(id=0, user="a", prediction="x")]
+    batch = _real_records(1)
 
     def _boom(local_path: str, artifact_path: str | None = None) -> None:
         _ = local_path, artifact_path
@@ -566,7 +585,7 @@ def test_next_shard_index_continues_after_logged_shards(
     tmp_path: Path,
 ) -> None:
     mlflow.set_experiment("shard-index-exp")
-    batch: list[GenerateRecord] = [GenerateRecord(id=5, user="a", prediction="x")]
+    batch = _real_records(1, start_id=5)
 
     mlflow_settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="shard-index-exp"
@@ -615,13 +634,21 @@ def test_unopened_context_has_no_run_id(run_config: RunConfig) -> None:
 
 
 def test_helpers_require_run_name(
-    mlflow_client: MlflowClient, run_config: RunConfig
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    bert_tokenizer: PreTrainedTokenizerFast,
+    oblique_bert_model: PreTrainedModel,
+    oblique_bert_dataset: DataSplits,
 ) -> None:
+    from eh30pt.modeling.collator import get_collator
+    from eh30pt.modeling.metrics import MetricsAccumulator
+
     _ = mlflow_client
     mlflow.set_experiment("noname-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="noname-exp"
     )
+    metrics = MetricsAccumulator(bert_tokenizer, "encoder")
     with RunContext(settings, config=run_config) as ctx:
         ctx.settings.run_name = None
 
@@ -630,24 +657,24 @@ def test_helpers_require_run_name(
 
         with pytest.raises(ValueError, match="no mlflow run name"):
             ctx.evaluate_and_log(
-                model=cast("PreTrainedModel", None),
-                tokenizer=cast("PreTrainedTokenizerFast", None),
-                data=cast("DataSplits", None),
-                arch="decoder",
-                collate_fn=cast("DataCollator", None),
-                metrics_fn=cast("ComputeMetricsFn", None),
+                model=oblique_bert_model,
+                tokenizer=bert_tokenizer,
+                data=oblique_bert_dataset,
+                arch="encoder",
+                collate_fn=get_collator(bert_tokenizer, "encoder"),
+                metrics_fn=metrics,
                 batch_size=8,
                 constrain=False,
             )
 
         with pytest.raises(ValueError, match="no mlflow run name"):
             ctx.train_and_evaluate(
-                model=cast("PreTrainedModel", None),
-                tokenizer=cast("PreTrainedTokenizerFast", None),
-                data=cast("DataSplits", None),
-                arch="decoder",
-                collate_fn=cast("DataCollator", None),
-                metrics_fn=cast("ComputeMetricsFn", None),
+                model=oblique_bert_model,
+                tokenizer=bert_tokenizer,
+                data=oblique_bert_dataset,
+                arch="encoder",
+                collate_fn=get_collator(bert_tokenizer, "encoder"),
+                metrics_fn=metrics,
                 registered_name="name",
                 training=cast("TrainingSettings", None),
             )
@@ -656,32 +683,28 @@ def test_helpers_require_run_name(
 def test_finish_training_logs_registers_model(
     mlflow_client: MlflowClient,
     run_config: RunConfig,
-    monkeypatch: pytest.MonkeyPatch,
+    bert_tokenizer: PreTrainedTokenizerFast,
+    oblique_bert_model: PreTrainedModel,
 ) -> None:
     _ = mlflow_client
     mlflow.set_experiment("finish-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="finish-exp"
     )
-    seen: dict[str, object] = {}
     with RunContext(settings, config=run_config) as ctx:
-        monkeypatch.setattr(
-            ctx,
-            "log_model_artifacts",
-            lambda *args, **kwargs: seen.setdefault("model", (args, kwargs)),
-        )
-        version = ctx.register_best_model("finish-model", {"test_f1": 0.8})
+        version = ctx.register_best_model("finish-model", {"test_f1": _finish_f1})
 
         ctx.finish_training(
             "finish-model",
-            model=cast("PreTrainedModel", None),
-            tokenizer=cast("PreTrainedTokenizerFast", None),
+            model=oblique_bert_model,
+            tokenizer=bert_tokenizer,
             task="text-classification",
-            test_metrics={"test_f1": 0.8},
+            test_metrics={"test_f1": _finish_f1},
         )
+        run_id = ctx.run_id
 
-    assert "model" in seen
     assert version == 1
+    assert mlflow.get_run(run_id).data.metrics["test_f1"] == _finish_f1
 
 
 def test_get_experiment_id_rejects_missing(
@@ -737,14 +760,17 @@ def test_existing_max_step_tracks_logged_metrics(
 def test_register_prompt_version_reuses_unchanged_template(
     mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
+    from eh30pt.datasets.registry import get_sys_prompt
+
     _ = mlflow_client
     mlflow.set_experiment("prompt-reuse-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="prompt-reuse-exp"
     )
+    template = get_sys_prompt("oblique")
     with RunContext(settings, config=run_config) as ctx:
-        first = ctx.register_prompt_version("reused", "template", "first")
-        second = ctx.register_prompt_version("reused", "template", "second")
+        first = ctx.register_prompt_version("reused", template, "first")
+        second = ctx.register_prompt_version("reused", template, "second")
 
         assert first.version == second.version
 
@@ -753,6 +779,8 @@ def test_log_prompt_version_accepts_slashed_dataset(
     mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
     """Register a prompt for datasets whose name carries a source slash."""
+    from eh30pt.datasets.registry import get_sys_prompt
+
     _ = mlflow_client
     mlflow.set_experiment("prompt-slash-exp")
     settings = MlflowSettings(
@@ -762,7 +790,11 @@ def test_log_prompt_version_accepts_slashed_dataset(
     )
 
     with RunContext(settings, config=run_config) as ctx:
-        ctx.log_prompt_version("discont-extract/trigger", "decoder", "template")
+        ctx.log_prompt_version(
+            "discont-extract/trigger",
+            "decoder",
+            get_sys_prompt("discont-extract/trigger"),
+        )
 
         prompt_version = mlflow_client.search_prompt_versions(
             "discont-extract-trigger-decoder"
@@ -786,7 +818,7 @@ def test_artifact_uri_without_location_raises(
     run_config: RunConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from types import SimpleNamespace
+    from mlflow.entities import Run, RunData, RunInfo
 
     _ = mlflow_client
     mlflow.set_experiment("nouri-exp")
@@ -794,10 +826,23 @@ def test_artifact_uri_without_location_raises(
         tracking_uri=mlflow_client.tracking_uri, experiment="nouri-exp"
     )
     with RunContext(settings, config=run_config) as ctx:
+        missing = Run(
+            run_info=RunInfo(
+                run_id="missing",
+                experiment_id="0",
+                user_id="test",
+                status="RUNNING",
+                start_time=0,
+                end_time=None,
+                lifecycle_stage="active",
+                artifact_uri=None,
+            ),
+            run_data=RunData(),
+        )
         monkeypatch.setattr(
             ctx._client,
             "get_run",
-            lambda _run_id: SimpleNamespace(info=SimpleNamespace(artifact_uri=None)),
+            lambda _run_id: missing,
         )
 
         with pytest.raises(RuntimeError, match="no artifact location"):

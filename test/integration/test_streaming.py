@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from returns.result import Result
 
     from eh30pt.labeling.types import ChoiceValue, SpanValue
-    from eh30pt.types import RunConfig
+    from eh30pt.types import ExtractShot, RunConfig
 
 
 @pytest.fixture
@@ -56,14 +56,17 @@ def mlflow_client(
 @pytest.fixture
 def run_config() -> RunConfig:
     """Return a minimal few-shot run config."""
+    from eh30pt.datasets.registry import get_sys_prompt
+    from test.conftest import models
+
     return {
         "method": "few-shot",
         "dataset": "oblique",
         "architecture": "decoder",
-        "base_model": "some-model",
+        "base_model": models["gpt2"],
         "n_shot": 0,
         "batch_size": 1,
-        "system_prompt": "prompt",
+        "system_prompt": get_sys_prompt("oblique"),
     }
 
 
@@ -95,17 +98,23 @@ class _EchoClient(CompletionClient):
 
 
 def test_completion_predictor_returns_none_on_failure() -> None:
+    from eh30pt.datasets.registry import get_few_shots
+
+    sample = get_few_shots("oblique", 1)[0]
     predictor = CompletionPredictor(client=_FailingClient(), conversation=[])
-    result = asyncio.run(predictor.predict(FewShot(user="hi", label="hi")))
+    result = asyncio.run(predictor.predict(sample))
 
     assert result is None
 
 
 def test_completion_predictor_returns_content_on_success() -> None:
-    predictor = CompletionPredictor(client=_EchoClient(), conversation=[])
-    result = asyncio.run(predictor.predict(FewShot(user="hi", label="hi")))
+    from eh30pt.datasets.registry import get_few_shots
 
-    assert result == "hi"
+    sample = get_few_shots("oblique", 1)[0]
+    predictor = CompletionPredictor(client=_EchoClient(), conversation=[])
+    result = asyncio.run(predictor.predict(sample))
+
+    assert result == sample.user
 
 
 def test_completion_script_logs_success_and_failure(
@@ -113,23 +122,27 @@ def test_completion_script_logs_success_and_failure(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     import eh30pt.cli.scripts.completion as completion_mod
+    from eh30pt.datasets.registry import get_few_shots, get_sys_prompt
     from eh30pt.settings import ServerSettings
+
+    sample = get_few_shots("oblique", 1)[0]
+    system = get_sys_prompt("oblique")
 
     async def _ok(self: object, conversation: object) -> Success[str]:
         _ = self, conversation
-        return Success("Tere")
+        return Success(sample.label)
 
     monkeypatch.setattr(completion_mod.CompletionClient, "complete", _ok)
     with caplog.at_level("INFO", logger="eh30pt"):
         asyncio.run(
             completion_mod.main(
-                user_prompt="hi",
-                system_prompt="be brief",
+                user_prompt=sample.user,
+                system_prompt=system,
                 server=ServerSettings(),
             )
         )
 
-    assert "completion: Tere" in caplog.text
+    assert f"completion: {sample.label}" in caplog.text
     caplog.clear()
 
     async def _boom(self: object, conversation: object) -> Result[str, Exception]:
@@ -140,8 +153,8 @@ def test_completion_script_logs_success_and_failure(
     with caplog.at_level("ERROR", logger="eh30pt"):
         asyncio.run(
             completion_mod.main(
-                user_prompt="hi",
-                system_prompt="be brief",
+                user_prompt=sample.user,
+                system_prompt=system,
                 server=ServerSettings(),
             )
         )
@@ -155,13 +168,22 @@ def test_predict_one_assembles_and_handles_failure(
     from langextract.data import AnnotatedDocument, Extraction
 
     import eh30pt.cli.scripts.langextract as langextract_mod
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
+    from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
 
+    shot = DiscontExtract.extract_shots[0]
+    fields = get_extract_fields("discont-extract/trigger")
+    system = get_sys_prompt("discont-extract/trigger")
     doc = AnnotatedDocument(
-        text="input",
-        extractions=[Extraction(extraction_class="drug", extraction_text="Nebilet")],
+        text=shot.user,
+        extractions=[
+            Extraction(
+                extraction_class="drug", extraction_text=shot.extractions["drug"]
+            )
+        ],
     )
     model_config = langextract_mod.build_model_config("m", "http://x", "k")
-    output_schema = cast("JsonSchema", {"type": "object"})
+    output_schema = cast("JsonSchema", DiscontExtract.response_format())
 
     async def _ok(
         *args: object, **kwargs: object
@@ -172,18 +194,22 @@ def test_predict_one_assembles_and_handles_failure(
     monkeypatch.setattr(langextract_mod, "_extract_one", _ok)
     result = asyncio.run(
         langextract_mod._predict_one(
-            "input",
-            system_prompt="sys",
+            shot.user,
+            system_prompt=system,
             examples=[],
             model_config=model_config,
-            fields=("drug", "reason"),
+            fields=fields,
             output_schema=output_schema,
             seed=None,
         )
     )
 
     assert result is not None
-    assert json.loads(result) == {"drug": "Nebilet", "reason": ""}
+    assert json.loads(result) == {
+        "phrase": "",
+        "reason": "",
+        "drug": shot.extractions["drug"],
+    }
 
     async def _boom(
         *args: object, **kwargs: object
@@ -194,11 +220,11 @@ def test_predict_one_assembles_and_handles_failure(
     monkeypatch.setattr(langextract_mod, "_extract_one", _boom)
     result = asyncio.run(
         langextract_mod._predict_one(
-            "input",
-            system_prompt="sys",
+            shot.user,
+            system_prompt=system,
             examples=[],
             model_config=model_config,
-            fields=("drug",),
+            fields=(fields[0],),
             output_schema=output_schema,
             seed=None,
         )
@@ -214,13 +240,23 @@ def test_extract_predictor_predicts_and_marks_invalid(
     from langextract.data import AnnotatedDocument, Extraction
 
     import eh30pt.cli.scripts.langextract as langextract_mod
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
+    from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
 
+    shot = DiscontExtract.extract_shots[0]
+    fields = get_extract_fields("discont-extract/trigger")
+    system = get_sys_prompt("discont-extract/trigger")
+    sample = FewShot(user=shot.user, label="")
     doc = AnnotatedDocument(
-        text="input",
-        extractions=[Extraction(extraction_class="drug", extraction_text="x")],
+        text=shot.user,
+        extractions=[
+            Extraction(
+                extraction_class="drug", extraction_text=shot.extractions["drug"]
+            )
+        ],
     )
     model_config = langextract_mod.build_model_config("m", "http://x", "k")
-    output_schema = cast("JsonSchema", {"type": "object"})
+    output_schema = cast("JsonSchema", DiscontExtract.response_format())
 
     async def _ok(
         *args: object, **kwargs: object
@@ -230,14 +266,14 @@ def test_extract_predictor_predicts_and_marks_invalid(
 
     monkeypatch.setattr(langextract_mod, "_extract_one", _ok)
     predictor = langextract_mod.ExtractPredictor(
-        system_prompt="sys",
+        system_prompt=system,
         examples=[],
         model_config=model_config,
-        fields=("drug",),
+        fields=(fields[0],),
         output_schema=output_schema,
         seed=None,
     )
-    result = asyncio.run(predictor.predict(FewShot(user="hi", label="")))
+    result = asyncio.run(predictor.predict(sample))
 
     assert result is not None
 
@@ -249,7 +285,7 @@ def test_extract_predictor_predicts_and_marks_invalid(
 
     monkeypatch.setattr(langextract_mod, "_extract_one", _boom)
     with caplog.at_level("DEBUG", logger="eh30pt"):
-        result = asyncio.run(predictor.predict(FewShot(user="hi", label="")))
+        result = asyncio.run(predictor.predict(sample))
 
     assert result is None
 
@@ -268,25 +304,27 @@ def test_fold_eval_window_counts_and_logs(
     mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
     from eh30pt.cli.scripts.evaluate import _fold_eval_window
+    from eh30pt.datasets.registry import get_few_shots
 
     _ = mlflow_client
     mlflow.set_experiment("fold-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="fold-exp"
     )
+    shots = get_few_shots("oblique", 3)
     with RunContext(settings, config=run_config) as ctx:
         accumulator = StreamingClassificationMetrics()
         window = [
-            FewShot(user="a", label="x"),
-            FewShot(user="", label="y"),
-            FewShot(user="c", label="y"),
+            shots[0],
+            FewShot(user="", label=shots[1].label),
+            shots[1],
         ]
 
         n_seen, invalid = _fold_eval_window(
             ctx,
             accumulator,
             window,
-            ["x", None, "z"],
+            [shots[0].label, None, shots[2].label],
             log_interval=2,
             n_seen=0,
             invalid=0,
@@ -298,8 +336,8 @@ def test_fold_eval_window_counts_and_logs(
         logged, _ = _fold_eval_window(
             ctx,
             StreamingClassificationMetrics(),
-            [FewShot(user="a", label="x"), FewShot(user="b", label="y")],
-            ["x", "y"],
+            [shots[0], shots[1]],
+            [shots[0].label, shots[1].label],
             log_interval=2,
             n_seen=0,
             invalid=0,
@@ -313,16 +351,18 @@ def test_stream_evaluate_consumes_windows(
     mlflow_client: MlflowClient, run_config: RunConfig
 ) -> None:
     from eh30pt.cli.scripts.evaluate import _stream_evaluate
+    from eh30pt.datasets.registry import get_few_shots
 
     _ = mlflow_client
     mlflow.set_experiment("stream-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="stream-exp"
     )
+    shots = get_few_shots("oblique", 2)
     samples = [
-        FewShot(user="a", label="x"),
-        FewShot(user="", label="y"),
-        FewShot(user="c", label="y"),
+        shots[0],
+        FewShot(user="", label=shots[1].label),
+        shots[1],
     ]
     with RunContext(settings, config=run_config) as ctx:
         bar = tqdm(desc="evaluating", unit="samples", file=io.StringIO())
@@ -344,6 +384,50 @@ def test_stream_evaluate_consumes_windows(
         assert (n_seen, invalid) == (3, 1)
 
 
+def _span_batch() -> tuple[ExtractShot, ExtractShot, list[GenerateRecord]]:
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
+
+    valid = DiscontExtract.extract_shots[0]
+    empty_user = DiscontExtract.extract_shots[4].user
+    other = DiscontExtract.extract_shots[1]
+    third = DiscontExtract.extract_shots[3]
+    phrase = valid.extractions["phrase"]
+    batch = [
+        GenerateRecord(
+            id=0,
+            user=valid.user,
+            prediction=json.dumps(
+                valid.extractions, ensure_ascii=False, sort_keys=True
+            ),
+        ),
+        GenerateRecord(
+            id=1,
+            user=empty_user,
+            prediction=json.dumps({"phrase": "", "reason": "", "drug": ""}),
+        ),
+        GenerateRecord(
+            id=2,
+            user=other.user,
+            prediction=json.dumps({"phrase": phrase, "reason": "x", "drug": "y"}),
+        ),
+        GenerateRecord(
+            id=3,
+            user=third.user,
+            prediction=json.dumps(
+                third.extractions, ensure_ascii=False, sort_keys=True
+            ),
+        ),
+        GenerateRecord(
+            id=4,
+            user=other.user,
+            prediction=json.dumps(
+                {"phrase": valid.extractions["phrase"], "reason": "r", "drug": "d"}
+            ),
+        ),
+    ]
+    return valid, other, batch
+
+
 def test_run_labeling_builds_span_tasks(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
@@ -355,51 +439,13 @@ def test_run_labeling_builds_span_tasks(
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-exp"
     )
-    user = "Patsient katkestas Nebileti, vererõhk normaliseerus."
-    phrase = "katkestas Nebileti"
+    valid, other, batch = _span_batch()
+    user = valid.user
+    phrase = valid.extractions["phrase"]
+    reason = valid.extractions["reason"]
+    drug = valid.extractions["drug"]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
-        batch = [
-            GenerateRecord(
-                id=0,
-                user=user,
-                prediction=json.dumps(
-                    {
-                        "phrase": phrase,
-                        "reason": "vererõhk normaliseerus",
-                        "drug": "Nebilet",
-                    }
-                ),
-            ),
-            GenerateRecord(
-                id=1,
-                user="kaebusi ei ole",
-                prediction=json.dumps({"phrase": "", "reason": "", "drug": ""}),
-            ),
-            GenerateRecord(
-                id=2,
-                user="Teine tekst katkestas Nebileti.",
-                prediction=json.dumps({"phrase": phrase, "reason": "x", "drug": "y"}),
-            ),
-            GenerateRecord(
-                id=3,
-                user="Arst jättis statiini ära.",
-                prediction=json.dumps(
-                    {
-                        "phrase": "Arst jättis statiini ära.",
-                        "reason": "",
-                        "drug": "statiin",
-                    }
-                ),
-            ),
-            GenerateRecord(
-                id=4,
-                user="Täiesti tavaline tekst.",
-                prediction=json.dumps(
-                    {"phrase": "olematu fraas", "reason": "r", "drug": "d"}
-                ),
-            ),
-        ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
     labeling = run_labeling(
@@ -417,17 +463,16 @@ def test_run_labeling_builds_span_tasks(
     assert tasks[0]["data"] == {
         "text": user,
         "phrase": phrase,
-        "reason": "vererõhk normaliseerus",
-        "drug": "Nebilet",
+        "reason": reason,
+        "drug": drug,
     }
 
     start, end = user.index(phrase), user.index(phrase) + len(phrase)
-    reason = "vererõhk normaliseerus"
     reason_start = user.index(reason)
-    drug_start = user.index("Nebilet")
+    drug_start = user.index(drug)
     assert _locate_span(user, phrase) == (start, end)
     assert _locate_span(user, "") is None
-    assert _locate_span(user, "puudub") is None
+    assert _locate_span(user, other.user) is None
     assert tasks[0]["predictions"] == [
         {
             "result": [
@@ -465,8 +510,8 @@ def test_run_labeling_builds_span_tasks(
                     "hidden": False,
                     "value": {
                         "start": drug_start,
-                        "end": drug_start + len("Nebilet"),
-                        "text": "Nebilet",
+                        "end": drug_start + len(drug),
+                        "text": drug,
                         "labels": ["drug"],
                     },
                 },
@@ -525,18 +570,21 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.create_task import run_labeling
+    from eh30pt.datasets.registry import get_few_shots, get_labels
 
     _ = mlflow_client
     mlflow.set_experiment("export-oblique-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-oblique-exp"
     )
+    shots = get_few_shots("oblique", 2)
+    invalid_label = get_labels("multinerd")[0]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         batch = [
-            GenerateRecord(id=0, user="Ta ei ole seotud", prediction="vaba"),
-            GenerateRecord(id=1, user="Ta on seotud", prediction="seotud"),
-            GenerateRecord(id=2, user="Vastus puudub", prediction="hallucinated"),
+            GenerateRecord(id=0, user=shots[0].user, prediction=shots[0].label),
+            GenerateRecord(id=1, user=shots[1].user, prediction=shots[1].label),
+            GenerateRecord(id=2, user=shots[0].user, prediction=invalid_label),
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
@@ -554,7 +602,7 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
     _exported = 2
     assert len(tasks) == _exported
     assert tasks[0] == {
-        "data": {"text": "Ta ei ole seotud"},
+        "data": {"text": shots[0].user},
         "predictions": [
             {
                 "result": [
@@ -564,7 +612,7 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
                         "type": "choices",
                         "readonly": True,
                         "hidden": False,
-                        "value": {"choices": ["vaba"]},
+                        "value": {"choices": [shots[0].label]},
                     }
                 ],
                 "model_version": run_id,
@@ -572,14 +620,14 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
         ],
     }
     chosen = tasks[1]["predictions"][0]["result"][0]["value"]
-    assert cast("ChoiceValue", chosen)["choices"] == ["seotud"]
+    assert cast("ChoiceValue", chosen)["choices"] == [shots[1].label]
 
     assert '<Text name="text" value="$text" />' in config
     assert (
         '<Choices name="label" toName="text" choice="single" showInLine="true">'
         in config
     )
-    for label in ("seotud", "ebaloomulik", "liigne koma", "vaba", "kaheldav"):
+    for label in get_labels("oblique"):
         assert f'<Choice value="{label}" />' in config
 
     assert 'value="phrase" background="#ffe08a"' not in config
@@ -590,14 +638,16 @@ def test_run_labeling_reads_struct_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.create_task import run_labeling
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     _ = mlflow_client
     mlflow.set_experiment("export-struct-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-struct-exp"
     )
-    user = "Tekkis köha, enalapriil ära jäeti."
-    phrase = "enalapriil"
+    shot = DiscontExtract.extract_shots[1]
+    user = shot.user
+    phrase = shot.extractions["phrase"]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         log_shard(
@@ -609,15 +659,11 @@ def test_run_labeling_reads_struct_predictions(
                 {
                     "id": 0,
                     "user": user,
-                    "prediction": {
-                        "phrase": phrase,
-                        "reason": "Tekkis köha",
-                        "drug": "enalapriil",
-                    },
+                    "prediction": dict(shot.extractions),
                 },
                 {
                     "id": 1,
-                    "user": "kaebusi ei ole",
+                    "user": DiscontExtract.extract_shots[4].user,
                     "prediction": {"phrase": "", "reason": "", "drug": ""},
                 },
             ],
@@ -646,15 +692,23 @@ def test_run_labeling_rejects_non_extraction_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.create_task import run_labeling
+    from eh30pt.datasets.registry import get_few_shots, get_labels
 
     _ = mlflow_client
     mlflow.set_experiment("export-plain-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-plain-exp"
     )
+    sample = get_few_shots("oblique", 1)[0]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
-        batch = [GenerateRecord(id=0, user="a", prediction="Adverse reactions")]
+        batch = [
+            GenerateRecord(
+                id=0,
+                user=sample.user,
+                prediction=get_labels("discont-classifier/extract-labels")[0],
+            )
+        ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
     with pytest.raises(ValueError, match="not extraction JSON"):
@@ -671,15 +725,17 @@ def test_run_labeling_rejects_non_object_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.create_task import run_labeling
+    from eh30pt.datasets.registry import get_few_shots
 
     _ = mlflow_client
     mlflow.set_experiment("export-number-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-number-exp"
     )
+    sample = get_few_shots("oblique", 1)[0]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
-        batch = [GenerateRecord(id=0, user="a", prediction="123")]
+        batch = [GenerateRecord(id=0, user=sample.user, prediction="123")]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
     with pytest.raises(ValueError, match="not extraction JSON"):
@@ -730,17 +786,19 @@ def test_run_labeling_infers_dataset_from_run(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
     from eh30pt.cli.scripts.create_task import run_labeling
+    from eh30pt.datasets.registry import get_few_shots
 
     _ = mlflow_client
     mlflow.set_experiment("export-infer-exp")
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-infer-exp"
     )
+    shots = get_few_shots("oblique", 2)
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         batch = [
-            GenerateRecord(id=0, user="Ta ei ole seotud", prediction="vaba"),
-            GenerateRecord(id=1, user="Ta on seotud", prediction="seotud"),
+            GenerateRecord(id=0, user=shots[0].user, prediction=shots[0].label),
+            GenerateRecord(id=1, user=shots[1].user, prediction=shots[1].label),
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
 
@@ -752,8 +810,8 @@ def test_run_labeling_infers_dataset_from_run(
     )
 
     assert [task["data"] for task in labeling.tasks] == [
-        {"text": "Ta ei ole seotud"},
-        {"text": "Ta on seotud"},
+        {"text": shots[0].user},
+        {"text": shots[1].user},
     ]
 
 
@@ -784,7 +842,7 @@ def test_model_raises_when_server_serves_nothing(
     from eh30pt.openai.complete import CompletionClient
     from eh30pt.settings import ServerSettings
 
-    async def _empty() -> SimpleNamespace:
+    async def _empty() -> object:
         return SimpleNamespace(data=[])
 
     client = CompletionClient(ServerSettings())
@@ -804,15 +862,19 @@ def test_model_caches_first_resolution(
 ) -> None:
     from types import SimpleNamespace
 
+    from openai.types import Model
+
     from eh30pt.openai.complete import CompletionClient
     from eh30pt.settings import ServerSettings
 
     calls = 0
 
-    async def _page() -> SimpleNamespace:
+    async def _page() -> object:
         nonlocal calls
         calls += 1
-        return SimpleNamespace(data=[SimpleNamespace(id="org/llama")])
+        return SimpleNamespace(
+            data=[Model(id="org/llama", created=0, object="model", owned_by="org")]
+        )
 
     client = CompletionClient(ServerSettings())
     monkeypatch.setattr(

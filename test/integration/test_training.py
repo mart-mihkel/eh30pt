@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Final, cast
 
 import pytest
-import torch
-from datasets import Dataset
 
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.oblique import Obl
@@ -19,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from transformers import PreTrainedTokenizerFast, Trainer
+    from transformers import PreTrainedModel, PreTrainedTokenizerFast, Trainer
 
     from eh30pt.modeling.training.spec import _Spec
 
@@ -32,12 +30,18 @@ _eval_steps: Final = 50
 @pytest.fixture
 def oblique_splits(gpt2_tokenizer: PreTrainedTokenizerFast) -> DataSplits:
     """Return train, eval, and test splits over two real oblique rows."""
-    data = Dataset.from_list(
-        [
-            {"sentence": "Tere maailm", "removed": "Tere", "label": "vaba"},
-            {"sentence": "Kass jookseb", "removed": "Kass", "label": "seotud"},
-        ]
+    from datasets import Dataset as _Dataset
+
+    from eh30pt.datasets.oblique import Obl as _Obl
+
+    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
+    raw = raw.rename_column("type", "label")
+    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
+    first_label = raw[0]["label"]
+    second_idx = next(
+        idx for idx in range(1, len(raw)) if raw[idx]["label"] != first_label
     )
+    data = raw.select([0, second_idx])
     split = Obl(data, gpt2_tokenizer, "decoder")
 
     return DataSplits(train=split, eval=split, test=split)
@@ -45,10 +49,11 @@ def oblique_splits(gpt2_tokenizer: PreTrainedTokenizerFast) -> DataSplits:
 
 def test_build_spec_hyperparameters(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     spec = _build_spec(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="decoder",
@@ -64,7 +69,7 @@ def test_build_spec_hyperparameters(
     assert spec.eval_steps == _eval_steps
     assert (
         _build_spec(
-            model=torch.nn.Linear(2, 2),
+            model=oblique_gpt2_model,
             tokenizer=gpt2_tokenizer,
             data=oblique_splits,
             arch="decoder",
@@ -81,11 +86,12 @@ def test_build_spec_hyperparameters(
 
 def test_build_spec_aligns_save_with_eval_for_best_checkpoints(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     """load_best requires matching save and eval strategies."""
     spec = _build_spec(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="decoder",
@@ -114,27 +120,33 @@ def test_label_completions_collects_unmasked_tails(
 def test_label_completions_dedupes(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    data = Dataset.from_list(
-        [{"sentence": "Tere maailm", "removed": "Tere", "label": "vaba"}]
-    )
-    split = Obl(data, gpt2_tokenizer, "decoder")
+    from datasets import Dataset as _Dataset
+
+    from eh30pt.datasets.oblique import Obl as _Obl
+
+    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
+    raw = raw.rename_column("type", "label")
+    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
+    data = raw.select(range(1))
+    split = _Obl(data, gpt2_tokenizer, "decoder")
     splits = DataSplits(train=split, eval=split, test=split)
 
     assert len(_label_completions(splits)) == 1
 
 
 def test_label_completions_skips_fully_masked() -> None:
+    from datasets import Dataset as _Dataset
+
+    from eh30pt.datasets.oblique import Obl as _Obl
     from eh30pt.modeling.tokenizer import load_tokenizer
 
     capped = load_tokenizer("hf-internal-testing/tiny-random-gpt2")
     capped.model_max_length = 8
-    data = Dataset.from_list(
-        [
-            {"sentence": "Tere maailm", "removed": "Tere", "label": "vaba"},
-            {"sentence": "Kass jookseb", "removed": "Kass", "label": "seotud"},
-        ]
-    )
-    split = Obl(data, capped, "decoder")
+    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
+    raw = raw.rename_column("type", "label")
+    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
+    data = raw.select(range(2))
+    split = _Obl(data, capped, "decoder")
     splits = DataSplits(train=split, eval=split, test=split)
 
     assert _label_completions(splits) == ()
@@ -142,10 +154,11 @@ def test_label_completions_skips_fully_masked() -> None:
 
 def test_build_spec_collects_completions_when_constrained(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     spec = _build_spec(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="decoder",
@@ -163,11 +176,12 @@ def test_build_spec_collects_completions_when_constrained(
 
 def test_build_spec_drops_completions_when_unconstrained(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     """An empty completion set is what makes the trainers skip constraining."""
     spec = _build_spec(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="decoder",
@@ -185,10 +199,11 @@ def test_build_spec_drops_completions_when_unconstrained(
 
 def test_build_spec_is_unconstrained_by_default(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     spec = _build_spec(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="decoder",
@@ -208,17 +223,17 @@ def test_constrained_seq2seq_trainer_omits_processor_without_completions(
     tmp_path: Path,
 ) -> None:
     """An empty completion set must not mask generation down to the pad token."""
+    from datasets import Dataset as _Dataset
     from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments
 
+    from eh30pt.datasets.oblique import Obl as _Obl
     from eh30pt.modeling.training.seq2seq import ConstrainedSeq2SeqTrainer
     from test.conftest import models
 
-    data = Dataset.from_list(
-        [
-            {"sentence": "Tere maailm", "removed": "Tere", "label": "vaba"},
-            {"sentence": "Kass jookseb", "removed": "Kass", "label": "seotud"},
-        ]
-    )
+    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
+    raw = raw.rename_column("type", "label")
+    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
+    data = raw.select(range(2))
     split = Obl(data, gpt2_tokenizer, "encoder-decoder")
     model = AutoModelForSeq2SeqLM.from_pretrained(models["t5"])
     args = Seq2SeqTrainingArguments(
@@ -249,6 +264,7 @@ def test_constrained_seq2seq_trainer_omits_processor_without_completions(
 
 def test_get_trainer_builds_per_architecture(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -288,7 +304,7 @@ def test_get_trainer_builds_per_architecture(
     )
 
     encoder = get_trainer(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="encoder",
@@ -309,7 +325,7 @@ def test_get_trainer_builds_per_architecture(
 
     assert (
         get_trainer(
-            model=torch.nn.Linear(2, 2),
+            model=oblique_gpt2_model,
             tokenizer=gpt2_tokenizer,
             data=oblique_splits,
             arch="decoder",
@@ -324,7 +340,7 @@ def test_get_trainer_builds_per_architecture(
 
     assert (
         get_trainer(
-            model=torch.nn.Linear(2, 2),
+            model=oblique_gpt2_model,
             tokenizer=gpt2_tokenizer,
             data=oblique_splits,
             arch="encoder-decoder",
@@ -340,6 +356,7 @@ def test_get_trainer_builds_per_architecture(
 
 def test_maybe_add_early_stopping_branches(
     oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
     gpt2_tokenizer: PreTrainedTokenizerFast,
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -355,7 +372,7 @@ def test_maybe_add_early_stopping_branches(
 
     with caplog.at_level("WARNING", logger="eh30pt"):
         get_trainer(
-            model=torch.nn.Linear(2, 2),
+            model=oblique_gpt2_model,
             tokenizer=gpt2_tokenizer,
             data=oblique_splits,
             arch="encoder",
@@ -371,7 +388,7 @@ def test_maybe_add_early_stopping_branches(
     caplog.clear()
 
     trainer = get_trainer(
-        model=torch.nn.Linear(2, 2),
+        model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
         arch="encoder",

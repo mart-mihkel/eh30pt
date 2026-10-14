@@ -1,46 +1,100 @@
-"""Metric accumulation integration tests."""
+"""Metric accumulation integration tests from real model outputs."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+import torch
 from transformers import EvalPrediction
 
+from eh30pt.modeling.collator import get_collator
 from eh30pt.modeling.metrics import (
     MetricsAccumulator,
 )
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerFast
+    from collections.abc import Iterable
 
-_batch: Final = 2
-_seq: Final = 4
+    from transformers import PreTrainedModel, PreTrainedTokenizerFast
+
+    from eh30pt.types import Architecture, DataSplits
+
+
+def _first_rows(split: Iterable[dict], n: int) -> list[dict]:
+    from itertools import islice
+
+    return list(islice(split, n))
+
+
+def _forward_logits(
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerFast,
+    arch: Architecture,
+    splits: DataSplits,
+    n: int = 2,
+) -> EvalPrediction:
+    rows = _first_rows(splits.train, n)
+    assert rows
+    collated = get_collator(tokenizer, arch)(rows)
+    device = next(model.parameters()).device
+    batch = {
+        k: v.to(device) if isinstance(v, torch.Tensor) else v
+        for k, v in collated.items()
+        if k != "truncated"
+    }
+    model.eval()
+    with torch.inference_mode():
+        output = model(
+            **{
+                k: v
+                for k, v in batch.items()
+                if k in ("input_ids", "attention_mask", "labels")
+            }
+        )
+    logits = output.logits.float().detach().cpu().numpy()
+    labels = batch["labels"].detach().cpu().numpy()
+    return EvalPrediction(predictions=logits, label_ids=labels)
 
 
 @pytest.fixture
 def bert_token_id(bert_tokenizer: PreTrainedTokenizerFast) -> int:
-    """Provide a non-special token id from the bert vocabulary."""
-    pad_token_id = bert_tokenizer.pad_token_id
-    assert pad_token_id is not None
-    return (pad_token_id + 1) % bert_tokenizer.vocab_size
+    """Provide a real non-special token id from encoding a registry prompt."""
+    from eh30pt.datasets.registry import get_sys_prompt
+
+    ids = bert_tokenizer(get_sys_prompt("oblique"), truncation=True)["input_ids"]
+    real = next(
+        i
+        for i in ids
+        if i
+        not in (
+            bert_tokenizer.pad_token_id,
+            bert_tokenizer.cls_token_id,
+            bert_tokenizer.sep_token_id,
+        )
+    )
+    return int(real)
 
 
 @pytest.fixture
 def gpt2_token_id(gpt2_tokenizer: PreTrainedTokenizerFast) -> int:
-    """Provide a non-special token id from the gpt2 vocabulary."""
-    pad_token_id = gpt2_tokenizer.pad_token_id
-    assert pad_token_id is not None
-    return (pad_token_id + 1) % gpt2_tokenizer.vocab_size
+    """Provide a real non-special token id from encoding a registry prompt."""
+    from eh30pt.datasets.registry import get_sys_prompt
+
+    ids = gpt2_tokenizer(get_sys_prompt("oblique"), truncation=True)["input_ids"]
+    real = next(i for i in ids if i != gpt2_tokenizer.pad_token_id)
+    return int(real)
 
 
 @pytest.fixture
 def t5_token_id(t5_tokenizer: PreTrainedTokenizerFast) -> int:
-    """Provide a non-special token id from the t5 vocabulary."""
-    pad_token_id = t5_tokenizer.pad_token_id
-    assert pad_token_id is not None
-    return (pad_token_id + 1) % t5_tokenizer.vocab_size
+    """Provide a real non-special token id from encoding a registry prompt."""
+    from eh30pt.datasets.registry import get_sys_prompt
+
+    ids = t5_tokenizer(get_sys_prompt("oblique"), truncation=True)["input_ids"]
+    real = next(i for i in ids if i != t5_tokenizer.pad_token_id)
+    return int(real)
 
 
 @pytest.fixture
@@ -54,15 +108,15 @@ def encoder_accumulator(
 @pytest.fixture
 def encoder_pred(
     bert_tokenizer: PreTrainedTokenizerFast,
-    bert_token_id: int,
+    oblique_bert_model: PreTrainedModel,
+    oblique_bert_dataset: DataSplits,
 ) -> EvalPrediction:
-    """Provide an encoder eval batch voting for a constant token id."""
-    logits = np.zeros((_batch, _seq, bert_tokenizer.vocab_size))
-    logits[:, :, bert_token_id] = 1.0
-    return EvalPrediction(
-        predictions=logits,
-        label_ids=np.full((_batch, _seq), bert_token_id),
+    """Provide a real encoder forward pass relabeled to its own argmax."""
+    pred = _forward_logits(
+        oblique_bert_model, bert_tokenizer, "encoder", oblique_bert_dataset
     )
+    labels = np.argmax(pred.predictions, axis=-1)
+    return EvalPrediction(predictions=pred.predictions, label_ids=labels)
 
 
 @pytest.fixture
@@ -76,29 +130,35 @@ def decoder_accumulator(
 @pytest.fixture
 def decoder_pred(
     gpt2_tokenizer: PreTrainedTokenizerFast,
-    gpt2_token_id: int,
+    oblique_gpt2_model: PreTrainedModel,
+    oblique_gpt2_dataset: DataSplits,
 ) -> EvalPrediction:
-    """Provide a decoder eval batch voting for a constant token id."""
-    logits = np.zeros((_batch, _seq, gpt2_tokenizer.vocab_size))
-    logits[:, :, gpt2_token_id] = 1.0
-    return EvalPrediction(
-        predictions=logits,
-        label_ids=np.full((_batch, _seq), gpt2_token_id),
+    """Provide real decoder labels with logits voting for the shifted sequence."""
+    pred = _forward_logits(
+        oblique_gpt2_model, gpt2_tokenizer, "decoder", oblique_gpt2_dataset
     )
+    labels = pred.label_ids
+    assert isinstance(labels, np.ndarray)
+    shifted = np.empty_like(labels)
+    shifted[:, :-1] = labels[:, 1:]
+    shifted[:, -1:] = labels[:, -1:]
+    vocab = gpt2_tokenizer.vocab_size
+    logits = np.zeros((labels.shape[0], labels.shape[1], vocab), dtype=np.float32)
+    clipped = np.clip(shifted, 0, vocab - 1)
+    np.put_along_axis(logits, clipped[:, :, None], 1.0, axis=-1)
+    return EvalPrediction(predictions=logits, label_ids=labels)
 
 
 @pytest.fixture
 def long_decoder_pred(
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-    gpt2_token_id: int,
+    decoder_pred: EvalPrediction,
 ) -> EvalPrediction:
-    """Provide a decoder eval batch with one extra trailing logit position."""
-    logits = np.zeros((_batch, _seq + 1, gpt2_tokenizer.vocab_size))
-    logits[:, :, gpt2_token_id] = 1.0
-    return EvalPrediction(
-        predictions=logits,
-        label_ids=np.full((_batch, _seq), gpt2_token_id),
-    )
+    """Provide a real decoder batch with one extra trailing logit position."""
+    logits = decoder_pred.predictions
+    assert isinstance(logits, np.ndarray)
+    extra = logits[:, -1:, :]
+    long_logits = np.concatenate([logits, extra], axis=1)
+    return EvalPrediction(predictions=long_logits, label_ids=decoder_pred.label_ids)
 
 
 @pytest.fixture
@@ -110,9 +170,20 @@ def seq2seq_accumulator(
 
 
 @pytest.fixture
-def seq2seq_pred(t5_token_id: int) -> EvalPrediction:
-    """Provide an encoder-decoder eval batch with tuple-wrapped id outputs."""
-    ids = np.full((_batch, _seq), t5_token_id)
+def seq2seq_pred(
+    t5_tokenizer: PreTrainedTokenizerFast,
+) -> EvalPrediction:
+    """Provide real label token ids wrapped as tuple outputs."""
+    from eh30pt.datasets.registry import get_few_shots
+
+    shots = get_few_shots("oblique", 2)
+    encoded = [t5_tokenizer(shot.label, truncation=True)["input_ids"] for shot in shots]
+    width = max(len(ids) for ids in encoded)
+    pad = t5_tokenizer.pad_token_id
+    assert pad is not None
+    ids = np.array(
+        [row + [pad] * (width - len(row)) for row in encoded], dtype=np.int64
+    )
     return EvalPrediction(predictions=(ids,), label_ids=(ids,))
 
 
@@ -120,15 +191,16 @@ def test_accumulates_batches_without_computing(
     encoder_accumulator: MetricsAccumulator,
     encoder_pred: EvalPrediction,
 ) -> None:
+    batch = len(encoder_pred.label_ids)
     assert encoder_accumulator(encoder_pred, compute_result=False) == {}
 
     assert encoder_accumulator._bar is not None
-    assert encoder_accumulator._bar.n == _batch
+    assert encoder_accumulator._bar.n == batch
 
     encoder_accumulator(encoder_pred, compute_result=False)
 
     assert encoder_accumulator._bar is not None
-    assert encoder_accumulator._bar.n == 2 * _batch
+    assert encoder_accumulator._bar.n == 2 * batch
 
 
 def test_compute_returns_perfect_metrics_and_resets(
@@ -167,8 +239,11 @@ def test_decoder_truncates_longer_predictions(
 ) -> None:
     decoder_accumulator(long_decoder_pred, compute_result=False)
 
-    assert len(decoder_accumulator._preds) == _batch
-    assert all(len(row) == _seq for row in decoder_accumulator._preds)
+    label_ids = long_decoder_pred.label_ids
+    assert isinstance(label_ids, np.ndarray)
+    label_len = label_ids.shape[1]
+    assert len(decoder_accumulator._preds) == len(label_ids)
+    assert all(len(row) == label_len for row in decoder_accumulator._preds)
 
 
 def test_decoder_compute_scores_shifted_sequences(
