@@ -1,0 +1,111 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:9931
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:9931/models
+  response:
+    body:
+      string: '{"models":[{"name":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","model":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","aliases":["unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M"],"tags":[],"object":"model","architecture":{"input_modalities":["text"],"output_modalities":["text"]},"created":1791959255,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":4096,"n_ctx_train":32768,"n_embd":896,"n_params":494032768,"size":391859712,"ftype":"Q4_K
+        - Medium"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '813'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"system","content":"Identify the NER tag of the entity
+      in the sentence.\nPossible tags are: PER, ORG, LOC, ANIM, BIO, CEL, DIS, EVE,
+      FOOD, INST, MEDIA, MYTH, PLANT, TIME, VEHI.\n\nOutput only the tag."},{"role":"user","content":"Sentence:
+      Chris LaCivita .\nEntity: Chris LaCivita\nTag:"},{"role":"assistant","content":"PER"},{"role":"user","content":"Sentence:
+      With FC Dynamo Moscow .\nEntity: FC Dynamo Moscow\nTag:"}],"model":"Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","seed":0}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '500'
+      content-type:
+      - application/json
+      host:
+      - localhost:9931
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:9931/chat/completions
+  response:
+    body:
+      string: '{"choices":[{"finish_reason":"stop","index":0,"message":{"role":"assistant","content":"ORG"}}],"created":1791959255,"model":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","system_fingerprint":"b11515-3d65c90d0","object":"chat.completion","usage":{"completion_tokens":2,"prompt_tokens":114,"total_tokens":116,"prompt_tokens_details":{"cached_tokens":96}},"id":"chatcmpl-mw9l14mNHX3YEQQkOoexLL1W7b3x02Hi","timings":{"cache_n":96,"prompt_n":18,"prompt_ms":65.293,"prompt_per_token_ms":3.6273888888888894,"prompt_per_second":275.6803945292757,"predicted_n":2,"predicted_ms":7.484,"predicted_per_token_ms":7.484,"predicted_per_second":133.61838588989846}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '653'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+version: 1

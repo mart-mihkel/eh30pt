@@ -1,0 +1,132 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      host:
+      - localhost:9931
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: GET
+    uri: http://localhost:9931/models
+  response:
+    body:
+      string: '{"models":[{"name":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","model":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M","aliases":["unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M"],"tags":[],"object":"model","architecture":{"input_modalities":["text"],"output_modalities":["text"]},"created":1791959408,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":4096,"n_ctx_train":32768,"n_embd":896,"n_params":494032768,"size":391859712,"ftype":"Q4_K
+        - Medium"}}]}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '813'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"messages\":[{\"role\":\"system\",\"content\":\"You are a clinical language
+      model specialized in Estonian medical documentation. You are given clinical
+      summary charts written by doctors about their patients who stopped taking their
+      medication. Your task is to extract the reasons why the patients stopped taking
+      the medications.\\nReturn your output as a JSON object with the keys: \\\"phrase\\\",
+      \\\"reason\\\", \\\"drug\\\".\\n\\nExtraction rules:\\n\\n1. \\\"phrase\\\":
+      Must include the full sentence(s) that should contain the fact that the patient
+      stopped taking the medication and the reason, if they exist. Include multiple
+      sentences if needed to preserve semantic clarity.\\n2. \\\"reason\\\": Extract
+      only the reason why the patient stopped taking medication (e.g., \\\"verer\xF5hk
+      normaliseerus\\\", \\\"tekkis k\xF6ha\\\", \\\"ei pidanud vajalikuks\\\").\\n3.
+      \\\"drug\\\": Extract the name of the drug or its type/class only if explicitly
+      mentioned (e.g., \\\"Nebilet\\\", \\\"Amlodipin\\\", \\\"verer\xF5huravim\\\",
+      \u201Cdiabeediravim\u201D, \u201Cstatiin\u201D).\\n\\nOutput format:\\n\\nReturn
+      only one JSON object per matched case.\\nDo not paraphrase or clean the extracted
+      texts; return the exact text as-is from the input.\\nIf no valid case is found
+      in the input for one or more of the classes, leave the value as an empty string.\"},{\"role\":\"user\",\"content\":\"Patsient
+      j\xE4tkab ravi muutumatult, kaebusi pole.\"}],\"model\":\"Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M\",\"response_format\":{\"json_schema\":{\"name\":\"extraction\",\"schema\":{\"type\":\"object\",\"required\":[\"phrase\",\"reason\",\"drug\"],\"properties\":{\"reason\":{\"type\":\"string\",\"maxLength\":1024},\"phrase\":{\"type\":\"string\",\"maxLength\":512},\"drug\":{\"type\":\"string\",\"maxLength\":256}}}},\"type\":\"json_schema\"},\"seed\":0}"
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '1693'
+      content-type:
+      - application/json
+      host:
+      - localhost:9931
+      user-agent:
+      - AsyncOpenAI/Python 3.10.0
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 3.10.0
+      x-stainless-read-timeout:
+      - '300'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.14.7
+    method: POST
+    uri: http://localhost:9931/chat/completions
+  response:
+    body:
+      string: "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\n
+        \ \\\"reason\\\": \\\"verer\xF5hk normaliseerus\\\",\\n  \\\"phrase\\\": \\\"Patsient
+        j\xE4tkab ravi muutumatult, kaebusi pole. Jotka n\xE4pp\xE4ksi on t\xE4m\xE4
+        mukka on k\xE4ytt\xE4v\xE4 ja niin kauttaa niin maatko. T\xE4m\xE4 muutumatulta
+        on jopa olevi\xE4 ja ei ole niin muutamia. Kuten t\xE4m\xE4 mukka on k\xE4ytt\xE4v\xE4
+        ja niin kauttaa niin maatko, on niin kaibisesti k\xE4ytt\xE4v\xE4, ja niin
+        on korvattu. Jotka n\xE4pp\xE4ksi on t\xE4m\xE4 mukka on k\xE4ytt\xE4v\xE4
+        ja niin kauttaa niin maatko, on niin kaibisesti k\xE4ytt\xE4v\xE4, ja niin
+        on korvattu.\\\",\\n  \\\"drug\\\": \\\"\\\"\\n}\"}}],\"created\":1791959410,\"model\":\"unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M\",\"system_fingerprint\":\"b11515-3d65c90d0\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":203,\"prompt_tokens\":304,\"total_tokens\":507,\"prompt_tokens_details\":{\"cached_tokens\":284}},\"id\":\"chatcmpl-vhd2FpBTRqj5YH0pP1BklGMdwBBqs5rV\",\"timings\":{\"cache_n\":284,\"prompt_n\":20,\"prompt_ms\":91.945,\"prompt_per_token_ms\":4.59725,\"prompt_per_second\":217.5213442819077,\"predicted_n\":203,\"predicted_ms\":1555.394,\"predicted_per_token_ms\":7.699970297029703,\"predicted_per_second\":129.87063084980397}}"
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '1179'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+version: 1

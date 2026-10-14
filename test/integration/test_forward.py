@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Final, NamedTuple, TypedDict
 
 import pytest
@@ -150,3 +151,39 @@ def test_forward(collated_inputs: _Inputs) -> None:
             label_ids.shape[1],
             collated_inputs.model_vocab_size,
         )
+
+
+@pytest.mark.vcr
+def test_extract_constrained_forward() -> None:
+    """Constrained decoding forward yields parsed JSON, plain forward text."""
+    from eh30pt.datasets.discontinuation.extract import DiscontExtract
+    from eh30pt.datasets.registry import (
+        get_extract_fields,
+        get_response_schema,
+        get_sys_prompt,
+    )
+    from eh30pt.openai.complete import CompletionClient
+    from eh30pt.settings import ServerSettings
+
+    user = DiscontExtract.extract_shots[0].user
+    conversation = CompletionClient.build_conversation(
+        user, system=get_sys_prompt("discont-extract/trigger")
+    )
+
+    constrained = CompletionClient(
+        ServerSettings(
+            provider="llama",
+            format=get_response_schema("discont-extract/trigger"),
+        ),
+        seed=0,
+    )
+    parsed = asyncio.run(constrained.complete(conversation)).unwrap()
+
+    assert isinstance(parsed, dict)
+    assert set(parsed) == set(get_extract_fields("discont-extract/trigger"))
+
+    plain = CompletionClient(ServerSettings(provider="llama"), seed=0)
+    text = asyncio.run(plain.complete(conversation)).unwrap()
+
+    assert isinstance(text, str)
+    assert text.strip()

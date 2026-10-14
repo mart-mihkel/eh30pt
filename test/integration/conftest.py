@@ -38,6 +38,22 @@ datasets.disable_caching()
 _datasets: tuple[DatasetName, ...] = ("multinerd", "oblique")
 
 
+@pytest.fixture(scope="module")
+def vcr_config() -> dict[str, object]:
+    """Replay recorded llama traffic, ignoring telemetry and dataset hosts."""
+    return {
+        "filter_headers": ["authorization"],
+        "ignore_hosts": [
+            "api.mlflow-telemetry.io",
+            "config.mlflow-telemetry.io",
+            "huggingface.co",
+            "cas-bridge.xethub.huggingface.co",
+            "datasets-server.huggingface.co",
+            "s3.amazonaws.com",
+        ],
+    }
+
+
 class ModelSetup(NamedTuple):
     """One model under test with its config, tokenizer, labels, splits, and weights."""
 

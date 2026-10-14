@@ -1,9 +1,12 @@
 """Dataset loading and streaming integration tests."""
 
+import asyncio
 from itertools import islice
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from datasets.load import load_dataset
+from datasets.utils.info_utils import VerificationMode
 
 from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
@@ -13,8 +16,16 @@ from eh30pt.datasets.discontinuation.extract import (
     load_discont_extract,
 )
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.datasets.registry import load_data
+from eh30pt.datasets.multinerd import Multinerd
+from eh30pt.datasets.registry import (
+    get_extract_fields,
+    get_response_schema,
+    get_sys_prompt,
+    load_data,
+)
 from eh30pt.modeling.arch import infer_architecture
+from eh30pt.openai.complete import CompletionClient
+from eh30pt.settings import ServerSettings
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -122,6 +133,7 @@ def test_discont_splits_iterate_tokenized_rows(
         {"id": idx, "text": shot.user}
         for idx, shot in enumerate(DiscontExtract.extract_shots[:1])
     ]
+
     extract = DiscontExtract(
         lambda: iter(extract_rows),
         gpt2_tokenizer,
@@ -138,6 +150,7 @@ def test_discont_splits_iterate_tokenized_rows(
     assert [sample.id for sample in extract.samples()] == [
         row["id"] for row in extract_rows
     ]
+
     assert extract.response_format()["json_schema"]["name"] == "extraction"
 
     cls_row: DiscontClassifierRow = {
@@ -155,16 +168,12 @@ def test_discont_splits_iterate_tokenized_rows(
 
 def test_join_spans_assembles_real_entities() -> None:
     """BIO spans from a real MultiNERD row join into entity strings."""
-    from datasets.load import load_dataset
-    from datasets.utils.info_utils import VerificationMode
-
-    from eh30pt.datasets.multinerd import Multinerd
-
     raw = load_dataset(
         "Babelscape/multinerd",
         split="train[:1]",
         verification_mode=VerificationMode.NO_CHECKS,
     )
+
     row = raw[0]
     tokens, tag_ids = Multinerd._join_spans(row["tokens"], row["ner_tags"])
 
@@ -179,3 +188,43 @@ def test_load_data_omits_source_for_static_datasets(
     data = load_data(gpt2_tokenizer, "oblique", "decoder")
 
     assert list(data.test.samples())
+
+
+def test_extract_seeded_rows_tokenize_with_real_tokenizer(
+    database: None,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Seeded extraction candidates tokenize through a real tokenizer."""
+    _ = database
+    data = load_discont_extract(gpt2_tokenizer, "decoder", source="trigger")
+    n_rows = 2
+    rows = list(islice(data.test, n_rows))
+
+    assert len(rows) == n_rows
+    assert all(set(row) >= {"input_ids", "labels"} for row in rows)
+
+
+@pytest.mark.vcr
+def test_extract_constrained_completion_matches_registry_schema(
+    database: None,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """A streamed extraction candidate completes to schema-valid JSON on llama."""
+    _ = database
+    data = load_discont_extract(gpt2_tokenizer, "decoder", source="trigger")
+    sample = next(iter(data.test.samples()))
+
+    assert isinstance(sample.id, int)
+
+    schema = get_response_schema("discont-extract/trigger")
+    client = CompletionClient(ServerSettings(provider="llama", format=schema), seed=0)
+    conversation = CompletionClient.build_conversation(
+        sample.user,
+        system=get_sys_prompt("discont-extract/trigger"),
+    )
+
+    prediction = asyncio.run(client.complete(conversation)).unwrap()
+
+    assert isinstance(prediction, dict)
+    assert set(prediction) == set(get_extract_fields("discont-extract/trigger"))
+    assert all(isinstance(value, str) for value in prediction.values())
