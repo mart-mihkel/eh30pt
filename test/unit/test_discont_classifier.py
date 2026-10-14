@@ -5,7 +5,7 @@ from typing import Final
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
 
-_labels: Final = 10
+_labels: Final = 8
 
 
 def test_labels_cover_reasons_and_phrase_flags() -> None:

@@ -54,6 +54,7 @@ def main(
         n_shot=common.n_shot,
         seed=common.seed,
         data_path=common.data_path,
+        train_size=training.train_size,
     )
 
     sys_prompt = get_sys_prompt(common.dataset)
@@ -92,7 +93,9 @@ def main(
         "eval_steps": training.eval_steps,
         "patience": training.patience,
         "tolerance": training.tolerance,
-        "train_steps": training.train_steps,
+        "epochs": training.epochs,
+        "train_size": training.train_size,
+        "save_model": training.save_model,
         "batch_size": training.batch_size,
         "learning_rate": training.learning_rate,
         "warmup_ratio": training.warmup_ratio,

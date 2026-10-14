@@ -2,7 +2,7 @@
 
 import asyncio
 from itertools import islice
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 from datasets.load import load_dataset
@@ -32,6 +32,15 @@ if TYPE_CHECKING:
 
     from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
     from test.integration.conftest import ModelSetup
+
+
+_limited_train_size: Final = 4
+_steps_train_size: Final = 16
+_steps_batch_size: Final = 8
+_steps_one_epoch: Final = 2
+_steps_two_half_epochs: Final = 5
+_epochs_one: Final = 1
+_epochs_two_half: Final = 2.5
 
 
 def test_splits_stream_tokenized_rows(model_setup: ModelSetup) -> None:
@@ -188,6 +197,64 @@ def test_load_data_omits_source_for_static_datasets(
     data = load_data(gpt2_tokenizer, "oblique", "decoder")
 
     assert list(data.test.samples())
+
+
+def test_load_data_train_size_limits_train_split(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    full = load_data(gpt2_tokenizer, "oblique", "decoder")
+    full_count = sum(1 for _ in full.train.samples())
+
+    assert full_count > _limited_train_size
+
+    limited = load_data(
+        gpt2_tokenizer, "oblique", "decoder", train_size=_limited_train_size
+    )
+
+    assert sum(1 for _ in limited.train.samples()) == _limited_train_size
+    assert len(list(limited.train)) == _limited_train_size
+    assert sum(1 for _ in limited.eval.samples()) == sum(1 for _ in full.eval.samples())
+    assert sum(1 for _ in limited.test.samples()) == sum(1 for _ in full.test.samples())
+
+
+def test_load_data_rejects_non_positive_train_size(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    with pytest.raises(ValueError, match="train size"):
+        load_data(gpt2_tokenizer, "oblique", "decoder", train_size=0)
+
+
+def test_steps_for_epochs_scales_with_train_size(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    from eh30pt.tracking.context import _steps_for_epochs
+
+    data = load_data(gpt2_tokenizer, "oblique", "decoder", train_size=_steps_train_size)
+
+    assert (
+        _steps_for_epochs(data, epochs=_epochs_one, batch_size=_steps_batch_size)
+        == _steps_one_epoch
+    )
+    assert (
+        _steps_for_epochs(data, epochs=_epochs_two_half, batch_size=_steps_batch_size)
+        == _steps_two_half_epochs
+    )
+
+
+def test_steps_for_epochs_rejects_empty_train(
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    from datasets import Dataset as HFDataset
+
+    from eh30pt.datasets.oblique import Obl
+    from eh30pt.tracking.context import _steps_for_epochs
+    from eh30pt.types import DataSplits
+
+    empty = Obl(HFDataset.from_list([]), gpt2_tokenizer, "decoder")
+    data = DataSplits(train=empty, eval=empty, test=empty)
+
+    with pytest.raises(ValueError, match="empty"):
+        _steps_for_epochs(data, epochs=_epochs_one, batch_size=_steps_batch_size)
 
 
 def test_extract_seeded_rows_tokenize_with_real_tokenizer(

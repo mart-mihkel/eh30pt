@@ -58,10 +58,6 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         "Dosage change",
         "Other non-discontinuation",
     )
-    flagged = (
-        "Incomplete phrase",
-        "Incorrect phrase",
-    )
 
     assert set(DiscontBinary.reason2label) == set(DiscontClassifier.id2label.values())
     assert set(DiscontBinary.reason2label.values()) == {"yes", "no"}
@@ -70,9 +66,6 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         assert DiscontBinary.reason2label[reason] == "yes"
 
     for reason in continued:
-        assert DiscontBinary.reason2label[reason] == "no"
-
-    for reason in flagged:
         assert DiscontBinary.reason2label[reason] == "no"
 
 

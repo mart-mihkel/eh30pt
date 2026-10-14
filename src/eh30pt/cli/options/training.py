@@ -9,13 +9,28 @@ if TYPE_CHECKING:
 
     from rich_click.decorators import FC
 
-train_steps_option = click.option(
-    "--train-steps",
-    "-t",
-    "train_steps",
-    required=True,
+epochs_option = click.option(
+    "--epochs",
+    "epochs",
+    default=3,
+    type=click.FloatRange(min=0, min_open=True),
+    help="Number of passes over the train split",
+)
+
+train_size_option = click.option(
+    "--train-size",
+    "train_size",
     type=click.IntRange(min=1),
-    help="Number of training steps",
+    default=None,
+    help="Use only the first N train examples, full split when omitted",
+)
+
+save_model_option = click.option(
+    "--save-model/--no-save-model",
+    "save_model",
+    default=False,
+    show_default=True,
+    help="Save HF checkpoints and log the model as an artifact",
 )
 
 eval_steps_option = click.option(

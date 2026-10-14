@@ -57,13 +57,15 @@ from eh30pt.cli.options.slurm import (
 from eh30pt.cli.options.training import (
     batch_size_option,
     constrain_option,
+    epochs_option,
     eval_steps_option,
     head_only_option,
     learning_rate_option,
     patience_option,
     prefix_init_option,
+    save_model_option,
     tolerance_option,
-    train_steps_option,
+    train_size_option,
     warmup_ratio_option,
 )
 from eh30pt.logging import logger, setup_logging
@@ -130,7 +132,9 @@ if TYPE_CHECKING:
                 {
                     "name": "Training",
                     "options": [
-                        "--train-steps",
+                        "--epochs",
+                        "--train-size",
+                        "--save-model",
                         "--eval-steps",
                         "--batch-size",
                         "--learning-rate",
@@ -231,7 +235,9 @@ def log_accelerator() -> None:
 @head_only_option
 @constrain_option
 @n_shot_option
-@train_steps_option
+@epochs_option
+@train_size_option
+@save_model_option
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(5e-5)
@@ -253,7 +259,9 @@ def fine_tune(
     head_only: bool,
     constrain: bool,
     n_shot: int,
-    train_steps: int,
+    epochs: float,
+    train_size: int | None,
+    save_model: bool,
     eval_steps: int,
     batch_size: int,
     learning_rate: float,
@@ -296,7 +304,9 @@ def fine_tune(
         eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
-        train_steps=train_steps,
+        epochs=epochs,
+        train_size=train_size,
+        save_model=save_model,
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
@@ -317,7 +327,9 @@ def fine_tune(
 @prefix_init_option
 @constrain_option
 @n_shot_option
-@train_steps_option
+@epochs_option
+@train_size_option
+@save_model_option
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(1e-3)
@@ -339,7 +351,9 @@ def prompt_tune(
     prefix_init: PrefixInit,
     constrain: bool,
     n_shot: int,
-    train_steps: int,
+    epochs: float,
+    train_size: int | None,
+    save_model: bool,
     eval_steps: int,
     batch_size: int,
     learning_rate: float,
@@ -382,7 +396,9 @@ def prompt_tune(
         eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
-        train_steps=train_steps,
+        epochs=epochs,
+        train_size=train_size,
+        save_model=save_model,
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
@@ -405,7 +421,9 @@ def prompt_tune(
 @lora_dropout_option
 @constrain_option
 @n_shot_option
-@train_steps_option
+@epochs_option
+@train_size_option
+@save_model_option
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(2e-4)
@@ -429,7 +447,9 @@ def qlora(
     lora_dropout: float,
     constrain: bool,
     n_shot: int,
-    train_steps: int,
+    epochs: float,
+    train_size: int | None,
+    save_model: bool,
     eval_steps: int,
     batch_size: int,
     learning_rate: float,
@@ -478,7 +498,9 @@ def qlora(
         eval_steps=eval_steps,
         patience=patience,
         tolerance=tolerance,
-        train_steps=train_steps,
+        epochs=epochs,
+        train_size=train_size,
+        save_model=save_model,
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,

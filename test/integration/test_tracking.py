@@ -707,6 +707,32 @@ def test_finish_training_logs_registers_model(
     assert mlflow.get_run(run_id).data.metrics["test_f1"] == _finish_f1
 
 
+def test_finish_training_skips_model_without_saving(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    bert_tokenizer: PreTrainedTokenizerFast,
+    oblique_bert_model: PreTrainedModel,
+) -> None:
+    _ = mlflow_client
+    mlflow.set_experiment("finish-skip-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="finish-skip-exp"
+    )
+    with RunContext(settings, config=run_config) as ctx:
+        ctx.finish_training(
+            "finish-skip-model",
+            model=oblique_bert_model,
+            tokenizer=bert_tokenizer,
+            task="text-classification",
+            test_metrics={"test_f1": _finish_f1},
+            save_model=False,
+        )
+        run_id = ctx.run_id
+
+    assert mlflow.get_run(run_id).data.metrics["test_f1"] == _finish_f1
+    assert mlflow_client.list_artifacts(run_id, "model") == []
+
+
 def test_get_experiment_id_rejects_missing(
     mlflow_client: MlflowClient,
 ) -> None:

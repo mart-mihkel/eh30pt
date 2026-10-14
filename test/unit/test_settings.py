@@ -20,7 +20,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _port_custom: Final = 5433
-_train_steps_custom: Final = 10
+_epochs_custom: Final = 3.0
+_train_size_custom: Final = 100
 _learning_rate_custom: Final = 5e-5
 
 
@@ -107,25 +108,60 @@ def test_mlflow_rejects_empty() -> None:
 
 
 def test_training_rejects_out_of_range() -> None:
-    with pytest.raises(ValidationError, match="train_steps"):
-        TrainingSettings(train_steps=0, learning_rate=_learning_rate_custom)
+    with pytest.raises(ValidationError, match="epochs"):
+        TrainingSettings(epochs=0, learning_rate=_learning_rate_custom)
+
+    with pytest.raises(ValidationError, match="train_size"):
+        TrainingSettings(
+            epochs=_epochs_custom,
+            train_size=0,
+            learning_rate=_learning_rate_custom,
+        )
 
     with pytest.raises(ValidationError, match="batch_size"):
         TrainingSettings(
-            train_steps=_train_steps_custom,
+            epochs=_epochs_custom,
             batch_size=0,
             learning_rate=_learning_rate_custom,
         )
 
     with pytest.raises(ValidationError, match="learning_rate"):
-        TrainingSettings(train_steps=_train_steps_custom, learning_rate=-1.0)
+        TrainingSettings(epochs=_epochs_custom, learning_rate=-1.0)
 
     with pytest.raises(ValidationError, match="eval_steps"):
         TrainingSettings(
-            train_steps=_train_steps_custom,
+            epochs=_epochs_custom,
             learning_rate=_learning_rate_custom,
             eval_steps=-1,
         )
+
+
+def test_training_stores_epochs_and_train_size() -> None:
+    settings = TrainingSettings(
+        epochs=_epochs_custom,
+        train_size=_train_size_custom,
+        learning_rate=_learning_rate_custom,
+    )
+
+    assert settings.epochs == _epochs_custom
+    assert settings.train_size == _train_size_custom
+    assert settings.save_model is True
+    assert (
+        TrainingSettings(
+            epochs=_epochs_custom, learning_rate=_learning_rate_custom
+        ).train_size
+        is None
+    )
+
+
+def test_training_disables_model_saving() -> None:
+    settings = TrainingSettings(
+        epochs=_epochs_custom,
+        learning_rate=_learning_rate_custom,
+        save_model=False,
+    )
+
+    assert settings.save_model is False
 
 
 def test_lora_rejects_out_of_range() -> None:

@@ -108,6 +108,29 @@ def test_build_spec_aligns_save_with_eval_for_best_checkpoints(
     assert spec.save_steps == _eval_steps
 
 
+def test_build_spec_disables_saving_without_checkpoints(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Metrics-only runs must neither save checkpoints nor load the best."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=_eval_steps,
+        train_steps=_train_steps,
+        checkpoints=False,
+    )
+
+    assert spec.load_best is False
+    assert spec.save_strategy == "no"
+
+
 def test_label_completions_collects_unmasked_tails(
     oblique_splits: DataSplits,
 ) -> None:

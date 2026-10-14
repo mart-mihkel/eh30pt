@@ -63,8 +63,6 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reaction without discontinuation": "no",
         "Dosage change": "no",
         "Other non-discontinuation": "no",
-        "Incomplete phrase": "no",
-        "Incorrect phrase": "no",
     }
 
     system_prompt = dedent(
@@ -88,8 +86,6 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         FewShot(user="iiveldus tekkis, aga ravi jätkub", label="no"),
         FewShot(user="vähendasime statiini doosi", label="no"),
         FewShot(user="patsient jätkab ravi muutuseta", label="no"),
-        FewShot(user="katkestas", label="no"),
-        FewShot(user="ilm on ilus", label="no"),
     ]
 
     @staticmethod
@@ -201,7 +197,7 @@ def load_discont_binary(
     df = ExtractionFrameSchema.validate(df)
     train, eval_, test = (
         _map(frame)
-        for frame in stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
+        for frame in stratify(df, on="label", ratios=(0.8, 0.1, 0.1), seed=seed)
     )
 
     logger.debug(

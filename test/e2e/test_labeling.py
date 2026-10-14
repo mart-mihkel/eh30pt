@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import polars as pl
 import pytest
 from returns.result import Failure
 
+from eh30pt.datasets.discontinuation.extract import DiscontExtract
+from eh30pt.datasets.registry import get_labels
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
 from eh30pt.labeling.studio import StudioClient, StudioResult
-from eh30pt.labeling.tasks.extract import extraction_labeling
+from eh30pt.labeling.tasks.extract import extraction_controls, extraction_labeling
 from eh30pt.settings import LabelStudioSettings
 
 if TYPE_CHECKING:
@@ -19,24 +22,20 @@ if TYPE_CHECKING:
 
     from eh30pt.labeling.studio import ProjectRef
 
-_preds = pl.DataFrame(
-    {
-        "user": [
-            "Patsient lõpetas aspiriini kulu peavalu tõttu",
-            "Vähendasime statiini doosi lihasvalu tõttu",
-        ],
-        "prediction": [
-            (
-                '{"phrase": "lõpetas aspiriini kulu",'
-                ' "reason": "peavalu", "drug": "aspiriini"}'
-            ),
-            (
-                '{"phrase": "Vähendasime statiini doosi",'
-                ' "reason": "lihasvalu", "drug": "statiini"}'
-            ),
-        ],
-    },
-)
+
+@pytest.fixture
+def preds() -> pl.DataFrame:
+    """Build prediction rows from the extraction dataset's own examples."""
+    shots = DiscontExtract.extract_shots
+    return pl.DataFrame(
+        {
+            "user": [shot.user for shot in shots],
+            "prediction": [
+                json.dumps(shot.extractions, ensure_ascii=False, sort_keys=True)
+                for shot in shots
+            ],
+        }
+    )
 
 
 @pytest.fixture
@@ -51,9 +50,9 @@ def studio() -> LabelStudioSettings:
 
 
 @pytest.fixture
-def project(studio: LabelStudioSettings) -> Iterator[ProjectRef]:
+def project(studio: LabelStudioSettings, preds: pl.DataFrame) -> Iterator[ProjectRef]:
     """Create a throwaway project and delete it after the test."""
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
 
     with StudioClient(studio) as client:
         created = client.create("eh30pt-e2e", labeling.config).unwrap()
@@ -65,8 +64,9 @@ def project(studio: LabelStudioSettings) -> Iterator[ProjectRef]:
 def test_create_project_imports_tasks_with_pre_annotations(
     studio: LabelStudioSettings,
     project: ProjectRef,
+    preds: pl.DataFrame,
 ) -> None:
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
 
     with StudioClient(studio) as client:
         client.validate(project.id, labeling.config).unwrap()
@@ -79,14 +79,17 @@ def test_create_project_imports_tasks_with_pre_annotations(
         tasks = client.tasks(project.id).unwrap()
 
     assert len(tasks) == len(labeling.tasks)
-    assert tasks[0]["data"]["text"] == _preds["user"][0]
-    assert tasks[0]["data"]["drug"] == "aspiriini"
+    assert tasks[0]["data"] == labeling.tasks[0]["data"]
+    assert (
+        tasks[0]["data"]["drug"] == DiscontExtract.extract_shots[0].extractions["drug"]
+    )
 
 
 def test_create_task_creates_a_separate_project_per_call(
     studio: LabelStudioSettings,
+    preds: pl.DataFrame,
 ) -> None:
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     created: list[ProjectRef] = []
 
     _projects = 2
@@ -114,8 +117,10 @@ def test_validate_rejects_a_malformed_label_config(
         assert isinstance(client.validate(project.id, "<View><Text"), Failure)
 
 
-def test_delete_removes_the_project(studio: LabelStudioSettings) -> None:
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+def test_delete_removes_the_project(
+    studio: LabelStudioSettings, preds: pl.DataFrame
+) -> None:
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
 
     with StudioClient(studio) as client:
         created = client.create("eh30pt-e2e-delete", labeling.config).unwrap()
@@ -128,12 +133,15 @@ def test_delete_removes_the_project(studio: LabelStudioSettings) -> None:
 def test_export_labels_writes_annotations_to_parquet(
     studio: LabelStudioSettings,
     project: ProjectRef,
+    preds: pl.DataFrame,
     tmp_path: Path,
 ) -> None:
     from eh30pt.cli.scripts.export_labels import main
 
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
+    labels = get_labels("discont-classifier/extract-labels")
+    controls = extraction_controls()
 
     with StudioClient(studio) as client:
         client.import_tasks(project.id, labeling.tasks).unwrap()
@@ -141,19 +149,20 @@ def test_export_labels_writes_annotations_to_parquet(
 
         first: StudioResult = {
             "id": "1",
-            "from_name": "discont",
+            "from_name": controls[0],
             "to_name": "text",
             "type": "choices",
-            "value": {"choices": ["Adverse reactions"]},
+            "value": {"choices": [labels[0]]},
         }
 
         second: StudioResult = {
             "id": "2",
-            "from_name": "meta",
+            "from_name": controls[2],
             "to_name": "text",
             "type": "choices",
-            "value": {"choices": ["Dosage change"]},
+            "value": {"choices": [labels[1]]},
         }
+        # Meta-box flags never export, so only the first choice below survives.
 
         client.annotate(imported[0]["id"], [first, second]).unwrap()
 
@@ -166,28 +175,34 @@ def test_export_labels_writes_annotations_to_parquet(
 
     df = ExtractionFrameSchema.validate(pl.read_parquet(output))
 
-    _rows = 2
+    _rows = 1
     assert df.height == _rows
-    assert df["label"].to_list() == ["Adverse reactions", "Dosage change"]
-    assert df["drug"].to_list() == ["aspiriini", "aspiriini"]
+    assert df["label"].to_list() == [labels[0]]
+    assert df["drug"].to_list() == [DiscontExtract.extract_shots[0].extractions["drug"]]
 
 
 def test_export_labels_combines_projects_into_one_frame(
     studio: LabelStudioSettings,
     project: ProjectRef,
+    preds: pl.DataFrame,
     tmp_path: Path,
 ) -> None:
     from eh30pt.cli.scripts.export_labels import main
 
-    labeling = extraction_labeling("discont-extract/trigger", _preds, "run-1")
+    labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
+    labels = get_labels("discont-classifier/extract-labels")
+    controls = extraction_controls()
+
+    _needed = 2
+    assert len(labeling.tasks) >= _needed
 
     choice: StudioResult = {
         "id": "1",
-        "from_name": "discont",
+        "from_name": controls[0],
         "to_name": "text",
         "type": "choices",
-        "value": {"choices": ["Treatment success"]},
+        "value": {"choices": [labels[1]]},
     }
 
     with StudioClient(studio) as client:
@@ -214,4 +229,4 @@ def test_export_labels_combines_projects_into_one_frame(
 
     _rows = 2
     assert df.height == _rows
-    assert df["label"].to_list() == ["Treatment success", "Treatment success"]
+    assert df["label"].to_list() == [labels[1], labels[1]]

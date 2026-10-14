@@ -1,5 +1,6 @@
 """An open MLflow run plus its local checkpoint directory."""
 
+import math
 import re
 import traceback
 from pathlib import Path
@@ -63,6 +64,45 @@ def logged_model_name(value: str) -> str:
     """Shorten `value` to its last path segment, folded into a valid name."""
     short = value.rstrip("/").split("/")[-1]
     return re.sub(r"[^A-Za-z0-9_-]", "-", short)
+
+
+def _count_train(data: DataSplits) -> int:
+    """Count train examples through prompts, avoiding tokenization."""
+    from tqdm import tqdm
+
+    samples = getattr(data.train, "samples", None)
+    stream = samples() if callable(samples) else iter(data.train)
+
+    total = 0
+    with tqdm(desc="counting train", unit="examples") as bar:
+        for _ in stream:
+            total += 1
+            bar.update(1)
+
+    return total
+
+
+def _steps_for_epochs(
+    data: DataSplits,
+    *,
+    epochs: float,
+    batch_size: int,
+) -> int:
+    """Convert epochs over the train split into optimizer steps."""
+    n_train = _count_train(data)
+    if n_train == 0:
+        msg = "train split is empty, cannot derive training steps"
+        raise ValueError(msg)
+
+    steps = max(math.ceil(epochs * n_train / batch_size), 1)
+    logger.info(
+        "training %d examples for %g epochs: %d steps",
+        n_train,
+        epochs,
+        steps,
+    )
+
+    return steps
 
 
 class RunContext:
@@ -493,6 +533,12 @@ class RunContext:
             msg = "no mlflow run name"
             raise ValueError(msg)
 
+        train_steps = _steps_for_epochs(
+            data,
+            epochs=training.epochs,
+            batch_size=training.batch_size,
+        )
+
         trainer = get_trainer(
             model=model,
             tokenizer=tokenizer,
@@ -504,19 +550,22 @@ class RunContext:
             eval_steps=training.eval_steps,
             patience=training.patience,
             tolerance=training.tolerance,
-            train_steps=training.train_steps,
+            train_steps=train_steps,
             learning_rate=training.learning_rate,
             batch_size=training.batch_size,
             warmup_ratio=training.warmup_ratio,
             run_name=run,
             report_to="mlflow",
-            checkpoints=True,
+            checkpoints=training.save_model,
             constrain=training.constrain,
         )
 
         logger.debug("starting trainer")
         trainer.train(resume_from_checkpoint=self.find_checkpoint())
-        self.sync_checkpoints()
+        if training.save_model:
+            self.sync_checkpoints()
+        else:
+            logger.info("skipping checkpoint sync, model saving is disabled")
 
         logger.debug("starting test eval")
         test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
@@ -527,6 +576,7 @@ class RunContext:
             tokenizer=tokenizer,
             task=get_pipeline_task(arch),
             test_metrics=dict(test_metrics),
+            save_model=training.save_model,
         )
 
         return test_metrics
@@ -580,9 +630,14 @@ class RunContext:
         test_metrics: Mapping[str, float],
         metric: str = "test_f1",
         mode: Literal["max", "min"] = "max",
+        save_model: bool = True,
     ) -> None:
-        """Log test metrics and artifacts, registering the model when it leads."""
+        """Log test metrics, skipping model artifacts when saving is disabled."""
         self.log_metrics(dict(test_metrics))
+        if not save_model:
+            logger.info("skipping model logging, model saving is disabled")
+            return
+
         logged_model_id = self.log_model_artifacts(model, tokenizer, task)
         self.register_best_model(
             registered_name,

@@ -59,30 +59,36 @@ def extraction_frame(
         data = cast("_ExtractionData", task["data"])
 
         for annt in task["annotations"]:
-            choice_res = [res for res in annt["result"] if res["type"] == "choices"]
+            results = [
+                res
+                for res in annt["result"]
+                if res["type"] == "choices" and res["from_name"] != "meta"
+            ]
 
-            for res in choice_res:
-                val = res["value"]
-                if "choices" not in val:
-                    raise RuntimeError
+            if len(results) == 0:
+                continue
 
-                val = cast("ChoiceValue", val)
-                for choice in val["choices"]:
-                    row = {
-                        "project_id": project,
-                        "task_id": task["id"],
-                        "annotation_id": annt["id"],
-                        "result_id": res["id"],
-                        "annotator": annt["completed_by"],
-                        "from_name": res["from_name"],
-                        "text": data["text"],
-                        "phrase": data["phrase"],
-                        "reason": data["reason"],
-                        "drug": data["drug"],
-                        "label": choice,
-                    }
+            res = results[0]
+            val = cast("ChoiceValue", res["value"])
+            choices = val["choices"]
+            if len(choices) == 0:
+                continue
 
-                    rows.append(row)
+            row = {
+                "project_id": project,
+                "task_id": task["id"],
+                "annotation_id": annt["id"],
+                "result_id": res["id"],
+                "annotator": annt["completed_by"],
+                "from_name": res["from_name"],
+                "text": data["text"],
+                "phrase": data["phrase"],
+                "reason": data["reason"],
+                "drug": data["drug"],
+                "label": val["choices"][0],
+            }
+
+            rows.append(row)
 
     return ExtractionFrameSchema.validate(pl.DataFrame(rows))
 
@@ -134,6 +140,7 @@ def stratify(
         pl.concat(eval_, how="vertical"),
         pl.concat(test, how="vertical"),
     )
+
     logger.debug(
         "stratified %d rows into train=%d eval=%d test=%d",
         df.height,

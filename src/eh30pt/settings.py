@@ -63,11 +63,13 @@ class TrainingSettings(BaseModel):
     eval_steps: int = Field(default=0, ge=0)
     patience: int = Field(default=0, ge=0)
     tolerance: float = Field(default=0.01, ge=0)
-    train_steps: int = Field(ge=1)
+    epochs: float = Field(gt=0)
+    train_size: int | None = Field(default=None, ge=1)
     batch_size: int = Field(default=8, ge=1)
     learning_rate: float = Field(ge=0)
     warmup_ratio: float = Field(default=0.06, ge=0)
     constrain: bool = False
+    save_model: bool = False
 
 
 class LoRASettings(BaseModel):

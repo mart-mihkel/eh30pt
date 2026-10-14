@@ -49,8 +49,6 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         5: "Adverse reaction without discontinuation",
         6: "Dosage change",
         7: "Other non-discontinuation",
-        8: "Incomplete phrase",
-        9: "Incorrect phrase",
     }
 
     label2id: ClassVar[Mapping[str, int]] = {
@@ -62,8 +60,6 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Adverse reaction without discontinuation": 5,
         "Dosage change": 6,
         "Other non-discontinuation": 7,
-        "Incomplete phrase": 8,
-        "Incorrect phrase": 9,
     }
 
     system_prompt = dedent(
@@ -82,8 +78,6 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         6. Adverse reaction without discontinuation: Adverse side effects, allergic reactions, or negative interactions where treatment continued.
         7. Dosage change: The drug dose was increased or decreased rather than stopped.
         8. Other non-discontinuation: An event that is neither a discontinuation nor any of the reasons above.
-        9. Incomplete phrase: The extracted phrase is too short to decide the event alone; flag it for expansion instead of classifying.
-        10. Incorrect phrase: The extracted phrase is noise or a false positive; the real description, if any, is elsewhere.
 
         Only choose one category per input. If the reason is ambiguous or fits none of the categories above, select "Other". Respond only with the category name.
         """  # noqa: E501
@@ -109,14 +103,6 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         FewShot(
             user="patsient jätkab ravi muutuseta",
             label="Other non-discontinuation",
-        ),
-        FewShot(
-            user="katkestas",
-            label="Incomplete phrase",
-        ),
-        FewShot(
-            user="ilm on ilus",
-            label="Incorrect phrase",
         ),
     ]
 
@@ -225,7 +211,7 @@ def load_discont_classifier(
     """Load the exported Label Studio rows as train, eval and test splits."""
     df = pl.read_parquet(data_path)
     df = ExtractionFrameSchema.validate(df)
-    train, eval_, test = stratify(df, on="label", ratios=(0.7, 0.2, 0.1), seed=seed)
+    train, eval_, test = stratify(df, on="label", ratios=(0.8, 0.1, 0.1), seed=seed)
     logger.debug(
         "classifier splits train=(%s) eval=(%s) test=(%s)",
         format_counts(Counter(train["label"])),

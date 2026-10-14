@@ -77,8 +77,6 @@ type DiscontClassifierLabel = Literal[
     "Adverse reaction without discontinuation",
     "Dosage change",
     "Other non-discontinuation",
-    "Incomplete phrase",
-    "Incorrect phrase",
 ]
 
 type DataSource = Literal[
@@ -127,10 +125,12 @@ class TrainingRunConfig(RunConfig):
     eval_steps: int
     patience: int
     tolerance: float
-    train_steps: int
+    epochs: float
+    train_size: int | None
     learning_rate: float
     warmup_ratio: float
     constrain: bool
+    save_model: bool
 
 
 class FineTuneRunConfig(TrainingRunConfig):

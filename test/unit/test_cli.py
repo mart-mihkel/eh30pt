@@ -58,6 +58,36 @@ def test_all_commands_render_help() -> None:
         assert result.exit_code == 0, name
 
 
+def test_training_commands_expose_epochs_and_train_size() -> None:
+    """Fine-tune, prompt-tune and qlora take --epochs and --train-size."""
+    runner = CliRunner()
+    for name in ("fine-tune", "prompt-tune", "qlora"):
+        result = runner.invoke(app, [name, "--help"])
+
+        assert result.exit_code == 0, name
+        assert "--epochs" in result.output, name
+        assert "--train-size" in result.output, name
+        assert "--save-model" in result.output, name
+        assert "--train-steps" not in result.output, name
+
+
+def test_epochs_rejects_zero() -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "fine-tune",
+            "--model",
+            "some-model",
+            "--dataset",
+            "oblique",
+            "--epochs",
+            "0",
+        ],
+    )
+
+    assert result.exit_code != 0
+
+
 def test_slurm_rejects_non_training_command() -> None:
     result = CliRunner().invoke(app, ["slurm", "generate", "--", "--model", "x"])
 
