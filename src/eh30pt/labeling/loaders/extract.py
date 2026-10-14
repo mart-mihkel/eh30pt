@@ -40,12 +40,13 @@ class ExtractionFrameSchema(pa.DataFrameModel):
     task_id: pl.Int64
     annotation_id: pl.Int64
     result_id: pl.String
+    annotator: pl.Int64
+    from_name: pl.String
     text: pl.String
     phrase: pl.String
     reason: pl.String
     drug: pl.String
     label: pl.String = pa.Field(isin=get_args(DiscontClassifierLabel.__value__))
-    annotator: pl.Int64
 
 
 def extraction_frame(
@@ -72,12 +73,13 @@ def extraction_frame(
                         "task_id": task["id"],
                         "annotation_id": annt["id"],
                         "result_id": res["id"],
+                        "annotator": annt["completed_by"],
+                        "from_name": res["from_name"],
                         "text": data["text"],
                         "phrase": data["phrase"],
                         "reason": data["reason"],
                         "drug": data["drug"],
                         "label": choice,
-                        "annotator": annt["completed_by"],
                     }
 
                     rows.append(row)

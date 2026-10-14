@@ -24,7 +24,7 @@ def main(
     projects: Sequence[int],
     dataset: DatasetName,
     output: Path | None = None,
-) -> Path:
+) -> None:
     """Write projects' annotations to Parquet."""
     dfs: list[pl.DataFrame] = []
     with StudioClient(settings) as studio:
@@ -55,5 +55,3 @@ def main(
     output.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(output)
     logger.info("wrote %d annotation rows to '%s'", df.height, output)
-
-    return output
