@@ -136,9 +136,9 @@ def stratify(
         test.append(parts[2])
 
     splits = (
-        pl.concat(train, how="vertical"),
-        pl.concat(eval_, how="vertical"),
-        pl.concat(test, how="vertical"),
+        pl.concat(train, how="vertical").sample(fraction=1.0, shuffle=True, seed=seed),
+        pl.concat(eval_, how="vertical").sample(fraction=1.0, shuffle=True, seed=seed),
+        pl.concat(test, how="vertical").sample(fraction=1.0, shuffle=True, seed=seed),
     )
 
     logger.debug(
