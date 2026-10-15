@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 epochs_option = click.option(
     "--epochs",
+    "-e",
     "epochs",
     default=3,
     type=click.FloatRange(min=0, min_open=True),
@@ -19,6 +20,7 @@ epochs_option = click.option(
 
 train_size_option = click.option(
     "--train-size",
+    "-t",
     "train_size",
     type=click.IntRange(min=1),
     default=None,
@@ -35,7 +37,7 @@ save_model_option = click.option(
 
 eval_steps_option = click.option(
     "--eval-steps",
-    "-e",
+    "-es",
     "eval_steps",
     type=click.IntRange(min=0),
     default=0,
@@ -55,6 +57,7 @@ batch_size_option = click.option(
 
 patience_option = click.option(
     "--patience",
+    "-pat",
     "patience",
     type=click.IntRange(min=0),
     default=0,
@@ -64,6 +67,7 @@ patience_option = click.option(
 
 tolerance_option = click.option(
     "--tolerance",
+    "-tol",
     "tolerance",
     type=click.FloatRange(min=0),
     default=0.01,
@@ -76,7 +80,7 @@ def learning_rate_option(default: float) -> Callable[[FC], FC]:
     """Build the optimizer learning rate option with a per-command default."""
     return click.option(
         "--learning-rate",
-        "-r",
+        "-lr",
         "learning_rate",
         type=click.FloatRange(min=0),
         default=default,
@@ -89,7 +93,7 @@ def warmup_ratio_option(default: float) -> Callable[[FC], FC]:
     """Build the optimizer warmup ratio option with a per-command default."""
     return click.option(
         "--warmup-ratio",
-        "-w",
+        "-wr",
         "warmup_ratio",
         type=click.FloatRange(min=0),
         default=default,
@@ -100,6 +104,7 @@ def warmup_ratio_option(default: float) -> Callable[[FC], FC]:
 
 prefix_init_option = click.option(
     "--prefix-init",
+    "-pi",
     "prefix_init",
     type=click.Choice(["pretrained", "random"]),
     default="pretrained",
@@ -109,6 +114,7 @@ prefix_init_option = click.option(
 
 head_only_option = click.option(
     "--head-only",
+    "-ho",
     "head_only",
     is_flag=True,
     default=False,

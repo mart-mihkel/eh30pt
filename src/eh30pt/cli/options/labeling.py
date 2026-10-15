@@ -35,6 +35,7 @@ project_ids_option = click.option(
 
 data_path_option = click.option(
     "--data-path",
+    "-dp",
     "data_path",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,

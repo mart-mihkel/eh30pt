@@ -4,6 +4,7 @@ import rich_click as click
 
 tracking_uri_option = click.option(
     "--mlflow-tracking-uri",
+    "-mtu",
     "mlflow_tracking_uri",
     type=str,
     show_default=True,
@@ -14,6 +15,7 @@ tracking_uri_option = click.option(
 
 experiment_option = click.option(
     "--mlflow-experiment",
+    "-mex",
     "mlflow_experiment",
     type=str,
     default="eh30pt",
@@ -25,6 +27,7 @@ experiment_option = click.option(
 
 export_run_option = click.option(
     "--mlflow-run-id",
+    "-mri",
     "mlflow_run_id",
     type=str,
     required=True,
@@ -35,6 +38,7 @@ export_run_option = click.option(
 
 run_name_option = click.option(
     "--mlflow-run-name",
+    "-mrn",
     "mlflow_run_name",
     type=str,
     default=None,
@@ -45,6 +49,7 @@ run_name_option = click.option(
 
 run_id_option = click.option(
     "--mlflow-run-id",
+    "-mri",
     "mlflow_run_id",
     type=str,
     default=None,

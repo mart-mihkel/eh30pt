@@ -66,7 +66,7 @@ output_option = click.option(
 
 log_level_option = click.option(
     "--log-level",
-    "-l",
+    "-ll",
     "log_level",
     type=click.Choice(["debug", "info", "warning", "error"]),
     default="info",
