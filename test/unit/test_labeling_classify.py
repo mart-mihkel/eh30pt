@@ -75,4 +75,4 @@ def test_classification_labeling_without_shards_is_empty() -> None:
     )
 
     assert labeling.tasks == []
-    assert 'value="Other"' in labeling.config
+    assert 'value="Muu põhjus"' in labeling.config

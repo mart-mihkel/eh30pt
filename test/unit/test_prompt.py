@@ -45,7 +45,7 @@ def test_oblique_format_user_prompt() -> None:
 def test_classifier_format_user_prompt() -> None:
     assert (
         DiscontClassifier._format_user_prompt("Katkestas ravi", "katkestas", "Aspiriin")
-        == "Text: Katkestas ravi\nPhrase: katkestas\nDrug: Aspiriin\nCategory:"
+        == "**Tekst**:\nKatkestas ravi\n\n**Fraas**:\nkatkestas\n\n**Ravim**:\nAspiriin"
     )
 
 
@@ -388,7 +388,7 @@ def test_discont_tokenize_rejects_too_many_shots() -> None:
 
     with pytest.raises(ValueError, match="more few shot examples"):
         DiscontClassifier([], tokenizer, "decoder").tokenize(
-            {"id": 1, "text": "x", "phrase": "x", "drug": "y", "label": "Other"},
+            {"id": 1, "text": "x", "phrase": "x", "drug": "y", "label": "Muu põhjus"},
             tokenizer,
             n_shot=100,
         )

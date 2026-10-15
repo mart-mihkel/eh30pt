@@ -299,6 +299,31 @@ def test_run_context_opens_fresh_run(
     assert mlflow.get_run(run_id).info.status == "FINISHED"
 
 
+def test_run_context_routes_mlflow_logs_to_rich(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from rich.logging import RichHandler
+
+    mlflow.set_experiment("rich-exp")
+
+    mlflow_settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="rich-exp"
+    )
+    with RunContext(mlflow_settings, config=run_config) as ctx:
+        assert ctx.resumed is False
+        mlflow_logger = logging.getLogger("mlflow")
+        assert mlflow_logger.propagate
+        assert all(
+            isinstance(handler, RichHandler) for handler in mlflow_logger.handlers
+        )
+        with caplog.at_level("INFO", logger="mlflow"):
+            mlflow_logger.info("rich mlflow probe")
+
+    assert "rich mlflow probe" in caplog.text
+
+
 def test_run_context_reattaches_by_explicit_id(
     mlflow_client: MlflowClient,
     run_config: RunConfig,

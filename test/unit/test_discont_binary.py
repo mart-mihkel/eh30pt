@@ -1,4 +1,4 @@
-"""Tests for the binary yes/no discontinuation dataset."""
+"""Tests for the binary jah/ei discontinuation dataset."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -9,7 +9,6 @@ from eh30pt.datasets.discontinuation.binary import DiscontBinary
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.datasets.registry import (
     get_few_shots,
-    get_labels,
     get_response_schema,
     get_sys_prompt,
     get_task,
@@ -22,26 +21,15 @@ if TYPE_CHECKING:
 _dataset = "discont-binary/extract-labels"
 
 
-def test_labels_are_yes_and_no() -> None:
-    assert get_labels(_dataset) == ("yes", "no")
-    assert DiscontBinary.id2label == {0: "yes", 1: "no"}
-    assert DiscontBinary.label2id == {"yes": 0, "no": 1}
-
-
 def test_registry_exposes_it_as_a_classifier() -> None:
     assert get_task(_dataset) == "classification"
     assert get_sys_prompt(_dataset) == DiscontBinary.system_prompt
     assert get_response_schema(_dataset)["json_schema"]["schema"] == {
         "type": "string",
-        "enum": ["yes", "no"],
+        "enum": ["jah", "ei"],
     }
+
     assert get_few_shots(_dataset, 3) == DiscontBinary.few_shots[:3]
-
-
-def test_prompt_only_asks_yes_or_no() -> None:
-    assert "yes" in DiscontBinary.system_prompt
-    assert "no" in DiscontBinary.system_prompt
-    assert 'Respond only with "yes" or "no".' in DiscontBinary.system_prompt
 
 
 def test_every_studio_reason_folds_onto_a_label() -> None:
@@ -53,30 +41,44 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         "Contraindication/unsafe co-usage",
         "Other",
     )
+
     continued = (
         "Adverse reaction without discontinuation",
         "Dosage change",
         "Other non-discontinuation",
     )
 
-    assert set(DiscontBinary.reason2label) == set(DiscontClassifier.id2label.values())
-    assert set(DiscontBinary.reason2label.values()) == {"yes", "no"}
+    assert set(DiscontBinary.reason2label) == set(DiscontClassifier.label2margend)
+    assert set(DiscontBinary.reason2label.values()) == {"jah", "ei"}
 
     for reason in stopping:
-        assert DiscontBinary.reason2label[reason] == "yes"
+        assert DiscontBinary.reason2label[reason] == "jah"
 
     for reason in continued:
-        assert DiscontBinary.reason2label[reason] == "no"
+        assert DiscontBinary.reason2label[reason] == "ei"
 
 
 def test_few_shots_agree_with_the_folding() -> None:
     """Every few-shot example must match what its reason folds onto."""
-    by_user = {shot.user: shot.label for shot in DiscontClassifier.few_shots}
-    binary = {shot.user: shot.label for shot in DiscontBinary.few_shots}
+    cls_shots = DiscontClassifier.few_shots
+    bin_shots = DiscontBinary.few_shots
+    margend2reason: dict[str, str] = {
+        margend: reason for reason, margend in DiscontClassifier.label2margend.items()
+    }
 
-    assert binary.keys() == by_user.keys()
-    for user, label in binary.items():
-        assert label == DiscontBinary.reason2label[by_user[user]]
+    assert len(cls_shots) == len(bin_shots)
+    for cls_shot, bin_shot in zip(cls_shots, bin_shots, strict=True):
+        assert (
+            bin_shot.label == DiscontBinary.reason2label[margend2reason[cls_shot.label]]
+        )
+
+
+def test_few_shots_match_prompt_format() -> None:
+    """Few-shot users must use the dataset prompt format, not bare text."""
+    for shot in (*DiscontClassifier.few_shots, *DiscontBinary.few_shots):
+        assert shot.user.startswith("**Tekst**:")
+        assert "\n\n**Fraas**:" in shot.user
+        assert "\n\n**Ravim**:" in shot.user
 
 
 def test_load_data_requires_a_data_path_for_the_binary_dataset() -> None:

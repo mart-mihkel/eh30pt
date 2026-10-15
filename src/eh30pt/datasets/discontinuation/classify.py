@@ -5,6 +5,7 @@ from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
     ClassVar,
+    Literal,
     TypedDict,
     cast,
 )
@@ -27,6 +28,18 @@ if TYPE_CHECKING:
     from eh30pt.types import Architecture
 
 
+type DiscontClassifierLabelEst = Literal[
+    "Kõrvaltoimed",
+    "Ravi edukas",
+    "Ravi ebaefektiivne",
+    "Vastunäidustus või ohtlik kooskasutamine",
+    "Muu põhjus",
+    "Kõrvaltoimed ilma lõpetamiseta",
+    "Annuse muutmine",
+    "Muu sündmus ilma ravi lõpetamiseta",
+]
+
+
 class DiscontClassifierRow(TypedDict):
     """One discontinuation event carrying one of the ten classifier labels."""
 
@@ -40,81 +53,168 @@ class DiscontClassifierRow(TypedDict):
 class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
     """Drug discontinuation reason classification."""
 
-    id2label: ClassVar[Mapping[int, DiscontClassifierLabel]] = {
-        0: "Adverse reactions",
-        1: "Treatment success",
-        2: "Treatment inefficacy",
-        3: "Contraindication/unsafe co-usage",
-        4: "Other",
-        5: "Adverse reaction without discontinuation",
-        6: "Dosage change",
-        7: "Other non-discontinuation",
+    id2label: ClassVar[Mapping[int, DiscontClassifierLabelEst]] = {
+        0: "Kõrvaltoimed",
+        1: "Ravi edukas",
+        2: "Ravi ebaefektiivne",
+        3: "Vastunäidustus või ohtlik kooskasutamine",
+        4: "Muu põhjus",
+        5: "Kõrvaltoimed ilma lõpetamiseta",
+        6: "Annuse muutmine",
+        7: "Muu sündmus ilma ravi lõpetamiseta",
     }
 
     label2id: ClassVar[Mapping[str, int]] = {
-        "Adverse reactions": 0,
-        "Treatment success": 1,
-        "Treatment inefficacy": 2,
-        "Contraindication/unsafe co-usage": 3,
-        "Other": 4,
-        "Adverse reaction without discontinuation": 5,
-        "Dosage change": 6,
-        "Other non-discontinuation": 7,
+        "Kõrvaltoimed": 0,
+        "Ravi edukas": 1,
+        "Ravi ebaefektiivne": 2,
+        "Vastunäidustus või ohtlik kooskasutamine": 3,
+        "Muu põhjus": 4,
+        "Kõrvaltoimed ilma lõpetamiseta": 5,
+        "Annuse muutmine": 6,
+        "Muu sündmus ilma ravi lõpetamiseta": 7,
+    }
+
+    label2margend: ClassVar[
+        Mapping[DiscontClassifierLabel, DiscontClassifierLabelEst]
+    ] = {
+        "Adverse reactions": "Kõrvaltoimed",
+        "Treatment success": "Ravi edukas",
+        "Treatment inefficacy": "Ravi ebaefektiivne",
+        "Contraindication/unsafe co-usage": "Vastunäidustus või ohtlik kooskasutamine",
+        "Other": "Muu põhjus",
+        "Adverse reaction without discontinuation": "Kõrvaltoimed ilma lõpetamiseta",
+        "Dosage change": "Annuse muutmine",
+        "Other non-discontinuation": "Muu sündmus ilma ravi lõpetamiseta",
     }
 
     system_prompt = dedent(
         """
-        You are a helpful assistant that reads Estonian electronic health records written by doctors about drug discontinuation for their patients on medication. For each input, classify the reason why the patient stopped taking the medication.
+        Sinu ülesanne on klassifitseerida Eesti elektroonilistes terviseandmetes kirjeldatud konkreetse ravimi kasutamisega seotud sündmus ning määrata, millisel põhjusel patsient ravimi kasutamise lõpetas või miks ravi ei lõpetatud.
 
-        Your input is the clinical text together with the extracted phrase describing the event and the drug in question.
+        Sulle antakse:
+        - Tekst: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
+        - Fraas: tekstist eraldatud fraas, mis kirjeldab ravimiga seotud sündmust.
+        - Ravim: ravim, mille kasutamise lõpetamist tuleb hinnata.
 
-        Here are the categories you must use:
+        Vali iga sisendi jaoks täpselt üks järgmistest kategooriatest.
 
-        1. Adverse reactions: Discontinuation due to adverse side effects, allergic reactions, or negative interactions with other medications.
-        2. Treatment success: Discontinuation due to successful treatment completion or sufficient improvement in health.
-        3. Treatment inefficacy: Perceived ineffectiveness of the treatment or loss of belief in its efficacy.
-        4. Contraindication/unsafe co-usage: Discontinuation due to the emergence or discovery of a medical condition or risk factor that makes the continued use of the treatment unsafe or inappropriate (e.g. "vastunäidustatud").
-        5. Other: Other medical reasons not explicitly covered by the other categories.
-        6. Adverse reaction without discontinuation: Adverse side effects, allergic reactions, or negative interactions where treatment continued.
-        7. Dosage change: The drug dose was increased or decreased rather than stopped.
-        8. Other non-discontinuation: An event that is neither a discontinuation nor any of the reasons above.
+        1. **Kõrvaltoimed**: Ravimi kasutamine lõpetati kõrvaltoimete, allergilise reaktsiooni või teiste ravimitega tekkinud kahjuliku koostoime tõttu.
+        2. **Ravi edukas**: Ravimi kasutamine lõpetati, sest ravieesmärk saavutati, ravikuur sai edukalt läbi või patsiendi terviseseisund paranes piisavalt.
+        3. **Ravi ebaefektiivne**: Ravimi kasutamine lõpetati, sest ravi ei olnud piisavalt tõhus, selle toime oli kadunud või patsient ei uskunud enam ravi tõhususse.
+        4. **Vastunäidustus või ohtlik kooskasutamine**: Ravimi kasutamine lõpetati, sest ilmnes või avastati meditsiiniline seisund, vastunäidustus või riskitegur, mille tõttu ravimi kasutamise jätkamine oli ohtlik või sobimatu. Siia kuuluvad ka olukorrad, kus ravimi kasutamine lõpetati ohtliku koostoime või samaaegse kasutamise riski tõttu.
+        5. **Muu põhjus**: Ravimi kasutamine lõpetati muul meditsiinilisel või mittemeditsiinilisel põhjusel, mida eespool nimetatud kategooriad ei hõlma. Siia kuuluvad näiteks patsiendi isiklik otsus, ravimi kättesaadavuse probleemid või muud täpsustamata lõpetamise põhjused. Kasuta seda kategooriat ka juhul, kui lõpetamise põhjus on ebaselge, kuid ravimi kasutamise lõpetamine on kinnitatud.
+        6. **Kõrvaltoimed ilma lõpetamiseta**: Esines kõrvaltoime, allergiline reaktsioon või kahjulik koostoime, kuid tekstist selgub, et ravimi kasutamist jätkati ega lõpetatud selle sündmuse tõttu.
+        7. **Annuse muutmine**: Ravimi annust suurendati või vähendati, kuid ravimi kasutamist ei lõpetatud. Kasuta seda kategooriat ka juhul, kui annuse muutmine on sündmuse peamine kirjeldatud tegevus ning ravi jätkub muudetud annusega.
+        8. **Muu sündmus ilma ravi lõpetamiseta**: Ravimi kasutamist ei lõpetatud ning sündmus ei kuulu kategooriasse **Kõrvaltoimed ilma lõpetamiseta** ega **Annuse muutmine**. Siia kuuluvad näiteks ravi jätkamine muutusteta, ravimi kasutamise lõpetamise kavatsus või soovitus ilma kinnitatud lõpetamiseta, ajutine ravi katkestamine, kui lõplikku lõpetamist ei ole kinnitatud, ning olukorrad, kus puudub piisav tõendus ravimi kasutamise lõpetamise kohta.
 
-        Only choose one category per input. If the reason is ambiguous or fits none of the categories above, select "Other". Respond only with the category name.
+        **Klassifitseerimise reeglid**
+
+        - Lähtu kogu kliinilisest tekstist, sündmust kirjeldavast fraasist ja hinnatavast ravimist. Ära tee otsust ainult eraldatud fraasi põhjal, kui ülejäänud tekst annab olulist lisateavet.
+        - Erista tegelikult toimunud ravimi kasutamise lõpetamist kavatsusest, soovitusest või plaanist ravi lõpetada.
+        - Ära eelda, et ravimi kasutamine lõpetati üksnes kõrvaltoime, ebaefektiivsuse või vastunäidustuse mainimise põhjal. Tekst peab toetama järeldust, et ravimi kasutamine lõpetati.
+        - Kui ravimi kasutamine lõpetati, vali kategooria lõpetamise põhjuse alusel, mitte üksnes sündmuse või diagnoosi nimetuse põhjal.
+        - Kui ravimi kasutamine jätkus, vali sobiv mitte-lõpetamise kategooria.
+        - Kui korraga esineb mitu asjaolu, vali kategooria, mis kirjeldab kõige otsesemalt ravimi kasutamise lõpetamise peamist põhjust. Kui lõpetamist ei toimunud, vali sobiv mitte-lõpetamise kategooria.
+        - Kui lõpetamine on kinnitatud, kuid selle põhjus jääb ebaselgeks või ei sobi ühegi konkreetse põhjuse kategooriaga, vali **Other**.
+        - Kui ravimi kasutamise lõpetamine ei ole kinnitatud ja puudub tõendus mõne konkreetse mitte-lõpetamise kategooria kohta, vali **Other non-discontinuation**.
+        - Klassifitseeri ainult nimetatud ravimi kasutamisega seotud sündmus. Ära omista teise ravimi kasutamise lõpetamise põhjust hinnatavale ravimile.
+
+        Väljasta ainult üks kategooria nimi, täpselt ühel järgmistest kujudest:
+
+        - `Kõrvaltoimed`
+        - `Ravi edukas`
+        - `Ravi ebaefektiivne`
+        - `Vastunäidustus või ohtlik kooskasutamine`
+        - `Muu põhjus`
+        - `Kõrvaltoimed ilma lõpetamiseta`
+        - `Annuse muutmine`
+        - `Muu sündmus ilma ravi lõpetamiseta`
+
+        Ära lisa selgitusi, põhjendusi ega muud teksti.
         """  # noqa: E501
     ).strip()
-
-    few_shots: ClassVar[list[FewShot]] = [
-        FewShot(user="ei talu", label="Adverse reactions"),
-        FewShot(user="vererõhk püsivalt normis", label="Treatment success"),
-        FewShot(user="valu ei leevenenud, ebaefektiivne", label="Treatment inefficacy"),
-        FewShot(
-            user="soovib rasestuda, katkestab ravi",
-            label="Contraindication/unsafe co-usage",
-        ),
-        FewShot(user="patsient viidi üle insuliinravile", label="Other"),
-        FewShot(
-            user="iiveldus tekkis, aga ravi jätkub",
-            label="Adverse reaction without discontinuation",
-        ),
-        FewShot(
-            user="vähendasime statiini doosi",
-            label="Dosage change",
-        ),
-        FewShot(
-            user="patsient jätkab ravi muutuseta",
-            label="Other non-discontinuation",
-        ),
-    ]
 
     @staticmethod
     def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""
         return dedent(f"""
-            Text: {text}
-            Phrase: {phrase}
-            Drug: {drug}
-            Category:
+            **Tekst**:
+            {text}
+
+            **Fraas**:
+            {phrase}
+
+            **Ravim**:
+            {drug}
         """).strip()
+
+    few_shots: ClassVar[list[FewShot]] = [
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient lõpetas enalapriili kasutamise, kuna ei talunud ravimit, tekkis kuiv köha ja lööve.",  # noqa: E501
+                "lõpetas enalapriili kasutamise, kuna ei talunud ravimit",
+                "enalapriil",
+            ),
+            label="Kõrvaltoimed",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
+                "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
+                "nebivolool",
+            ),
+            label="Ravi edukas",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Valu ei leevenenud, ibuprofeen osutus ebaefektiivseks, ravi lõpetati",
+                "valu ei leevenenud, ibuprofeen osutus ebaefektiivseks",
+                "ibuprofeen",
+            ),
+            label="Ravi ebaefektiivne",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient soovib rasestuda, katkestab statiiniravi",
+                "soovib rasestuda, katkestab statiiniravi",
+                "statiin",
+            ),
+            label="Vastunäidustus või ohtlik kooskasutamine",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient viidi üle insuliinravile, metformiin lõpetati.",
+                "Patsient viidi üle insuliinravile, metformiin lõpetati.",
+                "metformiin",
+            ),
+            label="Muu põhjus",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Metformiini kasutamisel tekkis iiveldus, aga ravi jätkub samas doosis",
+                "tekkis iiveldus, aga ravi jätkub",
+                "metformiin",
+            ),
+            label="Kõrvaltoimed ilma lõpetamiseta",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Kõrvaltoimete tõttu vähendasime statiini doosi",
+                "vähendasime statiini doosi",
+                "statiin",
+            ),
+            label="Annuse muutmine",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient jätkab enalapriilravi muutuseta, kaebusi ei ole.",
+                "patsient jätkab enalapriilravi muutuseta",
+                "enalapriil",
+            ),
+            label="Muu sündmus ilma ravi lõpetamiseta",
+        ),
+    ]
 
     def __init__(
         self,
@@ -186,14 +286,16 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
 
 
 def _rows(frame: pl.DataFrame) -> list[DiscontClassifierRow]:
-    """Return each row of a split frame as a typed classifier row."""
+    """Map each exported English label to its Estonian model output."""
     return [
         {
             "id": row["task_id"],
             "text": row["text"],
             "phrase": row["phrase"],
             "drug": row["drug"],
-            "label": row["label"],
+            "label": DiscontClassifier.label2margend[
+                cast("DiscontClassifierLabel", row["label"])
+            ],
         }
         for row in frame.to_dicts()
     ]

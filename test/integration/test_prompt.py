@@ -501,10 +501,9 @@ def test_load_classifier_reads_exported_labels_without_a_server(
 ) -> None:
     """Splits stream from an export-labels parquet, never touching the API."""
     from eh30pt.datasets.discontinuation.extract import DiscontExtract as _Extract
-    from eh30pt.datasets.registry import get_labels as _get_labels
 
     n_tasks = 10
-    real_labels = _get_labels("discont-classifier/extract-labels")
+    export_labels = tuple(DiscontClassifier.label2margend)
     real_shots = _Extract.extract_shots
     fallback_drug = next(
         s.extractions["drug"] for s in real_shots if s.extractions["drug"]
@@ -533,7 +532,9 @@ def test_load_classifier_reads_exported_labels_without_a_server(
                     real_shots[i % len(real_shots)].extractions["reason"]
                     for i in range(n_tasks)
                 ],
-                "label": [real_labels[i % len(real_labels)] for i in range(n_tasks)],
+                "label": [
+                    export_labels[i % len(export_labels)] for i in range(n_tasks)
+                ],
             }
         )
     )
@@ -551,7 +552,8 @@ def test_load_classifier_reads_exported_labels_without_a_server(
 
     assert len(samples) == n_tasks
     assert {sample.label for sample in samples} == {
-        real_labels[i % len(real_labels)] for i in range(n_tasks)
+        DiscontClassifier.label2margend[export_labels[i % len(export_labels)]]
+        for i in range(n_tasks)
     }
     assert sorted(
         sample_id for sample in samples if (sample_id := sample.id) is not None

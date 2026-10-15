@@ -28,11 +28,11 @@ if TYPE_CHECKING:
     from eh30pt.types import Architecture
 
 
-type DiscontBinaryLabel = Literal["yes", "no"]
+type DiscontBinaryLabel = Literal["jah", "ei"]
 
 
 class DiscontBinaryRow(TypedDict):
-    """One discontinuation event answered yes or no."""
+    """One discontinuation event answered jah or ei."""
 
     id: int
     text: str
@@ -44,59 +44,126 @@ class DiscontBinaryRow(TypedDict):
 class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
     """Whether an event discontinued the medication, whatever the reason."""
 
-    id2label: ClassVar[Mapping[int, DiscontBinaryLabel]] = {
-        0: "yes",
-        1: "no",
-    }
-
-    label2id: ClassVar[Mapping[str, int]] = {
-        "yes": 0,
-        "no": 1,
-    }
-
+    id2label: ClassVar[Mapping[int, DiscontBinaryLabel]] = {0: "jah", 1: "ei"}
+    label2id: ClassVar[Mapping[str, int]] = {"jah": 0, "ei": 1}
     reason2label: ClassVar[Mapping[str, DiscontBinaryLabel]] = {
-        "Adverse reactions": "yes",
-        "Treatment success": "yes",
-        "Treatment inefficacy": "yes",
-        "Contraindication/unsafe co-usage": "yes",
-        "Other": "yes",
-        "Adverse reaction without discontinuation": "no",
-        "Dosage change": "no",
-        "Other non-discontinuation": "no",
+        "Adverse reactions": "jah",
+        "Treatment success": "jah",
+        "Treatment inefficacy": "jah",
+        "Contraindication/unsafe co-usage": "jah",
+        "Other": "jah",
+        "Adverse reaction without discontinuation": "ei",
+        "Dosage change": "ei",
+        "Other non-discontinuation": "ei",
     }
 
     system_prompt = dedent(
         """
-        You are a helpful assistant that reads Estonian electronic health records written by doctors about drug discontinuation for their patients on medication. For each input, decide whether the event discontinued the medication or not.
-        Your input is the clinical text together with the extracted phrase describing the event and the drug in question.
+        Sa oled assistent, kelle ülesanne on tuvastada Eesti elektroonilistes terviseandmetes, kas patsient lõpetas konkreetse ravimi kasutamise.
 
-        Answer "yes" when the patient stopped taking the medication, whatever the reason: adverse reactions, completed treatment, perceived ineffectiveness, a contraindication, or another medical or non-medical reason.
-        Answer "no" otherwise.
+        Sulle antakse:
+        - Tekst: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
+        - Fraas: tekstist eraldatud fraas, mis kirjeldab ravimiga seotud sündmust.
+        - Ravim: ravim, mille kasutamise lõpetamist tuleb hinnata.
 
-        Respond only with "yes" or "no".
+        Otsusta, kas esitatud teabe põhjal lõpetas patsient selle ravimi kasutamise.
+
+        Vasta jah, kui tekstist selgub, et patsient lõpetas ravimi kasutamise, sõltumata lõpetamise põhjusest. Põhjuseks võib olla näiteks kõrvaltoime, ravikuuri lõppemine, ravimi ebaefektiivsus, vastunäidustus, arsti korraldus või patsiendi enda otsus.
+
+        Vasta ei kõigil muudel juhtudel, sealhulgas järgmistes olukordades:
+        - Ravimi kasutamist jätkatakse või selle kasutamine on endiselt aktiivne.
+        - Ravimi kasutamise lõpetamist üksnes kaalutakse, soovitatakse või kavandatakse, kuid tekst ei kinnita, et lõpetamine toimus.
+        - Ravimi kasutamine peatatakse ajutiselt ja tekst ei kinnita ravi lõplikku lõpetamist.
+        - Muudetakse ainult ravimi annust, manustamisviisi või kasutamissagedust.
+        - Ravimiga seotud sündmus puudutab teist ravimit, mitte hinnatavat ravimit.
+        - Tekstis ei ole piisavalt teavet, et järeldada ravimi kasutamise lõpetamist.
+
+        Lähtudes kliinilisest kontekstist, erista tegelikult toimunud sündmusi kavatsustest, soovitustest ja võimalikest tulevastest tegevustest. Ära järelda ravimi kasutamise lõpetamist üksnes kõrvaltoime, ebaefektiivsuse või muu probleemi mainimise põhjal, kui tekst ei viita sellele, et ravimi kasutamine tegelikult lõpetati.
+
+        Väljasta ainult üks vastus: `jah` või `ei`. Ära lisa selgitusi ega muud teksti.
         """  # noqa: E501
     ).strip()
-
-    few_shots: ClassVar[list[FewShot]] = [
-        FewShot(user="ei talu", label="yes"),
-        FewShot(user="vererõhk püsivalt normis", label="yes"),
-        FewShot(user="valu ei leevenenud, ebaefektiivne", label="yes"),
-        FewShot(user="soovib rasestuda, katkestab ravi", label="yes"),
-        FewShot(user="patsient viidi üle insuliinravile", label="yes"),
-        FewShot(user="iiveldus tekkis, aga ravi jätkub", label="no"),
-        FewShot(user="vähendasime statiini doosi", label="no"),
-        FewShot(user="patsient jätkab ravi muutuseta", label="no"),
-    ]
 
     @staticmethod
     def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""
         return dedent(f"""
-            Text: {text}
-            Phrase: {phrase}
-            Drug: {drug}
-            Discontinuation:
+            **Tekst**:
+            {text}
+
+            **Fraas**:
+            {phrase}
+
+            **Ravim**:
+            {drug}
         """).strip()
+
+    few_shots: ClassVar[list[FewShot]] = [
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient lõpetas enalapriili kasutamise, kuna ei talunud ravimit, tekkis kuiv köha ja lööve.",  # noqa: E501
+                "lõpetas enalapriili kasutamise, kuna ei talunud ravimit",
+                "enalapriil",
+            ),
+            label="jah",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
+                "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
+                "nebivolool",
+            ),
+            label="jah",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Valu ei leevenenud, ibuprofeen osutus ebaefektiivseks, ravi lõpetati",
+                "valu ei leevenenud, ibuprofeen osutus ebaefektiivseks",
+                "ibuprofeen",
+            ),
+            label="jah",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient soovib rasestuda, katkestab statiiniravi",
+                "soovib rasestuda, katkestab statiiniravi",
+                "statiin",
+            ),
+            label="jah",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient viidi üle insuliinravile, metformiin lõpetati.",
+                "Patsient viidi üle insuliinravile, metformiin lõpetati.",
+                "metformiin",
+            ),
+            label="jah",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Metformiini kasutamisel tekkis iiveldus, aga ravi jätkub samas doosis",
+                "tekkis iiveldus, aga ravi jätkub",
+                "metformiin",
+            ),
+            label="ei",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Kõrvaltoimete tõttu vähendasime statiini doosi",
+                "vähendasime statiini doosi",
+                "statiin",
+            ),
+            label="ei",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient jätkab enalapriilravi muutuseta, kaebusi ei ole.",
+                "patsient jätkab enalapriilravi muutuseta",
+                "enalapriil",
+            ),
+            label="ei",
+        ),
+    ]
 
     def __init__(
         self,

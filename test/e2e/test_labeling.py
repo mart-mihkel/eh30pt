@@ -9,8 +9,8 @@ import polars as pl
 import pytest
 from returns.result import Failure
 
+from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.datasets.discontinuation.extract import DiscontExtract
-from eh30pt.datasets.registry import get_labels
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
 from eh30pt.labeling.studio import StudioClient, StudioResult
 from eh30pt.labeling.tasks.extract import extraction_controls, extraction_labeling
@@ -140,7 +140,7 @@ def test_export_labels_writes_annotations_to_parquet(
 
     labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
-    labels = get_labels("discont-classifier/extract-labels")
+    labels = tuple(DiscontClassifier.label2margend)
     controls = extraction_controls()
 
     with StudioClient(studio) as client:
@@ -162,7 +162,6 @@ def test_export_labels_writes_annotations_to_parquet(
             "type": "choices",
             "value": {"choices": [labels[1]]},
         }
-        # Meta-box flags never export, so only the first choice below survives.
 
         client.annotate(imported[0]["id"], [first, second]).unwrap()
 
@@ -191,7 +190,7 @@ def test_export_labels_combines_projects_into_one_frame(
 
     labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
-    labels = get_labels("discont-classifier/extract-labels")
+    labels = tuple(DiscontClassifier.label2margend)
     controls = extraction_controls()
 
     _needed = 2
