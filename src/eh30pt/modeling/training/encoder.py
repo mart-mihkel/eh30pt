@@ -6,6 +6,7 @@ from transformers.trainer import Trainer
 from transformers.training_args import TrainingArguments
 
 from eh30pt.logging import logger
+from eh30pt.modeling.training.callbacks import use_rich_logging
 from eh30pt.modeling.training.spec import _no_epoch_cap
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         bf16=spec.have_accel,
     )
 
-    return Trainer(
+    trainer = Trainer(
         args=args,
         model=spec.model,
         data_collator=spec.collate_fn,
@@ -51,3 +52,6 @@ def _encoder_trainer(spec: _Spec) -> Trainer:
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,
     )
+
+    use_rich_logging(trainer)
+    return trainer

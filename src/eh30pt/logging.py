@@ -54,6 +54,46 @@ def rich_handler(stream: TextIO) -> RichHandler:
     return RichHandler(console=Console(file=stream), rich_tracebacks=True)
 
 
+def _forward_filters(removed: logging.Handler, root: logging.Logger) -> None:
+    """Move a stripped handler's filters onto the root rich handlers."""
+    targets = [hdlr for hdlr in root.handlers if isinstance(hdlr, RichHandler)]
+    for filt in removed.filters:
+        for target in targets:
+            if not any(type(existing) is type(filt) for existing in target.filters):
+                target.addFilter(filt)
+
+
+def route_library_loggers() -> None:
+    """Route third-party library logs through the root rich handler."""
+    try:
+        from transformers.utils import logging as hf_logging
+
+        hf_logging.disable_default_handler()
+    except ImportError:
+        pass
+
+    loggers = (
+        "transformers",
+        "datasets",
+        "huggingface_hub",
+        "accelerate",
+        "tokenizers",
+        "trl",
+        "peft",
+        "mlflow",
+    )
+
+    root = logging.getLogger()
+    for name in loggers:
+        lib_logger = logging.getLogger(name)
+        for handler in list(lib_logger.handlers):
+            if not isinstance(handler, RichHandler):
+                lib_logger.removeHandler(handler)
+                _forward_filters(handler, root)
+
+        lib_logger.propagate = True
+
+
 def setup_logging() -> None:
     """Install the rich log handler, ascii tqdm bars, and rich tracebacks."""
     warnings.filterwarnings(
@@ -67,6 +107,8 @@ def setup_logging() -> None:
     has = any(isinstance(hdlr, RichHandler) for hdlr in root.handlers)
     if not has:
         root.addHandler(rich_handler(stream))
+
+    route_library_loggers()
 
     rich.traceback.install(suppress=[rich, tqdm])
     logger.setLevel(logging.INFO)

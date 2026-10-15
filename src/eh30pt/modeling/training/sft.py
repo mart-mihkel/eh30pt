@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, cast
 from trl import SFTConfig, SFTTrainer
 
 from eh30pt.logging import logger
+from eh30pt.modeling.training.callbacks import use_rich_logging
 from eh30pt.modeling.training.constraints import (
     _constrain_eval_logits,
     _constrained_causal_loss,
@@ -138,7 +139,7 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         loss_type="nll",
     )
 
-    return ConstrainedSFTTrainer(
+    trainer = ConstrainedSFTTrainer(
         model=cast("PreTrainedModel | PeftModel", spec.model),
         args=args,
         data_collator=spec.collate_fn,
@@ -149,3 +150,6 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         callbacks=spec.callbacks,
         label_completions=spec.label_completions,
     )
+
+    use_rich_logging(trainer)
+    return trainer

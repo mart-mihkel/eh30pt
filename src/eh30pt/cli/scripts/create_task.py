@@ -10,7 +10,7 @@ from returns.result import Failure, Success
 
 from eh30pt.labeling.registry import build_labeling
 from eh30pt.labeling.studio import StudioClient
-from eh30pt.logging import logger
+from eh30pt.logging import logger, route_library_loggers
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.resume import _stored_identity
 from eh30pt.types import DatasetName
@@ -80,6 +80,7 @@ def run_labeling(
     dataset: DatasetName | None = None,
 ) -> Labeling:
     """Build the tasks and labeling config of a run's prediction shards."""
+    route_library_loggers()
     run = mlflow_settings.run_id
     if run is None:
         msg = "no mlflow run id to export"

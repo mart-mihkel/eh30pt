@@ -13,7 +13,7 @@ from mlflow.tracking import MlflowClient
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
-from eh30pt.logging import logger, rich_handler
+from eh30pt.logging import logger, rich_handler, route_library_loggers
 from eh30pt.modeling.arch import get_pipeline_task
 from eh30pt.modeling.training.factory import get_trainer
 from eh30pt.settings import MlflowSettings
@@ -123,6 +123,7 @@ class RunContext:
 
     def __enter__(self) -> Self:
         """Open a fresh run, or reattach to run_id after verifying its config."""
+        route_library_loggers()
         uri = self.settings.tracking_uri
         exp = self.settings.experiment
         run = self.settings.run_id

@@ -76,3 +76,78 @@ def test_setup_logging_preserves_root_handlers() -> None:
             if handler not in handlers:
                 root.removeHandler(handler)
         logger.setLevel(level)
+
+
+def test_setup_logging_routes_huggingface_loggers_to_root() -> None:
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    try:
+        setup_logging()
+        setup_logging()
+        assert any(isinstance(handler, RichHandler) for handler in root.handlers)
+        for name in ("transformers", "datasets", "huggingface_hub"):
+            lib_logger = logging.getLogger(name)
+            assert lib_logger.propagate
+            assert all(
+                isinstance(handler, RichHandler) for handler in lib_logger.handlers
+            )
+    finally:
+        for handler in root.handlers:
+            if handler not in handlers:
+                root.removeHandler(handler)
+
+
+def test_setup_logging_keeps_transformers_default_handler_disabled() -> None:
+    from transformers.utils import logging as hf_logging
+
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    try:
+        setup_logging()
+        hf_logging.get_logger("transformers.trainer")
+        lib_logger = logging.getLogger("transformers")
+        assert lib_logger.propagate
+        assert all(isinstance(handler, RichHandler) for handler in lib_logger.handlers)
+    finally:
+        for handler in root.handlers:
+            if handler not in handlers:
+                root.removeHandler(handler)
+
+
+def test_setup_logging_routes_mlflow_logger_to_root() -> None:
+    import mlflow.utils.logging_utils as mlflow_logging
+
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    mlflow_logger = logging.getLogger("mlflow")
+    mlflow_handlers = list(mlflow_logger.handlers)
+    mlflow_propagate = mlflow_logger.propagate
+    try:
+        plain = logging.StreamHandler()
+        plain.addFilter(mlflow_logging.SuppressLogFilter())
+        mlflow_logger.addHandler(plain)
+        mlflow_logger.propagate = False
+        setup_logging()
+        assert mlflow_logger.propagate
+        assert all(
+            isinstance(handler, RichHandler) for handler in mlflow_logger.handlers
+        )
+        rich_handlers = [
+            handler for handler in root.handlers if isinstance(handler, RichHandler)
+        ]
+        assert rich_handlers
+        assert any(
+            any(
+                isinstance(filt, mlflow_logging.SuppressLogFilter)
+                for filt in handler.filters
+            )
+            for handler in rich_handlers
+        )
+    finally:
+        for handler in root.handlers:
+            if handler not in handlers:
+                root.removeHandler(handler)
+        for handler in list(mlflow_logger.handlers):
+            if handler not in mlflow_handlers:
+                mlflow_logger.removeHandler(handler)
+        mlflow_logger.propagate = mlflow_propagate

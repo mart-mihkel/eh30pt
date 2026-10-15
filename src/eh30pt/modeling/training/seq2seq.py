@@ -10,6 +10,7 @@ from transformers import (
 )
 
 from eh30pt.logging import logger
+from eh30pt.modeling.training.callbacks import use_rich_logging
 from eh30pt.modeling.training.constraints import _allowed_next
 from eh30pt.modeling.training.spec import _no_epoch_cap
 
@@ -126,7 +127,7 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         generation_max_length=8,
     )
 
-    return ConstrainedSeq2SeqTrainer(
+    trainer = ConstrainedSeq2SeqTrainer(
         model=spec.model,
         args=args,
         data_collator=spec.collate_fn,
@@ -137,3 +138,6 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         label_completions=spec.label_completions,
         pad_token_id=cast("int", spec.tokenizer.pad_token_id),
     )
+
+    use_rich_logging(trainer)
+    return trainer
