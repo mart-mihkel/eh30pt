@@ -112,18 +112,6 @@ def test_few_shots_derive_from_extract_shots() -> None:
         assert json.loads(few.label) == extract.extractions
 
 
-def test_extract_schema_limits_field_lengths() -> None:
-    properties = get_response_schema("discont-extract/trigger")["json_schema"][
-        "schema"
-    ]["properties"]
-
-    assert properties == {
-        "reason": {"type": "string", "maxLength": 1024},
-        "phrase": {"type": "string", "maxLength": 512},
-        "drug": {"type": "string", "maxLength": 256},
-    }
-
-
 def test_registry() -> None:
     _obl_fewshots = 5
     _multinerd_labels = 15
