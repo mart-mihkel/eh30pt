@@ -29,6 +29,8 @@ class MetricsAccumulator(Callable):
         self._labels: list[np.ndarray] = []
         self._preds: list[np.ndarray] = []
         self._bar: tqdm | None = None
+        self.last_labels: list[str | int] = []
+        self.last_predictions: list[str | int] = []
 
     def __call__(
         self,
@@ -41,7 +43,10 @@ class MetricsAccumulator(Callable):
         self._extend(eval_pred)
 
         if self._bar is None:
-            self._bar = tqdm(desc="evaluating", unit="samples")
+            self._bar = tqdm(
+                desc="                             evaluating",
+                unit="samples",
+            )
 
         self._bar.update(len(self._labels) - collected)
 
@@ -98,6 +103,9 @@ class MetricsAccumulator(Callable):
             logger.debug("labels: %s", format_counts(_labels_count))
             logger.debug("predictions: %s", format_counts(_preds_count))
 
+            self.last_labels = [int(value) for value in all_labels[mask].tolist()]
+            self.last_predictions = [int(value) for value in all_preds[mask].tolist()]
+
             return compute_classification_metrics(all_labels[mask], all_preds[mask])
 
         labels = []
@@ -128,6 +136,9 @@ class MetricsAccumulator(Callable):
 
         logger.debug("references: %s", format_counts(_refs_count))
         logger.debug("predictions: %s", format_counts(_preds_count))
+
+        self.last_labels = list(references)
+        self.last_predictions = list(predictions)
 
         return compute_classification_metrics(references, predictions)
 

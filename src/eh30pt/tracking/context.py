@@ -573,6 +573,7 @@ class RunContext:
 
         logger.debug("starting test eval")
         test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
+        self.log_test_predictions(data=data, arch=arch, metrics_fn=metrics_fn)
 
         self.finish_training(
             registered_name,
@@ -622,7 +623,72 @@ class RunContext:
         logger.debug("starting test eval")
         test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
         self.log_metrics(dict(test_metrics))
+        self.log_test_predictions(data=data, arch=arch, metrics_fn=metrics_fn)
         return test_metrics
+
+    def log_test_predictions(
+        self,
+        *,
+        data: DataSplits,
+        arch: Architecture,
+        metrics_fn: ComputeMetricsFn,
+    ) -> None:
+        """Log test labels and predictions as a Parquet artifact."""
+        from tempfile import TemporaryDirectory
+
+        from eh30pt.datasets.registry import get_labels
+        from eh30pt.modeling.metrics import MetricsAccumulator
+        from eh30pt.tracking.shards import log_shard
+        from eh30pt.types import EvalRecord
+
+        if not isinstance(metrics_fn, MetricsAccumulator):
+            logger.debug("skipping prediction logging for custom metrics function")
+            return
+
+        predictions = metrics_fn.last_predictions
+        if not predictions:
+            logger.warning("no test predictions to log")
+            return
+
+        samples = list(data.test.samples())
+        if len(samples) != len(predictions):
+            logger.warning(
+                "test samples (%d) and predictions (%d) differ, truncating",
+                len(samples),
+                len(predictions),
+            )
+
+        label_names: tuple[str, ...] = (
+            get_labels(self.config["dataset"]) if arch == "encoder" else ()
+        )
+
+        records: list[EvalRecord] = []
+        for sample, prediction in zip(samples, predictions, strict=False):
+            if arch == "encoder":
+                pred_id = int(prediction)
+                pred = (
+                    label_names[pred_id]
+                    if 0 <= pred_id < len(label_names)
+                    else str(prediction)
+                )
+            else:
+                pred = str(prediction)
+
+            records.append(
+                EvalRecord(
+                    id=sample.id,
+                    user=sample.user,
+                    label=sample.label,
+                    prediction=pred,
+                )
+            )
+
+        with TemporaryDirectory(prefix="eh30pt-test-predictions-") as tmp:
+            log_shard(self, tmp, MlflowSettings.predictions_path, 0, records)
+
+        logger.info(
+            "logged %d test predictions to '%s'", len(records), self.artifact_uri
+        )
 
     def finish_training(
         self,

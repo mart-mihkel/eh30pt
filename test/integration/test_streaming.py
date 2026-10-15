@@ -365,7 +365,11 @@ def test_stream_evaluate_consumes_windows(
         shots[1],
     ]
     with RunContext(settings, config=run_config) as ctx:
-        bar = tqdm(desc="evaluating", unit="samples", file=io.StringIO())
+        bar = tqdm(
+            desc="                             evaluating",
+            unit="samples",
+            file=io.StringIO(),
+        )
         try:
             n_seen, invalid = asyncio.run(
                 _stream_evaluate(

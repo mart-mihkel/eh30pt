@@ -221,6 +221,23 @@ def test_compute_returns_perfect_metrics_and_resets(
     assert encoder_accumulator._bar is None
 
 
+def test_compute_retains_decoded_predictions(
+    encoder_accumulator: MetricsAccumulator,
+    encoder_pred: EvalPrediction,
+    decoder_accumulator: MetricsAccumulator,
+    decoder_pred: EvalPrediction,
+) -> None:
+    encoder_accumulator(encoder_pred)
+
+    assert len(encoder_accumulator.last_predictions) == len(encoder_pred.label_ids)
+    assert encoder_accumulator.last_labels == encoder_accumulator.last_predictions
+
+    decoder_accumulator(decoder_pred)
+
+    assert len(decoder_accumulator.last_predictions) == len(decoder_pred.label_ids)
+    assert all(isinstance(pred, str) for pred in decoder_accumulator.last_predictions)
+
+
 def test_reset_drops_batches_and_closes_bar(
     encoder_accumulator: MetricsAccumulator,
     encoder_pred: EvalPrediction,

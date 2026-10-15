@@ -187,6 +187,15 @@ class GenerateRecord(NamedTuple):
     prediction: str
 
 
+class EvalRecord(NamedTuple):
+    """One test eval row pairing the gold label with its prediction."""
+
+    id: int | None
+    user: str
+    label: str
+    prediction: str
+
+
 class DataSplits(NamedTuple):
     """Per-split streaming datasets for training."""
 

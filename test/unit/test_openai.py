@@ -154,7 +154,12 @@ def test_append_prediction_window_rejects_missing_id() -> None:
 
 
 def test_log_summary_reports_throughput(caplog: pytest.LogCaptureFixture) -> None:
-    bar = tqdm(desc="generating", unit="samples", file=io.StringIO())
+    bar = tqdm(
+        desc="                             generating",
+        unit="samples",
+        file=io.StringIO(),
+    )
+
     bar.update(7)
     bar.close()
 

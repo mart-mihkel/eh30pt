@@ -913,6 +913,63 @@ def test_reattach_without_prior_log_succeeds(
         assert ctx.resumed is True
 
 
+@pytest.mark.filterwarnings(
+    "ignore:'pin_memory' argument is set as true but not supported on MPS.*:UserWarning"
+)
+def test_evaluate_and_log_saves_test_predictions(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    bert_tokenizer: PreTrainedTokenizerFast,
+    oblique_bert_model: PreTrainedModel,
+    oblique_bert_dataset: DataSplits,
+) -> None:
+    from tempfile import TemporaryDirectory
+
+    from eh30pt.datasets.registry import get_labels
+    from eh30pt.modeling.collator import get_collator
+    from eh30pt.modeling.metrics import MetricsAccumulator
+    from eh30pt.types import EvalRecord
+
+    _ = mlflow_client
+    mlflow.set_experiment("eval-preds-exp")
+    settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="eval-preds-exp",
+        run_name="eval-preds-run",
+    )
+    metrics = MetricsAccumulator(bert_tokenizer, "encoder")
+    with RunContext(settings, config=run_config) as ctx:
+        ctx.evaluate_and_log(
+            model=oblique_bert_model,
+            tokenizer=bert_tokenizer,
+            data=oblique_bert_dataset,
+            arch="encoder",
+            collate_fn=get_collator(bert_tokenizer, "encoder"),
+            metrics_fn=metrics,
+            batch_size=8,
+            constrain=False,
+        )
+        run_id = ctx.run_id
+
+    with TemporaryDirectory(prefix="eh30pt-eval-preds-") as tmp:
+        downloaded = mlflow.artifacts.download_artifacts(
+            run_id=run_id,
+            artifact_path="predictions/predictions-00000.parquet",
+            dst_path=tmp,
+        )
+        rows = pl.read_parquet(downloaded).to_dicts()
+
+    records = [EvalRecord(**row) for row in rows]
+    samples = list(oblique_bert_dataset.test.samples())
+
+    assert len(records) == len(samples)
+    assert {record.prediction for record in records} <= set(get_labels("oblique"))
+    for record, sample in zip(records, samples, strict=True):
+        assert record.id == sample.id
+        assert record.user == sample.user
+        assert record.label == sample.label
+
+
 def test_enter_without_active_run_raises(
     mlflow_client: MlflowClient,
     run_config: RunConfig,
