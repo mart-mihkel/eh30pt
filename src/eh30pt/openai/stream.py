@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from openai.types.chat import ChatCompletionMessageParam
-    from tqdm import tqdm
+    from tqdm.rich import tqdm
 
     from eh30pt.openai.complete import CompletionClient
     from eh30pt.types import ArtifactLogger

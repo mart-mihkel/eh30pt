@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch import Tensor
-from tqdm import tqdm
+from tqdm.rich import tqdm
 from transformers import EvalPrediction  # noqa: TC002
 
 from eh30pt.constants import SENTINEL_TOKEN

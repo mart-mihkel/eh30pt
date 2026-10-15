@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, cast
 
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from eh30pt.datasets.registry import (
     assert_classification,

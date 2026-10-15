@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast
 import mlflow
 import pytest
 from returns.result import Failure, Success
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from eh30pt.modeling.metrics import StreamingClassificationMetrics
 from eh30pt.openai.complete import CompletionClient

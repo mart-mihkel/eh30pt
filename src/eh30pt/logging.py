@@ -9,6 +9,7 @@ import rich.traceback
 import tqdm.std
 from rich.console import Console
 from rich.logging import RichHandler
+from tqdm import TqdmExperimentalWarning
 
 if TYPE_CHECKING:
     from collections import Counter
@@ -99,6 +100,12 @@ def setup_logging() -> None:
         "ignore",
         message="'pin_memory' argument is set as true but not supported on MPS.*",
         category=UserWarning,
+    )
+
+    warnings.filterwarnings(
+        "ignore",
+        message="rich is experimental/alpha",
+        category=TqdmExperimentalWarning,
     )
 
     stream = cast("TextIO", _TqdmSafeStream(sys.stderr))

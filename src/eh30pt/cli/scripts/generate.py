@@ -3,7 +3,7 @@
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, cast
 
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from eh30pt.datasets.registry import get_sys_prompt, load_data
 from eh30pt.logging import logger

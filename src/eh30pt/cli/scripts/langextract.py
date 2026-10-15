@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast
 from langextract import extract
 from langextract.core.types import FormatType
 from returns.result import Failure, Success
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from eh30pt.datasets.registry import (
     assert_extraction,

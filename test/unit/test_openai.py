@@ -4,7 +4,7 @@ import asyncio
 import io
 
 import pytest
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from eh30pt.openai.stream import (
     append_prediction_window,

@@ -4,17 +4,21 @@ import math
 import re
 import traceback
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Literal, NamedTuple, Self, TextIO, cast
 
 import mlflow
 import mlflow.transformers
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
+from tqdm.rich import tqdm
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
+from eh30pt.datasets.registry import get_labels
 from eh30pt.logging import logger, rich_handler, route_library_loggers
 from eh30pt.modeling.arch import get_pipeline_task
+from eh30pt.modeling.metrics import MetricsAccumulator
 from eh30pt.modeling.training.factory import get_trainer
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.datasets import dataset_input
@@ -24,6 +28,8 @@ from eh30pt.tracking.resume import (
     _identity_view,
     _verify_config,
 )
+from eh30pt.tracking.shards import log_shard
+from eh30pt.types import EvalRecord
 
 if TYPE_CHECKING:
     import logging
@@ -68,15 +74,13 @@ def logged_model_name(value: str) -> str:
 
 def _count_train(data: DataSplits) -> int:
     """Count train examples through prompts, avoiding tokenization."""
-    from tqdm import tqdm
-
     samples = getattr(data.train, "samples", None)
     stream = samples() if callable(samples) else iter(data.train)
 
     total = 0
     with tqdm(
         desc="                             counting train",
-        unit="examples",
+        unit="samples",
     ) as bar:
         for _ in stream:
             total += 1
@@ -634,13 +638,6 @@ class RunContext:
         metrics_fn: ComputeMetricsFn,
     ) -> None:
         """Log test labels and predictions as a Parquet artifact."""
-        from tempfile import TemporaryDirectory
-
-        from eh30pt.datasets.registry import get_labels
-        from eh30pt.modeling.metrics import MetricsAccumulator
-        from eh30pt.tracking.shards import log_shard
-        from eh30pt.types import EvalRecord
-
         if not isinstance(metrics_fn, MetricsAccumulator):
             logger.debug("skipping prediction logging for custom metrics function")
             return
