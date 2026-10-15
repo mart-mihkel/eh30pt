@@ -145,7 +145,7 @@ def test_training_stores_epochs_and_train_size() -> None:
 
     assert settings.epochs == _epochs_custom
     assert settings.train_size == _train_size_custom
-    assert settings.save_model is True
+    assert settings.save_model is False
     assert (
         TrainingSettings(
             epochs=_epochs_custom, learning_rate=_learning_rate_custom
@@ -154,14 +154,14 @@ def test_training_stores_epochs_and_train_size() -> None:
     )
 
 
-def test_training_disables_model_saving() -> None:
+def test_training_enables_model_saving() -> None:
     settings = TrainingSettings(
         epochs=_epochs_custom,
         learning_rate=_learning_rate_custom,
-        save_model=False,
+        save_model=True,
     )
 
-    assert settings.save_model is False
+    assert settings.save_model is True
 
 
 def test_lora_rejects_out_of_range() -> None:

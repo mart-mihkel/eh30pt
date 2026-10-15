@@ -158,6 +158,7 @@ def test_fine_tune_obl(
             "1",
             "--train-size",
             "16",
+            "--save-model",
             "--batch-size",
             "8",
             "--seed",
