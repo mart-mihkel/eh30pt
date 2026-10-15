@@ -3,7 +3,6 @@
 import logging
 import sys
 import warnings
-from functools import partialmethod
 from typing import TYPE_CHECKING, TextIO, cast
 
 import rich.traceback
@@ -112,5 +111,3 @@ def setup_logging() -> None:
 
     rich.traceback.install(suppress=[rich, tqdm])
     logger.setLevel(logging.INFO)
-    if not isinstance(tqdm.std.tqdm.__init__, partialmethod):
-        tqdm.std.tqdm.__init__ = partialmethod(tqdm.std.tqdm.__init__, ascii=True)

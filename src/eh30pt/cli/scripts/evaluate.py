@@ -160,7 +160,10 @@ async def main(
         accumulator = StreamingClassificationMetrics()
 
         logger.info("starting eval loop")
-        with tqdm(desc="evaluating", unit="samples") as bar:
+        with tqdm(
+            desc="                             evaluating",
+            unit="samples",
+        ) as bar:
             n_seen, invalid = await _stream_evaluate(
                 predictor=predictor,
                 samples=data.test.samples(),

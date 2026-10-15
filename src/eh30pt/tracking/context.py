@@ -74,7 +74,10 @@ def _count_train(data: DataSplits) -> int:
     stream = samples() if callable(samples) else iter(data.train)
 
     total = 0
-    with tqdm(desc="counting train", unit="examples") as bar:
+    with tqdm(
+        desc="                             counting train",
+        unit="examples",
+    ) as bar:
         for _ in stream:
             total += 1
             bar.update(1)

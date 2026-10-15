@@ -260,7 +260,10 @@ async def main(
         batch: list[GenerateRecord] = []
 
         logger.info("starting langextract loop")
-        with tqdm(desc="extracting", unit="samples") as bar:
+        with tqdm(
+            desc="                             extracting",
+            unit="samples",
+        ) as bar:
             n_seen, invalid, n_shards = await stream_predictions(
                 data.test.samples(),
                 predictor,
