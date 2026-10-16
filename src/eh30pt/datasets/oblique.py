@@ -42,7 +42,7 @@ class OblRow(TypedDict):
 class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
     """Estonian oblique-phrase removal."""
 
-    id2label: ClassVar[Mapping[int, OblLabel]] = {
+    id2label: ClassVar[Mapping[int, str]] = {
         0: "seotud",
         1: "ebaloomulik",
         2: "liigne koma",

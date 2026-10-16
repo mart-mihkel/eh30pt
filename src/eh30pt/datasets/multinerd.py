@@ -70,7 +70,7 @@ class MultinerdRow(TypedDict):
 class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
     """MultiNERD NER tag classification."""
 
-    id2label: ClassVar[Mapping[int, MultinerdTag]] = {
+    id2label: ClassVar[Mapping[int, str]] = {
         0: "PER",
         1: "ORG",
         2: "LOC",
@@ -342,7 +342,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
                 yield MultinerdRow(
                     sentence=sentence,
                     entity=entity,
-                    label=self.id2label[tag_id],
+                    label=cast("MultinerdTag", self.id2label[tag_id]),
                 )
 
     @staticmethod

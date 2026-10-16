@@ -53,7 +53,7 @@ class DiscontClassifierRow(TypedDict):
 class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
     """Drug discontinuation reason classification."""
 
-    id2label: ClassVar[Mapping[int, DiscontClassifierLabelEst]] = {
+    id2label: ClassVar[Mapping[int, str]] = {
         0: "Kõrvaltoimed",
         1: "Ravi edukas",
         2: "Ravi ebaefektiivne",

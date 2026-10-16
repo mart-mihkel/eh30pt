@@ -44,7 +44,7 @@ class DiscontBinaryRow(TypedDict):
 class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
     """Whether an event discontinued the medication, whatever the reason."""
 
-    id2label: ClassVar[Mapping[int, DiscontBinaryLabel]] = {0: "jah", 1: "ei"}
+    id2label: ClassVar[Mapping[int, str]] = {0: "jah", 1: "ei"}
     label2id: ClassVar[Mapping[str, int]] = {"jah": 0, "ei": 1}
     reason2label: ClassVar[Mapping[str, DiscontBinaryLabel]] = {
         "Adverse reactions": "jah",
