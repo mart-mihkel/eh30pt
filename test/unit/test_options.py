@@ -17,7 +17,7 @@ from eh30pt.cli.options.server import (
     completion_dataset_option,
     provider_option,
 )
-from eh30pt.cli.options.training import prefix_init_option
+from eh30pt.cli.options.training import eval_steps_option, prefix_init_option
 from eh30pt.types import (
     Architecture,
     DatasetName,
@@ -75,3 +75,31 @@ def test_choices_match_literal(
     assert actual == expected, (
         f"choices {sorted(actual)} do not match literal values {sorted(expected)}"
     )
+
+
+def _single_param(option: Callable[..., object]) -> click.Parameter:
+    """Apply an option decorator to a dummy function and return its click param."""
+
+    def dummy() -> None:
+        pass
+
+    option(dummy)
+    params = getattr(dummy, "__click_params__", [])
+    assert len(params) == 1, f"expected one param, got {len(params)}"
+    return params[0]
+
+
+def test_eval_steps_accepts_epoch_and_counts() -> None:
+    """--eval-steps takes a non-negative step count or the literal 'epoch'."""
+    param = _single_param(eval_steps_option)
+    steps = 50
+
+    assert param.type.convert("epoch", param, None) == "epoch"
+    assert param.type.convert(str(steps), param, None) == steps
+    assert param.type.convert(0, param, None) == 0
+
+    with pytest.raises(click.BadParameter):
+        param.type.convert("-1", param, None)
+
+    with pytest.raises(click.BadParameter):
+        param.type.convert("soon", param, None)

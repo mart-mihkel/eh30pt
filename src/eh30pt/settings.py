@@ -8,7 +8,7 @@ from openai.types.shared_params import ResponseFormatJSONSchema
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from eh30pt.types import Architecture, DatasetName, Provider
+from eh30pt.types import Architecture, DatasetName, EvalSteps, Provider
 
 
 class PostgresSettings(BaseSettings):
@@ -60,7 +60,7 @@ class MlflowSettings(BaseSettings):
 class TrainingSettings(BaseModel):
     """Shared training loop hyperparameters."""
 
-    eval_steps: int = Field(default=0, ge=0)
+    eval_steps: EvalSteps = Field(default=0)
     patience: int = Field(default=0, ge=0)
     tolerance: float = Field(default=0.01, ge=0)
     epochs: float = Field(gt=0)

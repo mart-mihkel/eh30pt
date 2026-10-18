@@ -131,6 +131,54 @@ def test_build_spec_disables_saving_without_checkpoints(
     assert spec.save_strategy == "no"
 
 
+def test_build_spec_evaluates_every_epoch(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """'epoch' moves both eval and best-checkpoint saving to epoch boundaries."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps="epoch",
+        train_steps=_train_steps,
+        checkpoints=True,
+    )
+
+    assert spec.eval_strategy == "epoch"
+    assert spec.save_strategy == "epoch"
+    assert spec.load_best is True
+
+
+def test_build_spec_epoch_eval_without_checkpoints(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Epoch eval without checkpointing still evaluates but never saves."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps="epoch",
+        train_steps=_train_steps,
+        checkpoints=False,
+    )
+
+    assert spec.eval_strategy == "epoch"
+    assert spec.save_strategy == "no"
+    assert spec.load_best is False
+
+
 def test_label_completions_collects_unmasked_tails(
     oblique_splits: DataSplits,
 ) -> None:

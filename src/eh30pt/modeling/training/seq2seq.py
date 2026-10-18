@@ -107,7 +107,7 @@ def _seq2seq_trainer(spec: _Spec) -> Trainer:
         save_total_limit=1,
         eval_strategy=spec.eval_strategy,
         eval_steps=spec.eval_steps,
-        eval_on_start=spec.eval_steps > 0,
+        eval_on_start=spec.eval_strategy != "no",
         batch_eval_metrics=True,
         remove_unused_columns=False,
         logging_steps=100,

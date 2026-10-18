@@ -21,7 +21,7 @@ if TYPE_CHECKING:
         TrainerCallback,
     )
 
-    from eh30pt.types import Architecture, ComputeMetricsFn, DataSplits
+    from eh30pt.types import Architecture, ComputeMetricsFn, DataSplits, EvalSteps
 
 
 def get_trainer(
@@ -33,7 +33,7 @@ def get_trainer(
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
     output_dir: Path | str,
-    eval_steps: int,
+    eval_steps: EvalSteps,
     patience: int = 0,
     tolerance: float = 0.01,
     train_steps: int = 0,
@@ -76,7 +76,7 @@ def get_trainer(
 
     _maybe_add_early_stopping(
         trainer,
-        eval_steps=eval_steps,
+        eval_enabled=spec.eval_strategy != "no",
         patience=patience,
         tolerance=tolerance,
     )
@@ -87,14 +87,14 @@ def get_trainer(
 def _maybe_add_early_stopping(
     trainer: Trainer,
     *,
-    eval_steps: int,
+    eval_enabled: bool,
     patience: int,
     tolerance: float,
 ) -> None:
     """Attach early stopping when evaluation and patience are enabled."""
-    if patience > 0 and eval_steps == 0:
+    if patience > 0 and not eval_enabled:
         logger.warning("not using early stopping because not running evaluation")
-    elif eval_steps > 0 and patience > 0:
+    elif eval_enabled and patience > 0:
         logger.info(
             "using early stopping with %d patience and %.2f tolerance",
             patience,

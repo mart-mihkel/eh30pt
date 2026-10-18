@@ -9,6 +9,34 @@ if TYPE_CHECKING:
 
     from rich_click.decorators import FC
 
+    from eh30pt.types import EvalSteps
+
+
+class _EvalStepsType(click.ParamType):
+    """Accept a non-negative step count or the literal 'epoch'."""
+
+    name = "steps"
+
+    def convert(
+        self,
+        value: object,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> EvalSteps:
+        if value == "epoch":
+            return "epoch"
+
+        try:
+            steps = int(str(value))
+        except ValueError:
+            self.fail(f"'{value}' is not a step count or 'epoch'", param, ctx)
+
+        if steps < 0:
+            self.fail(f"'{value}' is not a step count or 'epoch'", param, ctx)
+
+        return steps
+
+
 epochs_option = click.option(
     "--epochs",
     "-e",
@@ -39,10 +67,10 @@ eval_steps_option = click.option(
     "--eval-steps",
     "-es",
     "eval_steps",
-    type=click.IntRange(min=0),
+    type=_EvalStepsType(),
     default=0,
     show_default=True,
-    help="Evaluate every N steps, 0 disables",
+    help="Evaluate every N steps, 'epoch' evaluates once per epoch, 0 disables",
 )
 
 batch_size_option = click.option(

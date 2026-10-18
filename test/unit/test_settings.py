@@ -136,6 +136,16 @@ def test_training_rejects_out_of_range() -> None:
         )
 
 
+def test_training_accepts_epoch_eval_steps() -> None:
+    settings = TrainingSettings(
+        epochs=_epochs_custom,
+        learning_rate=_learning_rate_custom,
+        eval_steps="epoch",
+    )
+
+    assert settings.eval_steps == "epoch"
+
+
 def test_training_stores_epochs_and_train_size() -> None:
     settings = TrainingSettings(
         epochs=_epochs_custom,

@@ -4,6 +4,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Literal,
     NamedTuple,
     NotRequired,
@@ -11,6 +12,7 @@ from typing import (
     TypedDict,
 )
 
+from pydantic import Field
 from returns.result import Failure, Result, Success
 
 if TYPE_CHECKING:
@@ -102,6 +104,8 @@ type PrefixInit = Literal[
     "random",
 ]
 
+type EvalSteps = Annotated[int, Field(ge=0)] | Literal["epoch"]
+
 type ComputeMetricsFn = Callable[[EvalPrediction], dict[str, float]]
 
 
@@ -122,7 +126,7 @@ class RunConfig(TypedDict):
 class TrainingRunConfig(RunConfig):
     """Run configuration shared by the training scripts."""
 
-    eval_steps: int
+    eval_steps: EvalSteps
     patience: int
     tolerance: float
     epochs: float
