@@ -210,15 +210,35 @@ def test_compute_returns_perfect_metrics_and_resets(
     encoder_accumulator(encoder_pred, compute_result=False)
     metrics = encoder_accumulator(encoder_pred)
 
-    assert metrics == {
-        "accuracy": 1.0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
+    assert metrics["accuracy"] == 1.0
+    assert metrics["f1"] == 1.0
+    assert set(metrics) == {
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "tpr",
+        "fpr",
+        "mcc",
+        "kappa",
+        "auc",
     }
     assert encoder_accumulator._labels == []
     assert encoder_accumulator._preds == []
+    assert encoder_accumulator._probs == []
     assert encoder_accumulator._bar is None
+
+
+def test_encoder_accumulates_normalized_class_probabilities(
+    encoder_accumulator: MetricsAccumulator,
+    encoder_pred: EvalPrediction,
+) -> None:
+    """Softmax rows of the real logits are kept for the score-based AUC."""
+    encoder_accumulator(encoder_pred, compute_result=False)
+
+    probs = np.array(encoder_accumulator._probs)
+    assert probs.shape[0] == len(encoder_pred.label_ids)
+    assert np.allclose(probs.sum(axis=-1), 1.0)
 
 
 def test_compute_retains_decoded_predictions(
@@ -247,6 +267,7 @@ def test_reset_drops_batches_and_closes_bar(
 
     assert encoder_accumulator._labels == []
     assert encoder_accumulator._preds == []
+    assert encoder_accumulator._probs == []
     assert encoder_accumulator._bar is None
 
 
@@ -270,6 +291,7 @@ def test_decoder_compute_scores_shifted_sequences(
     metrics = decoder_accumulator(decoder_pred)
 
     assert metrics["accuracy"] == 1.0
+    assert "auc" not in metrics
 
 
 def test_encoder_decoder_unwraps_tuple_outputs(

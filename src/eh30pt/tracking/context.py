@@ -11,7 +11,6 @@ import mlflow
 import mlflow.transformers
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
-from tqdm.rich import tqdm
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
@@ -76,15 +75,9 @@ def _count_train(data: DataSplits) -> int:
     """Count train examples through prompts, avoiding tokenization."""
     samples = getattr(data.train, "samples", None)
     stream = samples() if callable(samples) else iter(data.train)
-
     total = 0
-    with tqdm(
-        desc="                             counting train",
-        unit="samples",
-    ) as bar:
-        for _ in stream:
-            total += 1
-            bar.update(1)
+    for _ in stream:
+        total += 1
 
     return total
 

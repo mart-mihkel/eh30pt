@@ -475,3 +475,21 @@ def test_maybe_add_early_stopping_branches(
         isinstance(cb, EarlyStoppingCallback)
         for cb in trainer.callback_handler.callbacks
     )
+
+    epoch_trainer = get_trainer(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="encoder",
+        collate_fn=get_collator(gpt2_tokenizer, "encoder"),
+        metrics_fn=_metrics,
+        output_dir=out,
+        eval_steps="epoch",
+        train_steps=10,
+        patience=2,
+    )
+
+    assert any(
+        isinstance(cb, EarlyStoppingCallback)
+        for cb in epoch_trainer.callback_handler.callbacks
+    )
