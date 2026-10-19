@@ -69,6 +69,8 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         """  # noqa: E501
     ).strip()
 
+    encoder_system_prompt = "Otsusta, kas patsient lõpetas ravimi kasutamise."
+
     @staticmethod
     def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""

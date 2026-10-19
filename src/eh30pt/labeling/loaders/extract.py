@@ -85,7 +85,7 @@ def extraction_frame(
                 "phrase": data["phrase"],
                 "reason": data["reason"],
                 "drug": data["drug"],
-                "label": val["choices"][0],
+                "label": choices[0],
             }
 
             rows.append(row)

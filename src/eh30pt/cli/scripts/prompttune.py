@@ -49,7 +49,7 @@ def main(
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
 
-    sys_prompt = get_sys_prompt(common.dataset)
+    sys_prompt = get_sys_prompt(common.dataset, arch)
     n_virtual = get_n_virtual(tokenizer, sys_prompt)
 
     splits = load_data(

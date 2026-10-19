@@ -57,7 +57,7 @@ def main(
         train_size=training.train_size,
     )
 
-    sys_prompt = get_sys_prompt(common.dataset)
+    sys_prompt = get_sys_prompt(common.dataset, arch)
     model = prepare_lora_model(
         tokenizer,
         common.model,

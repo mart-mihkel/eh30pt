@@ -80,7 +80,7 @@ def prepare_pt_model(
         prefix_init,
     )
 
-    sys_prompt = get_sys_prompt(dataset)
+    sys_prompt = get_sys_prompt(dataset, arch)
     n_virtual = get_n_virtual(tokenizer, sys_prompt)
     base = load_model(tokenizer, model_path, dataset, arch, head_only=False)
     task_type = get_task_type(arch)

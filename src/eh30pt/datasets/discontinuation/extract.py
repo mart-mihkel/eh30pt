@@ -107,6 +107,10 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         """  # noqa: E501
     ).strip()
 
+    encoder_system_prompt = (
+        "Eralda tekstist ravimi kasutamise lõpetamise fraas, põhjus ja ravim."
+    )
+
     extract_shots: ClassVar[list[ExtractShot]] = [
         ExtractShot(
             user="katkestas Nebileti tarvitamise, vererõhk normaliseerus",

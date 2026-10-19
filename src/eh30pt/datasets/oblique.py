@@ -71,6 +71,8 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         Väljasta ainult kategooria.
     """).strip()
 
+    encoder_system_prompt = "Liigita lausest eemaldatud fraas ühte kategooriasse."
+
     label_entoet: ClassVar[Mapping[str, OblLabel]] = {
         "bound": "seotud",
         "free": "vaba",

@@ -128,6 +128,25 @@ def test_registry() -> None:
         get_few_shots("oblique", 11)
 
 
+@pytest.mark.parametrize(
+    "dataset",
+    [
+        "multinerd",
+        "oblique",
+        "discont-classifier/extract-labels",
+        "discont-binary/extract-labels",
+        "discont-extract/trigger",
+    ],
+)
+def test_get_sys_prompt_is_short_for_encoder(dataset: DatasetName) -> None:
+    encoder_prompt = get_sys_prompt(dataset, "encoder")
+
+    assert encoder_prompt
+    assert len(encoder_prompt) < len(get_sys_prompt(dataset))
+    assert get_sys_prompt(dataset, "decoder") == get_sys_prompt(dataset)
+    assert get_sys_prompt(dataset, "encoder-decoder") == get_sys_prompt(dataset)
+
+
 def test_get_response_schema() -> None:
     schema = get_response_schema("multinerd")
 

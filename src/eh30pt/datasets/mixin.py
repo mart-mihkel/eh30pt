@@ -22,7 +22,16 @@ class DatasetMixin[RowType]:
     few_shots: ClassVar[list[FewShot]]
     extract_shots: ClassVar[list[ExtractShot]] = []
     system_prompt: ClassVar[str]
+    encoder_system_prompt: ClassVar[str]
     task: ClassVar[DatasetTask] = "classification"
+
+    @classmethod
+    def system_prompt_for(cls, arch: Architecture | None) -> str:
+        """Return the instruction for `arch`, short for encoder models."""
+        if arch == "encoder":
+            return cls.encoder_system_prompt
+
+        return cls.system_prompt
 
     @classmethod
     def response_format(cls) -> ResponseFormatJSONSchema:
@@ -91,18 +100,18 @@ class DatasetMixin[RowType]:
         few_shots: list[FewShot],
         max_len: int | None,
     ) -> BatchEncoding[list[int]]:
+        prompt = self.system_prompt_for(arch)
+
         if tokenizer.chat_template is None:
             examples_prompt = self._format_few_shot_legacy(few_shots)
             user_prompt = f"{examples_prompt}\n{user_prompt}"
             encoded_prompt = tokenizer(
-                f"{self.system_prompt}\n{user_prompt}",
+                f"{prompt}\n{user_prompt}",
                 max_length=max_len,
                 truncation=True,
             )
         else:
-            conversation: list[dict[str, str]] = [
-                {"role": "system", "content": self.system_prompt}
-            ]
+            conversation: list[dict[str, str]] = [{"role": "system", "content": prompt}]
 
             conversation.extend(self._format_few_shot_chat(tokenizer, few_shots))
             conversation.append({"role": "user", "content": user_prompt})

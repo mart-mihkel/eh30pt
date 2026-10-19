@@ -52,7 +52,7 @@ def main(
         train_size=training.train_size,
     )
 
-    sys_prompt = get_sys_prompt(common.dataset)
+    sys_prompt = get_sys_prompt(common.dataset, arch)
     model = load_model(
         tokenizer, common.model, common.dataset, arch, head_only=head_only
     )

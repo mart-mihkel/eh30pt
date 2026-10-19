@@ -147,6 +147,8 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         Output only the tag.
     """).strip()
 
+    encoder_system_prompt = "Identify the NER tag of the entity in the sentence."
+
     @staticmethod
     def _format_user_prompt(sentence: str, entity: str) -> str:
         """Format a sentence and entity as a tag classification prompt."""

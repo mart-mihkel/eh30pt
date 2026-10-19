@@ -157,22 +157,22 @@ def get_labels(dataset: DatasetName) -> tuple[str, ...]:
     raise ValueError(msg)
 
 
-def get_sys_prompt(dataset: DatasetName) -> str:
-    """Return the system prompt for `dataset` without loading data."""
+def get_sys_prompt(dataset: DatasetName, arch: Architecture | None = None) -> str:
+    """Return the instruction for `dataset` and `arch` without loading data."""
     if dataset == "multinerd":
-        return Multinerd.system_prompt
+        return Multinerd.system_prompt_for(arch)
 
     if dataset == "oblique":
-        return Obl.system_prompt
+        return Obl.system_prompt_for(arch)
 
     if dataset == "discont-classifier/extract-labels":
-        return DiscontClassifier.system_prompt
+        return DiscontClassifier.system_prompt_for(arch)
 
     if dataset == "discont-binary/extract-labels":
-        return DiscontBinary.system_prompt
+        return DiscontBinary.system_prompt_for(arch)
 
     if _is_extract(dataset):
-        return DiscontExtract.system_prompt
+        return DiscontExtract.system_prompt_for(arch)
 
     msg = f"invalid dataset {dataset}"
     raise ValueError(msg)

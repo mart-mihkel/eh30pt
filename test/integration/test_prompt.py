@@ -307,6 +307,8 @@ def test_tokenize_encoder_prompt_and_int_label(
     decoded = bert_tokenizer.decode(encoded["input_ids"])
     assert oblique_sample["removed"].split()[0].lower() in decoded.lower()
     assert "[SEP]" in decoded
+    assert "lausest eemaldatud" in decoded.lower()
+    assert "märgendamise" not in decoded.lower()
 
 
 def test_tokenize_encoder_decoder_suffix_labels(
@@ -365,6 +367,8 @@ def test_tokenize_multinerd_encoder_int_label(
         first.user.split("\n")[1].removeprefix("Entity: ").split()[0].lower()
         in decoded.lower()
     )
+    assert "identify the ner tag of the entity" in decoded.lower()
+    assert "possible tags are" not in decoded.lower()
 
 
 def test_tokenize_over_request(
