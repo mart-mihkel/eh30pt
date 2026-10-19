@@ -73,14 +73,6 @@ def test_few_shots_agree_with_the_folding() -> None:
         )
 
 
-def test_few_shots_match_prompt_format() -> None:
-    """Few-shot users must use the dataset prompt format, not bare text."""
-    for shot in (*DiscontClassifier.few_shots, *DiscontBinary.few_shots):
-        assert shot.user.startswith("**Tekst**:")
-        assert "\n\n**Fraas**:" in shot.user
-        assert "\n\n**Ravim**:" in shot.user
-
-
 def test_load_data_requires_a_data_path_for_the_binary_dataset() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 

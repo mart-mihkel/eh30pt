@@ -90,10 +90,9 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     system_prompt = dedent(
         """
-        Sinu ülesanne on klassifitseerida Eesti elektroonilistes terviseandmetes kirjeldatud konkreetse ravimi kasutamisega seotud sündmus ning määrata, millisel põhjusel patsient ravimi kasutamise lõpetas või miks ravi ei lõpetatud.
+        Tuvasta ravimi tarvitamise lõpetamise põhjus anamneesi ja fraasi põhjal.
 
-        Sulle antakse:
-        - Tekst: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
+        - Anamnees: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
         - Fraas: tekstist eraldatud fraas, mis kirjeldab ravimiga seotud sündmust.
         - Ravim: ravim, mille kasutamise lõpetamist tuleb hinnata.
 
@@ -108,30 +107,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         7. **Annuse muutmine**: Ravimi annust suurendati või vähendati, kuid ravimi kasutamist ei lõpetatud. Kasuta seda kategooriat ka juhul, kui annuse muutmine on sündmuse peamine kirjeldatud tegevus ning ravi jätkub muudetud annusega.
         8. **Muu sündmus ilma ravi lõpetamiseta**: Ravimi kasutamist ei lõpetatud ning sündmus ei kuulu kategooriasse **Kõrvaltoimed ilma lõpetamiseta** ega **Annuse muutmine**. Siia kuuluvad näiteks ravi jätkamine muutusteta, ravimi kasutamise lõpetamise kavatsus või soovitus ilma kinnitatud lõpetamiseta, ajutine ravi katkestamine, kui lõplikku lõpetamist ei ole kinnitatud, ning olukorrad, kus puudub piisav tõendus ravimi kasutamise lõpetamise kohta.
 
-        **Klassifitseerimise reeglid**
-
-        - Lähtu kogu kliinilisest tekstist, sündmust kirjeldavast fraasist ja hinnatavast ravimist. Ära tee otsust ainult eraldatud fraasi põhjal, kui ülejäänud tekst annab olulist lisateavet.
-        - Erista tegelikult toimunud ravimi kasutamise lõpetamist kavatsusest, soovitusest või plaanist ravi lõpetada.
-        - Ära eelda, et ravimi kasutamine lõpetati üksnes kõrvaltoime, ebaefektiivsuse või vastunäidustuse mainimise põhjal. Tekst peab toetama järeldust, et ravimi kasutamine lõpetati.
-        - Kui ravimi kasutamine lõpetati, vali kategooria lõpetamise põhjuse alusel, mitte üksnes sündmuse või diagnoosi nimetuse põhjal.
-        - Kui ravimi kasutamine jätkus, vali sobiv mitte-lõpetamise kategooria.
-        - Kui korraga esineb mitu asjaolu, vali kategooria, mis kirjeldab kõige otsesemalt ravimi kasutamise lõpetamise peamist põhjust. Kui lõpetamist ei toimunud, vali sobiv mitte-lõpetamise kategooria.
-        - Kui lõpetamine on kinnitatud, kuid selle põhjus jääb ebaselgeks või ei sobi ühegi konkreetse põhjuse kategooriaga, vali **Other**.
-        - Kui ravimi kasutamise lõpetamine ei ole kinnitatud ja puudub tõendus mõne konkreetse mitte-lõpetamise kategooria kohta, vali **Other non-discontinuation**.
-        - Klassifitseeri ainult nimetatud ravimi kasutamisega seotud sündmus. Ära omista teise ravimi kasutamise lõpetamise põhjust hinnatavale ravimile.
-
-        Väljasta ainult üks kategooria nimi, täpselt ühel järgmistest kujudest:
-
-        - `Kõrvaltoimed`
-        - `Ravi edukas`
-        - `Ravi ebaefektiivne`
-        - `Vastunäidustus või ohtlik kooskasutamine`
-        - `Muu põhjus`
-        - `Kõrvaltoimed ilma lõpetamiseta`
-        - `Annuse muutmine`
-        - `Muu sündmus ilma ravi lõpetamiseta`
-
-        Ära lisa selgitusi, põhjendusi ega muud teksti.
+        Väljasta ainult üks kategooria nimi, ära lisa selgitusi, põhjendusi ega muud teksti.
         """  # noqa: E501
     ).strip()
 
@@ -139,14 +115,9 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
     def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""
         return dedent(f"""
-            **Tekst**:
-            {text}
-
-            **Fraas**:
-            {phrase}
-
-            **Ravim**:
-            {drug}
+            Anamnees: {text}
+            Fraas: {phrase}
+            Ravim: {drug}
         """).strip()
 
     few_shots: ClassVar[list[FewShot]] = [

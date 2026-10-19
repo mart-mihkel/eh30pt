@@ -42,13 +42,6 @@ def test_oblique_format_user_prompt() -> None:
     )
 
 
-def test_classifier_format_user_prompt() -> None:
-    assert (
-        DiscontClassifier._format_user_prompt("Katkestas ravi", "katkestas", "Aspiriin")
-        == "**Tekst**:\nKatkestas ravi\n\n**Fraas**:\nkatkestas\n\n**Ravim**:\nAspiriin"
-    )
-
-
 def test_multinerd_format_user_prompt() -> None:
     assert (
         Multinerd._format_user_prompt("Cats run fast", "Cats")

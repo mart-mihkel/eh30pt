@@ -59,28 +59,13 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     system_prompt = dedent(
         """
-        Sa oled assistent, kelle ülesanne on tuvastada Eesti elektroonilistes terviseandmetes, kas patsient lõpetas konkreetse ravimi kasutamise.
+        Tuvasta ravimi tarvitamise lõpetamine anamneesi ja fraasi põhjal.
 
-        Sulle antakse:
-        - Tekst: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
+        - Anamnees: arsti sissekanne patsiendi terviseseisundi ja ravi kohta.
         - Fraas: tekstist eraldatud fraas, mis kirjeldab ravimiga seotud sündmust.
         - Ravim: ravim, mille kasutamise lõpetamist tuleb hinnata.
 
-        Otsusta, kas esitatud teabe põhjal lõpetas patsient selle ravimi kasutamise.
-
-        Vasta jah, kui tekstist selgub, et patsient lõpetas ravimi kasutamise, sõltumata lõpetamise põhjusest. Põhjuseks võib olla näiteks kõrvaltoime, ravikuuri lõppemine, ravimi ebaefektiivsus, vastunäidustus, arsti korraldus või patsiendi enda otsus.
-
-        Vasta ei kõigil muudel juhtudel, sealhulgas järgmistes olukordades:
-        - Ravimi kasutamist jätkatakse või selle kasutamine on endiselt aktiivne.
-        - Ravimi kasutamise lõpetamist üksnes kaalutakse, soovitatakse või kavandatakse, kuid tekst ei kinnita, et lõpetamine toimus.
-        - Ravimi kasutamine peatatakse ajutiselt ja tekst ei kinnita ravi lõplikku lõpetamist.
-        - Muudetakse ainult ravimi annust, manustamisviisi või kasutamissagedust.
-        - Ravimiga seotud sündmus puudutab teist ravimit, mitte hinnatavat ravimit.
-        - Tekstis ei ole piisavalt teavet, et järeldada ravimi kasutamise lõpetamist.
-
-        Lähtudes kliinilisest kontekstist, erista tegelikult toimunud sündmusi kavatsustest, soovitustest ja võimalikest tulevastest tegevustest. Ära järelda ravimi kasutamise lõpetamist üksnes kõrvaltoime, ebaefektiivsuse või muu probleemi mainimise põhjal, kui tekst ei viita sellele, et ravimi kasutamine tegelikult lõpetati.
-
-        Väljasta ainult üks vastus: `jah` või `ei`. Ära lisa selgitusi ega muud teksti.
+        Kas fraasi põhjal saab õelda, et patsient on lõpetanud ravimi tarvitamise? (jah/ei)
         """  # noqa: E501
     ).strip()
 
@@ -88,14 +73,9 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
     def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""
         return dedent(f"""
-            **Tekst**:
-            {text}
-
-            **Fraas**:
-            {phrase}
-
-            **Ravim**:
-            {drug}
+            Anamnees: {text}
+            Fraas: {phrase}
+            Ravim: {drug}
         """).strip()
 
     few_shots: ClassVar[list[FewShot]] = [
