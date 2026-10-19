@@ -8,14 +8,6 @@ from eh30pt.types import DatasetName
 
 prompt_argument = click.argument("user_prompt", type=str)
 
-system_prompt_option = click.option(
-    "--system",
-    "system_prompt",
-    type=str,
-    default=None,
-    help="System prompt, defaults to the dataset prompt",
-)
-
 completion_dataset_option = click.option(
     "--dataset",
     "-d",

@@ -71,6 +71,30 @@ def test_training_commands_expose_epochs_and_train_size() -> None:
         assert "--train-steps" not in result.output, name
 
 
+def test_hf_commands_expose_system_prompt() -> None:
+    """Training and evaluation commands accept a --system prompt override."""
+    runner = CliRunner()
+    for name in ("fine-tune", "prompt-tune", "qlora", "few-shot"):
+        result = runner.invoke(app, [name, "--help"])
+
+        assert result.exit_code == 0, name
+        assert "--system" in result.output, name
+
+
+def test_prompt_tune_exposes_num_virtual() -> None:
+    """Only prompt-tune takes a virtual token count override."""
+    runner = CliRunner()
+    result = runner.invoke(app, ["prompt-tune", "--help"])
+
+    assert result.exit_code == 0
+    assert "--num-virtual" in result.output
+
+    for name in ("fine-tune", "qlora", "few-shot"):
+        other = runner.invoke(app, [name, "--help"])
+
+        assert "--num-virtual" not in other.output, name
+
+
 def test_epochs_rejects_zero() -> None:
     result = CliRunner().invoke(
         app,

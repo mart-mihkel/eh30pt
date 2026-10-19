@@ -140,6 +140,15 @@ prefix_init_option = click.option(
     help="Prefix initialization method",
 )
 
+num_virtual_option = click.option(
+    "--num-virtual",
+    "-nv",
+    "num_virtual",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Virtual token count, defaults to the system prompt length",
+)
+
 head_only_option = click.option(
     "--head-only",
     "-ho",

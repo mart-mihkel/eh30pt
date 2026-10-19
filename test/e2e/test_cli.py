@@ -147,6 +147,7 @@ def test_fine_tune_obl(
     model_name: str,
 ) -> None:
     experiment: Final = f"e2e-fine-tune-{model_name}"
+    prompt: Final = "Liigita fraas lühidalt."
     result = _invoke(
         [
             "fine-tune",
@@ -154,6 +155,8 @@ def test_fine_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--system",
+            prompt,
             "--epochs",
             "1",
             "--train-size",
@@ -173,6 +176,7 @@ def test_fine_tune_obl(
     assert result.exit_code == 0, result.output
 
     run = single_run(tracking_uri, experiment)
+    assert run.data.params["system_prompt"] == prompt
     assert "test_f1" in run.data.metrics
 
     run_dir = tmp_path / "log" / run.info.run_id
@@ -245,6 +249,8 @@ def test_prompt_tune_obl(
             models[model_name],
             "--dataset",
             "oblique",
+            "--num-virtual",
+            "4",
             "--epochs",
             "1",
             "--train-size",
@@ -264,4 +270,5 @@ def test_prompt_tune_obl(
 
     run = single_run(tracking_uri, experiment)
     assert run.data.params["method"] == "prompt-tune"
+    assert run.data.params["n_virtual"] == "4"
     assert "test_f1" in run.data.metrics

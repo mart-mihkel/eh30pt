@@ -52,7 +52,7 @@ def main(
         data_path=common.data_path,
     )
 
-    sys_prompt = get_sys_prompt(common.dataset, arch)
+    sys_prompt = common.system_prompt or get_sys_prompt(common.dataset, arch)
     model = load_model(tokenizer, common.model, common.dataset, arch, head_only=False)
 
     total = sum(p.numel() for p in model.parameters())

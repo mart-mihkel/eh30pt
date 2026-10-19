@@ -15,6 +15,7 @@ from eh30pt.cli.options.common import (
     n_shot_option,
     output_option,
     seed_option,
+    system_prompt_option,
 )
 from eh30pt.cli.options.labeling import (
     data_path_option,
@@ -41,7 +42,6 @@ from eh30pt.cli.options.server import (
     prompt_argument,
     provider_option,
     shard_size_option,
-    system_prompt_option,
 )
 from eh30pt.cli.options.slurm import (
     dry_run_option,
@@ -61,6 +61,7 @@ from eh30pt.cli.options.training import (
     eval_steps_option,
     head_only_option,
     learning_rate_option,
+    num_virtual_option,
     patience_option,
     prefix_init_option,
     save_model_option,
@@ -141,7 +142,6 @@ if TYPE_CHECKING:
                         "--patience",
                         "--tolerance",
                         "--head-only",
-                        "--prefix-init",
                         "--lora-rank",
                         "--lora-alpha",
                         "--lora-dropout",
@@ -150,10 +150,17 @@ if TYPE_CHECKING:
                     ],
                 },
                 {
+                    "name": "Prompt",
+                    "options": [
+                        "--system",
+                        "--prefix-init",
+                        "--num-virtual",
+                    ],
+                },
+                {
                     "name": "Server",
                     "options": [
                         "--provider",
-                        "--system",
                         "--concurrency",
                         "--shard-size",
                         "--log-interval",
@@ -235,6 +242,7 @@ def log_accelerator() -> None:
 @head_only_option
 @constrain_option
 @n_shot_option
+@system_prompt_option
 @epochs_option
 @train_size_option
 @save_model_option
@@ -259,6 +267,7 @@ def fine_tune(
     head_only: bool,
     constrain: bool,
     n_shot: int,
+    system_prompt: str | None,
     epochs: float,
     train_size: int | None,
     save_model: bool,
@@ -289,6 +298,7 @@ def fine_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        system_prompt=system_prompt,
         data_path=data_path,
         seed=seed,
     )
@@ -325,8 +335,10 @@ def fine_tune(
 @model_option
 @dataset_option
 @prefix_init_option
+@num_virtual_option
 @constrain_option
 @n_shot_option
+@system_prompt_option
 @epochs_option
 @train_size_option
 @save_model_option
@@ -349,8 +361,10 @@ def prompt_tune(
     model: str,
     dataset: DatasetName,
     prefix_init: PrefixInit,
+    num_virtual: int | None,
     constrain: bool,
     n_shot: int,
+    system_prompt: str | None,
     epochs: float,
     train_size: int | None,
     save_model: bool,
@@ -381,6 +395,7 @@ def prompt_tune(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        system_prompt=system_prompt,
         data_path=data_path,
         seed=seed,
     )
@@ -408,6 +423,7 @@ def prompt_tune(
     main(
         common=common,
         prefix_init=prefix_init,
+        num_virtual=num_virtual,
         training=training,
         mlflow=mlflow,
     )
@@ -421,6 +437,7 @@ def prompt_tune(
 @lora_dropout_option
 @constrain_option
 @n_shot_option
+@system_prompt_option
 @epochs_option
 @train_size_option
 @save_model_option
@@ -447,6 +464,7 @@ def qlora(
     lora_dropout: float,
     constrain: bool,
     n_shot: int,
+    system_prompt: str | None,
     epochs: float,
     train_size: int | None,
     save_model: bool,
@@ -477,6 +495,7 @@ def qlora(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        system_prompt=system_prompt,
         data_path=data_path,
         seed=seed,
     )
@@ -520,6 +539,7 @@ def qlora(
 @dataset_option
 @constrain_option
 @n_shot_option
+@system_prompt_option
 @batch_size_option
 @arch_option
 @data_path_option
@@ -535,6 +555,7 @@ def few_shot(
     dataset: DatasetName,
     constrain: bool,
     n_shot: int,
+    system_prompt: str | None,
     batch_size: int,
     arch: Architecture | None,
     data_path: Path | None,
@@ -557,6 +578,7 @@ def few_shot(
         dataset=dataset,
         arch=arch,
         n_shot=n_shot,
+        system_prompt=system_prompt,
         data_path=data_path,
         seed=seed,
     )

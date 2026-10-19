@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 from peft import PeftModel, PromptTuningConfig, get_peft_model
 
-from eh30pt.datasets.registry import get_sys_prompt
 from eh30pt.logging import logger
 from eh30pt.modeling.arch import get_task_type
 from eh30pt.modeling.loader import load_model
@@ -72,6 +71,9 @@ def prepare_pt_model(
     model_path: str,
     arch: Architecture,
     dataset: DatasetName,
+    *,
+    system_prompt: str,
+    num_virtual: int,
 ) -> PeftModel:
     """Load a pretrained model wrapped for prompt tuning."""
     logger.info(
@@ -80,8 +82,6 @@ def prepare_pt_model(
         prefix_init,
     )
 
-    sys_prompt = get_sys_prompt(dataset, arch)
-    n_virtual = get_n_virtual(tokenizer, sys_prompt)
     base = load_model(tokenizer, model_path, dataset, arch, head_only=False)
     task_type = get_task_type(arch)
 
@@ -102,8 +102,8 @@ def prepare_pt_model(
         task_type=task_type,
         prompt_tuning_init=init,
         tokenizer_name_or_path=model_path,
-        prompt_tuning_init_text=sys_prompt,
-        num_virtual_tokens=n_virtual,
+        prompt_tuning_init_text=system_prompt,
+        num_virtual_tokens=num_virtual,
         **special_kwargs,
     )
 

@@ -33,6 +33,7 @@ def main(
     common: CommonSettings,
     prefix_init: PrefixInit,
     *,
+    num_virtual: int | None,
     training: TrainingSettings,
     mlflow: MlflowSettings,
 ) -> None:
@@ -49,21 +50,30 @@ def main(
     collate_fn = get_collator(tokenizer, arch)
     metrics_fn = MetricsAccumulator(tokenizer, arch)
 
-    sys_prompt = get_sys_prompt(common.dataset, arch)
-    n_virtual = get_n_virtual(tokenizer, sys_prompt)
+    sys_prompt = common.system_prompt or get_sys_prompt(common.dataset, arch)
+    if num_virtual is None:
+        num_virtual = get_n_virtual(tokenizer, sys_prompt)
 
     splits = load_data(
         tokenizer,
         common.dataset,
         arch,
         n_shot=common.n_shot,
-        n_virtual=n_virtual,
+        n_virtual=num_virtual,
         seed=common.seed,
         data_path=common.data_path,
         train_size=training.train_size,
     )
 
-    model = prepare_pt_model(prefix_init, tokenizer, common.model, arch, common.dataset)
+    model = prepare_pt_model(
+        prefix_init,
+        tokenizer,
+        common.model,
+        arch,
+        common.dataset,
+        system_prompt=sys_prompt,
+        num_virtual=num_virtual,
+    )
 
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)

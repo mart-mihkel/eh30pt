@@ -145,5 +145,6 @@ class CommonSettings(BaseModel):
     dataset: DatasetName
     arch: Architecture | None = None
     n_shot: int = Field(default=0, ge=0)
+    system_prompt: str | None = None
     data_path: Path | None = None
     seed: int | None = None

@@ -91,3 +91,12 @@ arch_option = click.option(
     default=None,
     help="Override auto-detected model architecture",
 )
+
+system_prompt_option = click.option(
+    "--system",
+    "-sp",
+    "system_prompt",
+    type=str,
+    default=None,
+    help="System prompt, defaults to the dataset prompt",
+)
