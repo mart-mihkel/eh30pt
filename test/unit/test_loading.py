@@ -7,7 +7,11 @@ import torch
 from peft import TaskType
 from torch.nn import Linear
 
-from eh30pt.modeling.loader import _freeze, load_model
+from eh30pt.modeling.loader import (
+    _freeze,
+    _load_with_attn_fallback,
+    load_model,
+)
 from eh30pt.modeling.lora import build_lora_config, build_quantization_config
 
 if TYPE_CHECKING:
@@ -69,3 +73,33 @@ def test_load_model_rejects_extraction_dataset(arch: Architecture) -> None:
         load_model(
             tokenizer, "unused", "discont-extract/trigger", arch, head_only=False
         )
+
+
+def test_load_with_attn_fallback_uses_requested_implementation() -> None:
+    assert (
+        _load_with_attn_fallback(
+            lambda implementation: implementation, "flash_attention_2"
+        )
+        == "flash_attention_2"
+    )
+
+
+@pytest.mark.parametrize("error", [ValueError, ImportError])
+def test_load_with_attn_fallback_retries_without_flash_attention(
+    error: type[Exception],
+) -> None:
+    def load(implementation: str | None) -> str | None:
+        if implementation is not None:
+            raise error
+        return implementation
+
+    assert _load_with_attn_fallback(load, "flash_attention_2") is None
+
+
+def test_load_with_attn_fallback_reraises_without_requested_attention() -> None:
+    def load(_implementation: str | None) -> str | None:
+        msg = "broken"
+        raise ValueError(msg)
+
+    with pytest.raises(ValueError, match="broken"):
+        _load_with_attn_fallback(load, None)

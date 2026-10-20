@@ -1,5 +1,6 @@
 """Pretrained model loading and param freezing."""
 
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, cast
 
 import torch
@@ -13,6 +14,8 @@ from eh30pt.datasets.registry import assert_classification, get_labels
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from torch.nn import Module
     from transformers import (
         BitsAndBytesConfig,
@@ -21,6 +24,33 @@ if TYPE_CHECKING:
     )
 
     from eh30pt.types import Architecture, DatasetName
+
+
+def _attn_implementation() -> str | None:
+    """Return flash attention only when its CUDA kernel is importable."""
+    if not torch.cuda.is_available() or find_spec("flash_attn") is None:
+        return None
+
+    return "flash_attention_2"
+
+
+def _load_with_attn_fallback[ModelT](
+    load: Callable[[str | None], ModelT],
+    attn: str | None,
+) -> ModelT:
+    """Load with the requested attention implementation, retrying without it."""
+    try:
+        return load(attn)
+    except (ImportError, ValueError) as error:
+        if attn is None:
+            raise
+
+        logger.warning(
+            "flash attention unavailable for this model (%s), falling back",
+            error,
+        )
+
+        return load(None)
 
 
 def load_model(
@@ -53,39 +83,52 @@ def load_model(
         logger.debug("using full precision")
 
     skip_freeze = None
+    attn = _attn_implementation()
     if arch == "encoder":
         labels = get_labels(dataset)
         id2label = dict(enumerate(labels))
         label2id = {label: index for index, label in id2label.items()}
         logger.debug("loading '%s' for sequence classification", model_path)
-        model, loading_info = AutoModelForSequenceClassification.from_pretrained(
-            model_path,
-            output_loading_info=True,
-            ignore_mismatched_sizes=True,
-            num_labels=len(id2label),
-            id2label=id2label,
-            label2id=label2id,
-            device_map=device_map,
-            dtype=dtype,
-            quantization_config=quantization_config,
+        model, loading_info = _load_with_attn_fallback(
+            lambda implementation: AutoModelForSequenceClassification.from_pretrained(
+                model_path,
+                output_loading_info=True,
+                ignore_mismatched_sizes=True,
+                num_labels=len(id2label),
+                id2label=id2label,
+                label2id=label2id,
+                device_map=device_map,
+                dtype=dtype,
+                quantization_config=quantization_config,
+                attn_implementation=implementation,
+            ),
+            attn,
         )
 
         skip_freeze = loading_info["missing_keys"]
     elif arch == "decoder":
         logger.debug("loading '%s' for causal language modeling", model_path)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            device_map=device_map,
-            dtype=dtype,
-            quantization_config=quantization_config,
+        model = _load_with_attn_fallback(
+            lambda implementation: AutoModelForCausalLM.from_pretrained(
+                model_path,
+                device_map=device_map,
+                dtype=dtype,
+                quantization_config=quantization_config,
+                attn_implementation=implementation,
+            ),
+            attn,
         )
     elif arch == "encoder-decoder":
         logger.debug("loading '%s' for sequence to sequence", model_path)
-        model = AutoModelForSeq2SeqLM.from_pretrained(
-            model_path,
-            device_map=device_map,
-            dtype=dtype,
-            quantization_config=quantization_config,
+        model = _load_with_attn_fallback(
+            lambda implementation: AutoModelForSeq2SeqLM.from_pretrained(
+                model_path,
+                device_map=device_map,
+                dtype=dtype,
+                quantization_config=quantization_config,
+                attn_implementation=implementation,
+            ),
+            attn,
         )
 
     if have_mps:

@@ -6,6 +6,7 @@ readme = "README.md"
 authors = [{ name = "mart-mihkel", email = "mart.mihkel.aun@gmail.com" }]
 requires-python = "~=3.14.7"
 dependencies = [
+    "flash-linear-attention~=0.5.2",
     "pydantic-settings~=2.15.0",
     "psycopg[binary]~=3.2",
     "transformers~=5.17.0",
@@ -59,12 +60,24 @@ notebooks = [
 [project.scripts]
 ehpt = "eh30pt.cli.cli:app"
 
+[project.optional-dependencies]
+cuda = [
+    "causal-conv1d~=1.7.0; sys_platform == 'linux'",
+    "flash-attn~=2.7.0; sys_platform == 'linux'",
+    "setuptools",
+    "packaging",
+    "psutil",
+    "ninja",
+    "wheel",
+]
+
 [build-system]
 requires = ["uv_build~=0.13.0"]
 build-backend = "uv_build"
 
 [tool.uv]
 exclude-newer = "2 days"
+no-build-isolation-package = ["causal-conv1d", "flash-attn"]
 
 [tool.pytest.ini_options]
 markers = [
