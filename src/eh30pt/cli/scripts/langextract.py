@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast
 from langextract import extract
 from langextract.core.types import FormatType
 from returns.result import Failure, Success
-from tqdm.rich import tqdm
+from tqdm import tqdm
 
 from eh30pt.datasets.registry import (
     assert_extraction,
@@ -260,10 +260,7 @@ async def main(
         batch: list[GenerateRecord] = []
 
         logger.info("starting langextract loop")
-        with tqdm(
-            desc="                             extracting",
-            unit="samples",
-        ) as bar:
+        with tqdm(desc="Extracting") as bar:
             n_seen, invalid, n_shards = await stream_predictions(
                 data.test.samples(),
                 predictor,

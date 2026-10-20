@@ -8,11 +8,9 @@ from typing import TYPE_CHECKING, TextIO, cast
 
 import rich.traceback
 import tqdm.std
-from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.table import Table
-from tqdm import TqdmExperimentalWarning
 
 if TYPE_CHECKING:
     from collections import Counter
@@ -32,8 +30,8 @@ def format_confusion_matrix(
     counts: Sequence[Sequence[int]],
 ) -> str:
     """Render a gold-by-predicted confusion matrix as a monospace table."""
-    table = Table(box=box.SQUARE, header_style="bold")
-    table.add_column("gold\\pred", justify="right")
+    table = Table(header_style="bold")
+    table.add_column("y\\ŷ", justify="right")
     for label in labels:
         table.add_column(label, justify="right")
 
@@ -126,12 +124,6 @@ def setup_logging() -> None:
         "ignore",
         message="'pin_memory' argument is set as true but not supported on MPS.*",
         category=UserWarning,
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message="rich is experimental/alpha",
-        category=TqdmExperimentalWarning,
     )
 
     stream = cast("TextIO", _TqdmSafeStream(sys.stderr))

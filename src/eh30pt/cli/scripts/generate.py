@@ -3,7 +3,7 @@
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, cast
 
-from tqdm.rich import tqdm
+from tqdm import tqdm
 
 from eh30pt.datasets.registry import get_sys_prompt, load_data
 from eh30pt.logging import logger
@@ -98,10 +98,7 @@ async def main(
         batch: list[GenerateRecord] = []
 
         logger.info("starting generate loop")
-        with tqdm(
-            desc="                             generating",
-            unit="samples",
-        ) as bar:
+        with tqdm(desc="Generating") as bar:
             n_seen, invalid, n_shards = await stream_predictions(
                 data.test.samples(),
                 predictor,

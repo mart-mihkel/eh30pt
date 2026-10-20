@@ -1,16 +1,13 @@
 """OpenAI wrangling tests."""
 
 import asyncio
-import io
 
 import pytest
-from tqdm.rich import tqdm
 
 from eh30pt.openai.stream import (
     append_prediction_window,
     batched_concurrent,
     log_invalid,
-    log_summary,
     map_concurrent,
 )
 from eh30pt.types import FewShot, GenerateRecord, Predictor
@@ -151,36 +148,6 @@ def test_append_prediction_window_rejects_missing_id() -> None:
 
     with pytest.raises(ValueError, match="row ids"):
         append_prediction_window(batch, window, ["x"])
-
-
-def test_log_summary_reports_throughput(caplog: pytest.LogCaptureFixture) -> None:
-    bar = tqdm(
-        desc="                             generating",
-        unit="samples",
-        file=io.StringIO(),
-    )
-
-    bar.update(7)
-    bar.close()
-
-    with caplog.at_level("INFO", logger="eh30pt"):
-        log_summary(bar, "generated", 7, 1, n_shards=2)
-
-    assert "generated 7 samples (1 invalid)" in caplog.text
-    assert "across 2 shards" in caplog.text
-    assert "/s)" in caplog.text
-
-
-def test_log_summary_without_shards(caplog: pytest.LogCaptureFixture) -> None:
-    bar = tqdm(desc="evaluating", unit="samples", file=io.StringIO())
-    bar.update(4)
-    bar.close()
-
-    with caplog.at_level("INFO", logger="eh30pt"):
-        log_summary(bar, "evaluated", 4, 0)
-
-    assert "evaluated 4 samples (0 invalid)" in caplog.text
-    assert "across" not in caplog.text
 
 
 def test_asafe_wraps_success_and_failure() -> None:

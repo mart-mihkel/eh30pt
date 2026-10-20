@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+from rich.pretty import pretty_repr
 from transformers import PrinterCallback, ProgressCallback
 
 from eh30pt.logging import logger
@@ -40,7 +41,7 @@ class RichProgressCallback(ProgressCallback):
             else:
                 formatted[key] = value
 
-        logger.info("%s", formatted)
+        logger.info("%s", pretty_repr(formatted, expand_all=True))
 
 
 def use_rich_logging(trainer: Trainer) -> None:

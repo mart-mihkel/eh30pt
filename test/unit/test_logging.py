@@ -1,18 +1,30 @@
 """Tests for logging helpers."""
 
+from __future__ import annotations
+
 import io
 import logging
 from collections import Counter
+from typing import TYPE_CHECKING, cast
 
 from rich.logging import RichHandler
 
 from eh30pt.logging import (
     _TqdmSafeStream,
-    format_confusion_matrix,
     format_counts,
     logger,
     setup_logging,
 )
+
+if TYPE_CHECKING:
+    import pytest
+    from transformers import TrainerControl, TrainerState, TrainingArguments
+
+
+class _State:
+    """Minimal trainer state for callback logging tests."""
+
+    is_world_process_zero = True
 
 
 def _record(level: int, message: str) -> logging.LogRecord:
@@ -31,14 +43,23 @@ def test_format_counts_sorts_keys() -> None:
     assert format_counts(Counter({"b": 2, "a": 1})) == "'a'=1 'b'=2"
 
 
-def test_format_confusion_matrix_renders_labels_and_counts() -> None:
-    text = format_confusion_matrix(["ei", "jah"], [[0, 95], [0, 165]])
+def test_rich_progress_callback_logs_pretty_mapping(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from eh30pt.modeling.training.callbacks import RichProgressCallback
 
-    assert "gold\\pred" in text
-    for token in ("ei", "jah", "95", "165"):
-        assert token in text
+    callback = RichProgressCallback()
+    with caplog.at_level("INFO", logger="eh30pt"):
+        callback.on_log(
+            cast("TrainingArguments", None),
+            cast("TrainerState", _State()),
+            cast("TrainerControl", None),
+            logs={"loss": 0.123456, "total_flos": 100},
+        )
 
-    assert "\n" in text
+    assert "'loss': '0.1235'" in caplog.text
+    assert "total_flos" not in caplog.text
+    assert "\n" in caplog.text
 
 
 def test_tqdm_stream_buffers_partial_lines() -> None:

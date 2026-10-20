@@ -2,7 +2,8 @@
 
 from typing import TYPE_CHECKING, cast
 
-from tqdm.rich import tqdm
+from rich.pretty import pretty_repr
+from tqdm import tqdm
 
 from eh30pt.datasets.registry import (
     assert_classification,
@@ -163,10 +164,7 @@ async def main(
         )
 
         logger.info("starting eval loop")
-        with tqdm(
-            desc="                             evaluating",
-            unit="samples",
-        ) as bar:
+        with tqdm(desc="Evaluating") as bar:
             n_seen, invalid = await _stream_evaluate(
                 predictor=predictor,
                 samples=data.test.samples(),
@@ -185,5 +183,7 @@ async def main(
         ctx.log_metrics(metrics, step=n_seen + step_offset)
 
     log_summary(bar, "evaluated", n_seen, invalid)
-    pretty = " ".join(f"'{key}'={value}" for key, value in sorted(metrics.items()))
-    logger.info(pretty)
+    logger.info(
+        "%s",
+        pretty_repr(dict(sorted(metrics.items())), expand_all=True),
+    )

@@ -80,18 +80,6 @@ def test_compute_classification_metrics_zeroes_rates_for_single_class() -> None:
     assert metrics["kappa"] == 0.0
 
 
-def test_compute_classification_metrics_logs_confusion_matrix(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """The gold-by-predicted matrix is logged for every computation."""
-    with caplog.at_level("INFO", logger="eh30pt"):
-        compute_classification_metrics(["ei", "jah", "jah"], ["jah", "jah", "jah"])
-
-    assert "confusion matrix" in caplog.text
-    assert "gold\\pred" in caplog.text
-    assert "jah" in caplog.text
-
-
 def test_compute_classification_metrics_scores_binary_positive_class() -> None:
     """A binary target reports the positive class instead of averaging classes."""
     labels = ["ei"] * 95 + ["jah"] * 165

@@ -11,7 +11,7 @@ import mlflow
 import pytest
 from langextract.data import AnnotatedDocument, Extraction
 from returns.result import Failure, Success
-from tqdm.rich import tqdm
+from tqdm import tqdm
 
 import eh30pt.cli.scripts.langextract as langextract_mod
 from eh30pt.cli.scripts.create_task import run_labeling
@@ -341,7 +341,8 @@ def test_fold_eval_window_counts_and_logs(
 
 
 def test_stream_evaluate_consumes_windows(
-    mlflow_client: MlflowClient, run_config: RunConfig
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
 ) -> None:
     from eh30pt.cli.scripts.evaluate import _stream_evaluate
     from eh30pt.datasets.registry import get_few_shots
@@ -358,11 +359,7 @@ def test_stream_evaluate_consumes_windows(
         shots[1],
     ]
     with RunContext(settings, config=run_config) as ctx:
-        bar = tqdm(
-            desc="                             evaluating",
-            unit="samples",
-            file=io.StringIO(),
-        )
+        bar = tqdm(desc="Evaluating", file=io.StringIO())
         try:
             n_seen, invalid = asyncio.run(
                 _stream_evaluate(

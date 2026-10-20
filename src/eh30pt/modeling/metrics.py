@@ -1,6 +1,5 @@
 """Streaming metric computation for encoder, decoder, and encoder-decoder Trainers."""
 
-from collections import Counter
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -17,11 +16,11 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from torch import Tensor
-from tqdm.rich import tqdm
+from tqdm import tqdm
 from transformers import EvalPrediction  # noqa: TC002
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.logging import format_confusion_matrix, format_counts, logger
+from eh30pt.logging import format_confusion_matrix, logger
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -63,10 +62,7 @@ class MetricsAccumulator(Callable):
         self._extend(eval_pred)
 
         if self._bar is None:
-            self._bar = tqdm(
-                desc="                             evaluating",
-                unit="samples",
-            )
+            self._bar = tqdm(desc="Evaluating")
 
         self._bar.update(len(self._labels) - collected)
 
@@ -131,12 +127,6 @@ class MetricsAccumulator(Callable):
             all_probs = np.array(self._probs)
             mask = all_labels != SENTINEL_TOKEN
 
-            _labels_count = Counter(all_labels[mask].tolist())
-            _preds_count = Counter(all_preds[mask].tolist())
-
-            logger.debug("labels: %s", format_counts(_labels_count))
-            logger.debug("predictions: %s", format_counts(_preds_count))
-
             self.last_labels = [int(value) for value in all_labels[mask].tolist()]
             self.last_predictions = [int(value) for value in all_preds[mask].tolist()]
 
@@ -169,12 +159,6 @@ class MetricsAccumulator(Callable):
         references = self._tokenizer.batch_decode(labels, skip_special_tokens=True)
         predictions = self._tokenizer.batch_decode(preds, skip_special_tokens=True)
         predictions = _filter_other(references, predictions)
-
-        _refs_count = Counter(references)
-        _preds_count = Counter(predictions)
-
-        logger.debug("references: %s", format_counts(_refs_count))
-        logger.debug("predictions: %s", format_counts(_preds_count))
 
         self.last_labels = list(references)
         self.last_predictions = list(predictions)
