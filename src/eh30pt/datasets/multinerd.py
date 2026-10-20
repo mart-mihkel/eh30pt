@@ -276,6 +276,8 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
+        *,
+        sequence_classification: bool = False,
     ) -> None:
         """Store one split with its tokenization settings."""
         self._data = data
@@ -283,6 +285,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._arch = arch
         self._n_shot = n_shot
         self._n_virtual = n_virtual
+        self._sequence_classification = sequence_classification
 
     def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
         """Yield tokenized samples for the split."""
@@ -327,6 +330,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
             label=label,
             few_shots=few_shots,
             n_virtual=n_virtual,
+            sequence_classification=self._sequence_classification,
         )
 
     def _unpack_row(self) -> Iterator[MultinerdRow]:
@@ -383,6 +387,8 @@ def load_multinerd(
     arch: Architecture,
     n_shot: int = 0,
     n_virtual: int = 0,
+    *,
+    sequence_classification: bool = False,
 ) -> DataSplits:
     """Load english MultiNERD splits as per-split tokenized streaming datasets."""
     logger.debug("loading raw multinerd dataset")
@@ -397,7 +403,28 @@ def load_multinerd(
     test: Dataset = data["test"].filter(_filter_english, batched=True)
 
     return DataSplits(
-        Multinerd(train, tokenizer, arch, n_shot, n_virtual),
-        Multinerd(eval_, tokenizer, arch, n_shot, n_virtual),
-        Multinerd(test, tokenizer, arch, n_shot, n_virtual),
+        Multinerd(
+            train,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        Multinerd(
+            eval_,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        Multinerd(
+            test,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
     )

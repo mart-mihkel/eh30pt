@@ -8,10 +8,11 @@ from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 
-from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.datasets.discontinuation.extract import (
+from eh30pt.datasets.discont.classify import DiscontClassifier
+from eh30pt.datasets.discont.extract import (
     DiscontExtract,
     DiscontExtractRow,
+    _no_rows,
 )
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Obl
@@ -398,8 +399,6 @@ def test_mixin_base_methods_raise() -> None:
 
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:
-    from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
 
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
@@ -431,6 +430,4 @@ def test_multinerd_tokenize_rejects_too_many_shots() -> None:
 
 
 def test_no_extract_row_factory_is_empty() -> None:
-    from eh30pt.datasets.discontinuation.extract import _no_rows
-
     assert list(_no_rows()) == []

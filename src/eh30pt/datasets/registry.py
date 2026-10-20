@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Any
 from datasets.iterable_dataset import IterableDataset as HFIterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
-from eh30pt.datasets.discontinuation.binary import DiscontBinary, load_discont_binary
-from eh30pt.datasets.discontinuation.classify import (
+from eh30pt.datasets.discont.binary import DiscontBinary, load_discont_binary
+from eh30pt.datasets.discont.classify import (
     DiscontClassifier,
     load_discont_classifier,
 )
-from eh30pt.datasets.discontinuation.extract import (
+from eh30pt.datasets.discont.extract import (
     DiscontExtract,
     load_discont_extract,
 )
@@ -178,19 +178,25 @@ def get_sys_prompt(dataset: DatasetName, arch: Architecture | None = None) -> st
     raise ValueError(msg)
 
 
-def get_positive_label(dataset: DatasetName, arch: Architecture) -> str | int | None:
+def get_positive_label(
+    dataset: DatasetName,
+    arch: Architecture,
+    *,
+    sequence_classification: bool = False,
+) -> str | int | None:
     """Return the positive class of a binary `dataset` in `arch`'s label space."""
+    label_arch: Architecture = "encoder" if sequence_classification else arch
     if dataset == "multinerd":
-        return Multinerd.positive_label_for(arch)
+        return Multinerd.positive_label_for(label_arch)
 
     if dataset == "oblique":
-        return Obl.positive_label_for(arch)
+        return Obl.positive_label_for(label_arch)
 
     if dataset == "discont-classifier/extract-labels":
-        return DiscontClassifier.positive_label_for(arch)
+        return DiscontClassifier.positive_label_for(label_arch)
 
     if dataset == "discont-binary/extract-labels":
-        return DiscontBinary.positive_label_for(arch)
+        return DiscontBinary.positive_label_for(label_arch)
 
     if _is_extract(dataset):
         return None
@@ -285,6 +291,7 @@ def _load_classifier_splits(
     n_virtual: int,
     data_path: Path | None,
     seed: int | None,
+    sequence_classification: bool = False,
 ) -> DataSplits:
     """Load discont classifier splits from a labels file carved with `seed`."""
     if data_path is None:
@@ -303,6 +310,7 @@ def _load_classifier_splits(
             n_virtual,
             data_path=data_path,
             seed=split_seed,
+            sequence_classification=sequence_classification,
         )
 
     if dataset == "discont-binary/extract-labels":
@@ -313,6 +321,7 @@ def _load_classifier_splits(
             n_virtual,
             data_path=data_path,
             seed=split_seed,
+            sequence_classification=sequence_classification,
         )
 
     msg = f"invalid dataset {dataset}"
@@ -329,6 +338,7 @@ def load_data(
     data_path: Path | None = None,
     seed: int | None = None,
     train_size: int | None = None,
+    sequence_classification: bool = False,
 ) -> DataSplits:
     """Load dataset splits, streaming only rows with id above start_after."""
     if train_size is not None and train_size < 1:
@@ -340,9 +350,21 @@ def load_data(
         raise ValueError(msg)
 
     if dataset == "multinerd":
-        splits = load_multinerd(tokenizer, arch, n_shot, n_virtual)
+        splits = load_multinerd(
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        )
     elif dataset == "oblique":
-        splits = load_obl(tokenizer, arch, n_shot, n_virtual)
+        splits = load_obl(
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        )
     elif _is_extract(dataset):
         splits = load_discont_extract(
             tokenizer,
@@ -360,6 +382,7 @@ def load_data(
             n_virtual=n_virtual,
             data_path=data_path,
             seed=seed,
+            sequence_classification=sequence_classification,
         )
     else:
         msg = f"invalid dataset {dataset}"

@@ -9,9 +9,9 @@ import polars as pl
 import pytest
 from returns.result import Failure
 
-from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.datasets.discontinuation.extract import DiscontExtract
-from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
+from eh30pt.datasets.discont.classify import DiscontClassifier
+from eh30pt.datasets.discont.extract import DiscontExtract
+from eh30pt.labeling.export.extract import ExtractionFrameSchema
 from eh30pt.labeling.studio import StudioClient, StudioResult
 from eh30pt.labeling.tasks.extract import extraction_controls, extraction_labeling
 from eh30pt.settings import LabelStudioSettings

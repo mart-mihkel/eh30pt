@@ -4,8 +4,8 @@ from typing import Final
 
 import polars as pl
 
-from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
+from eh30pt.datasets.discont.classify import DiscontClassifier
+from eh30pt.labeling.export.extract import ExtractionFrameSchema, stratify
 
 _labels: Final = 9
 

@@ -15,7 +15,7 @@ from datasets.iterable_dataset import IterableDataset
 from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
-from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
+from eh30pt.labeling.export.extract import ExtractionFrameSchema, stratify
 from eh30pt.logging import format_counts, logger
 from eh30pt.types import DataSplits, DiscontClassifierLabel, FewShot
 
@@ -213,6 +213,8 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
+        *,
+        sequence_classification: bool = False,
     ) -> None:
         """Store the split rows with their tokenization settings."""
         self._rows = rows
@@ -220,6 +222,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._arch = arch
         self._n_shot = n_shot
         self._n_virtual = n_virtual
+        self._sequence_classification = sequence_classification
 
     def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
         """Yield tokenized rows for the split."""
@@ -257,6 +260,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label=row.get("label", ""),
             few_shots=few_shots,
             n_virtual=n_virtual,
+            sequence_classification=self._sequence_classification,
         )
 
     @classmethod
@@ -299,6 +303,7 @@ def load_discont_classifier(
     *,
     data_path: Path,
     seed: int,
+    sequence_classification: bool = False,
 ) -> DataSplits:
     """Load the exported Label Studio rows as train, eval and test splits."""
     df = pl.read_parquet(data_path)
@@ -312,7 +317,28 @@ def load_discont_classifier(
     )
 
     return DataSplits(
-        train=DiscontClassifier(_rows(train), tokenizer, arch, n_shot, n_virtual),
-        eval=DiscontClassifier(_rows(eval_), tokenizer, arch, n_shot, n_virtual),
-        test=DiscontClassifier(_rows(test), tokenizer, arch, n_shot, n_virtual),
+        train=DiscontClassifier(
+            _rows(train),
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        eval=DiscontClassifier(
+            _rows(eval_),
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        test=DiscontClassifier(
+            _rows(test),
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
     )

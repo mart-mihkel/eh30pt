@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from eh30pt.datasets.registry import get_task
-from eh30pt.labeling.loaders.extract import extraction_df
+from eh30pt.labeling.export.extract import extraction_df
 from eh30pt.labeling.tasks.classify import classification_labeling
 from eh30pt.labeling.tasks.extract import extraction_controls, extraction_labeling
 

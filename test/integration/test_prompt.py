@@ -8,21 +8,27 @@ from typing import TYPE_CHECKING, Final, cast
 import polars as pl
 import pytest
 from datasets import Dataset
+from sqlalchemy import create_engine as _create_engine
+from sqlalchemy.orm import Session as _Session
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classify import (
+from eh30pt.datasets.discont.classify import (
     DiscontClassifier,
     DiscontClassifierRow,
     load_discont_classifier,
 )
-from eh30pt.datasets.discontinuation.extract import (
+from eh30pt.datasets.discont.extract import (
     DiscontExtract,
     DiscontExtractRow,
     load_discont_extract,
 )
+from eh30pt.datasets.discont.extract import DiscontExtract as _Extract
 from eh30pt.datasets.multinerd import Multinerd, MultinerdRow
 from eh30pt.datasets.oblique import Obl, OblRow
-from eh30pt.labeling.loaders.extract import ExtractionFrameSchema
+from eh30pt.datasets.registry import get_labels as _get_labels
+from eh30pt.esthealth.queries import select_trigger_events as _select_trigger
+from eh30pt.labeling.export.extract import ExtractionFrameSchema
+from eh30pt.settings import PostgresSettings as _PostgresSettings
 from eh30pt.types import Architecture, FewShot
 
 if TYPE_CHECKING:
@@ -101,14 +107,6 @@ def shots() -> list[FewShot]:
 def classifier_rows(database: None) -> list[DiscontClassifierRow]:
     """Return classifier rows built from seeded DB text and registry labels."""
     _ = database
-    from sqlalchemy import create_engine as _create_engine
-    from sqlalchemy.orm import Session as _Session
-
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract as _Extract
-    from eh30pt.datasets.registry import get_labels as _get_labels
-    from eh30pt.esthealth.queries import select_trigger_events as _select_trigger
-    from eh30pt.settings import PostgresSettings as _PostgresSettings
-
     labels = _get_labels("discont-classifier/extract-labels")
     engine = _create_engine(_PostgresSettings().connection_url)
     try:
@@ -463,8 +461,6 @@ def test_classifier_reiterates_its_rows(
 def test_extract_streams_rows_lazily(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract as _Extract
-
     real: list[DiscontExtractRow] = [
         {"id": idx, "text": shot.user}
         for idx, shot in enumerate(_Extract.extract_shots[:2])
@@ -504,8 +500,6 @@ def test_load_classifier_reads_exported_labels_without_a_server(
     bert_tokenizer: PreTrainedTokenizerFast, tmp_path: Path
 ) -> None:
     """Splits stream from an export-labels parquet, never touching the API."""
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract as _Extract
-
     n_tasks = 10
     export_labels = tuple(DiscontClassifier.label2margend)
     real_shots = _Extract.extract_shots

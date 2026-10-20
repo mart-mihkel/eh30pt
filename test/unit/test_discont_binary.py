@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from eh30pt.datasets.discontinuation.binary import DiscontBinary
-from eh30pt.datasets.discontinuation.classify import DiscontClassifier
+from eh30pt.datasets.discont.binary import DiscontBinary
+from eh30pt.datasets.discont.classify import DiscontClassifier
 from eh30pt.datasets.registry import (
     get_few_shots,
     get_response_schema,

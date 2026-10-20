@@ -1,6 +1,6 @@
 """Turning Label Studio annotations into training rows, split three ways."""
 
-from typing import TYPE_CHECKING, NamedTuple, TypedDict, cast, get_args
+from typing import TYPE_CHECKING, TypedDict, cast, get_args
 
 import pandera.polars as pa
 import polars as pl
@@ -13,17 +13,8 @@ if TYPE_CHECKING:
 
     from pandera.typing.polars import DataFrame
 
-    from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
     from eh30pt.labeling.studio import StudioTask
     from eh30pt.labeling.types import ChoiceValue
-
-
-class _DataSplits(NamedTuple):
-    """The row lists the labeled rows are carved into."""
-
-    train: list[DiscontClassifierRow]
-    eval: list[DiscontClassifierRow]
-    test: list[DiscontClassifierRow]
 
 
 class _ExtractionData(TypedDict):
@@ -135,9 +126,9 @@ def stratify(
     shuffled = df.sample(fraction=1.0, shuffle=True, seed=seed)
     groups = shuffled.partition_by(on, maintain_order=True, as_dict=True)
 
-    train: list[pl.DataFrame] = []
-    eval_: list[pl.DataFrame] = []
-    test: list[pl.DataFrame] = []
+    train = []
+    eval_ = []
+    test = []
     overflow = 0
 
     for group in groups.values():

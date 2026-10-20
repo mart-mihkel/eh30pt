@@ -9,9 +9,14 @@ from typing import TYPE_CHECKING, cast
 
 import mlflow
 import pytest
+from langextract.data import AnnotatedDocument, Extraction
 from returns.result import Failure, Success
 from tqdm.rich import tqdm
 
+import eh30pt.cli.scripts.langextract as langextract_mod
+from eh30pt.cli.scripts.create_task import run_labeling
+from eh30pt.datasets.discont.extract import DiscontExtract
+from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
 from eh30pt.modeling.metrics import StreamingClassificationMetrics
 from eh30pt.openai.complete import CompletionClient
 from eh30pt.openai.stream import CompletionPredictor
@@ -165,12 +170,6 @@ def test_completion_script_logs_success_and_failure(
 def test_predict_one_assembles_and_handles_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from langextract.data import AnnotatedDocument, Extraction
-
-    import eh30pt.cli.scripts.langextract as langextract_mod
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-    from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
-
     shot = DiscontExtract.extract_shots[0]
     fields = get_extract_fields("discont-extract/trigger")
     system = get_sys_prompt("discont-extract/trigger")
@@ -237,12 +236,6 @@ def test_extract_predictor_predicts_and_marks_invalid(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    from langextract.data import AnnotatedDocument, Extraction
-
-    import eh30pt.cli.scripts.langextract as langextract_mod
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-    from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
-
     shot = DiscontExtract.extract_shots[0]
     fields = get_extract_fields("discont-extract/trigger")
     system = get_sys_prompt("discont-extract/trigger")
@@ -389,8 +382,6 @@ def test_stream_evaluate_consumes_windows(
 
 
 def _span_batch() -> tuple[ExtractShot, ExtractShot, list[GenerateRecord]]:
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-
     valid = DiscontExtract.extract_shots[0]
     empty_user = DiscontExtract.extract_shots[4].user
     other = DiscontExtract.extract_shots[1]
@@ -642,9 +633,6 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
 def test_run_labeling_reads_struct_predictions(
     mlflow_client: MlflowClient, run_config: RunConfig, tmp_path: Path
 ) -> None:
-    from eh30pt.cli.scripts.create_task import run_labeling
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-
     _ = mlflow_client
     mlflow.set_experiment("export-struct-exp")
     settings = MlflowSettings(

@@ -9,8 +9,8 @@ from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.datasets.discontinuation.classify import DiscontClassifier
-from eh30pt.datasets.discontinuation.extract import (
+from eh30pt.datasets.discont.classify import DiscontClassifier
+from eh30pt.datasets.discont.extract import (
     DiscontExtract,
     DiscontExtractRow,
     load_discont_extract,
@@ -30,7 +30,7 @@ from eh30pt.settings import ServerSettings
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
-    from eh30pt.datasets.discontinuation.classify import DiscontClassifierRow
+    from eh30pt.datasets.discont.classify import DiscontClassifierRow
     from test.integration.conftest import ModelSetup
 
 

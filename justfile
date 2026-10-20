@@ -29,9 +29,9 @@ rsync commit='false' host=env('RSYNC_HOST'):
 [arg('prefix', long, help='object storage target path')]
 [doc('upload wheel to object storage')]
 [group('build')]
-msync alias=env('MSYNC_ALIAS') prefix=env('MSYNC_PREFIX'):
-    @uv build --wheel --clear
-    mc cp dist/*.whl "{{ alias }}/{{ prefix }}"
+@msync alias=env('MSYNC_ALIAS') prefix=env('MSYNC_PREFIX'):
+    uv build --wheel --clear
+    mc cp dist/eh30pt-0.1.0-py3-none-any.whl "{{ alias }}/{{ prefix }}"
 
 [doc('serve marimo')]
 [group('dev')]

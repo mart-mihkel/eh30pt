@@ -9,8 +9,16 @@ import pytest
 import torch
 
 from eh30pt.constants import PAD_MULTIPLE, SENTINEL_TOKEN
+from eh30pt.datasets.discont.extract import DiscontExtract
+from eh30pt.datasets.registry import (
+    get_extract_fields,
+    get_response_schema,
+    get_sys_prompt,
+)
 from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
+from eh30pt.openai.complete import CompletionClient
+from eh30pt.settings import ServerSettings
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel
@@ -156,15 +164,6 @@ def test_forward(collated_inputs: _Inputs) -> None:
 @pytest.mark.vcr
 def test_extract_constrained_forward() -> None:
     """Constrained decoding forward yields parsed JSON, plain forward text."""
-    from eh30pt.datasets.discontinuation.extract import DiscontExtract
-    from eh30pt.datasets.registry import (
-        get_extract_fields,
-        get_response_schema,
-        get_sys_prompt,
-    )
-    from eh30pt.openai.complete import CompletionClient
-    from eh30pt.settings import ServerSettings
-
     user = DiscontExtract.extract_shots[0].user
     conversation = CompletionClient.build_conversation(
         user, system=get_sys_prompt("discont-extract/trigger")

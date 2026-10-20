@@ -198,6 +198,8 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
+        *,
+        sequence_classification: bool = False,
     ) -> None:
         """Store one split with its tokenization settings."""
         self._data = data
@@ -205,6 +207,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._arch = arch
         self._n_shot = n_shot
         self._n_virtual = n_virtual
+        self._sequence_classification = sequence_classification
 
     def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
         """Yield tokenized rows for the split."""
@@ -249,6 +252,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
             label=label,
             few_shots=few_shots,
             n_virtual=n_virtual,
+            sequence_classification=self._sequence_classification,
         )
 
 
@@ -257,6 +261,8 @@ def load_obl(
     arch: Architecture,
     n_shot: int = 0,
     n_virtual: int = 0,
+    *,
+    sequence_classification: bool = False,
 ) -> DataSplits:
     """Load OBL splits as per-split tokenized streaming datasets."""
     logger.debug("loading obl csv from github permalink")
@@ -276,7 +282,28 @@ def load_obl(
     test: Dataset = test_rest["test"]
 
     return DataSplits(
-        Obl(train, tokenizer, arch, n_shot, n_virtual),
-        Obl(eval_, tokenizer, arch, n_shot, n_virtual),
-        Obl(test, tokenizer, arch, n_shot, n_virtual),
+        Obl(
+            train,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        Obl(
+            eval_,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
+        Obl(
+            test,
+            tokenizer,
+            arch,
+            n_shot,
+            n_virtual,
+            sequence_classification=sequence_classification,
+        ),
     )

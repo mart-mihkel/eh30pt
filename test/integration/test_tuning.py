@@ -40,23 +40,15 @@ def test_get_n_virtual_without_chat_template(
     assert get_n_virtual(gpt2_tokenizer, prompt) == expected
 
 
-def test_get_n_virtual_with_chat_template(
+def test_get_n_virtual_ignores_chat_template(
     gpt2_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    gpt2_tokenizer.chat_template = (
-        "{% for message in messages %}{{ message.content }}{% endfor %}"
-    )
+    gpt2_tokenizer.chat_template = "{{ 'x' }}"
 
     try:
         prompt = get_sys_prompt("oblique")
-        conv = [{"role": "system", "content": prompt}]
-        expected = len(
-            cast(
-                "dict[str, list[int]]",
-                gpt2_tokenizer.apply_chat_template(conv, truncation=True),
-            )["input_ids"]
-        )
-
+        expected = len(gpt2_tokenizer(prompt, truncation=True)["input_ids"])
+        assert expected > 1
         assert get_n_virtual(gpt2_tokenizer, prompt) == expected
     finally:
         gpt2_tokenizer.chat_template = None

@@ -113,6 +113,7 @@ class DatasetMixin[RowType]:
         user_prompt: str,
         few_shots: list[FewShot],
         max_len: int | None,
+        sequence_classification: bool = False,
     ) -> BatchEncoding[list[int]]:
         prompt = self.system_prompt_for(arch)
 
@@ -135,7 +136,7 @@ class DatasetMixin[RowType]:
                 truncation=True,
                 return_dict=True,
                 max_length=max_len,
-                add_generation_prompt=arch != "encoder",
+                add_generation_prompt=arch != "encoder" and not sequence_classification,
             )
 
         return cast("BatchEncoding[list[int]]", encoded_prompt)
@@ -185,6 +186,7 @@ class DatasetMixin[RowType]:
         label: str,
         few_shots: list[FewShot],
         n_virtual: int = 0,
+        sequence_classification: bool = False,
     ) -> BatchEncoding[list[int]]:
         """Encode one labeled example into prompt tokens with labels set."""
         max_len = self._model_max_len(tokenizer, n_virtual)
@@ -194,6 +196,7 @@ class DatasetMixin[RowType]:
             user_prompt=user_prompt,
             few_shots=few_shots,
             max_len=max_len,
+            sequence_classification=sequence_classification,
         )
 
         return self._finalize_encoding(
@@ -204,6 +207,7 @@ class DatasetMixin[RowType]:
             few_shots=few_shots,
             max_len=max_len,
             encoded_prompt=encoded_prompt,
+            sequence_classification=sequence_classification,
         )
 
     def _finalize_encoding(
@@ -216,12 +220,13 @@ class DatasetMixin[RowType]:
         few_shots: list[FewShot],
         max_len: int | None,
         encoded_prompt: BatchEncoding[list[int]],
+        sequence_classification: bool = False,
     ) -> BatchEncoding[list[int]]:
         """Attach labels to a prompt encoding per architecture."""
         prompt_len = len(encoded_prompt["input_ids"])
         is_truncated = max_len is not None and prompt_len >= max_len
 
-        if arch == "encoder":
+        if sequence_classification or arch == "encoder":
             encoded_prompt["labels"] = self.label2id[label]
             encoded_prompt["truncated"] = is_truncated
             return encoded_prompt
