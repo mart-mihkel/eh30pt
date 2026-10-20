@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from eh30pt.datasets.registry import get_task
-from eh30pt.labeling.loaders.extract import extraction_frame
+from eh30pt.labeling.loaders.extract import extraction_df
 from eh30pt.labeling.tasks.classify import classification_labeling
 from eh30pt.labeling.tasks.extract import extraction_controls, extraction_labeling
 
@@ -41,7 +41,7 @@ def export_frame(
 
     match task:
         case "extraction":
-            return extraction_frame(tasks, project=project)
+            return extraction_df(tasks, project=project)
         case "classification":
             msg = f"dataset '{dataset}' has no implementation for '{task}'"
             raise NotImplementedError(msg)

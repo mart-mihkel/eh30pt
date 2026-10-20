@@ -33,7 +33,7 @@ def test_registry_exposes_it_as_a_classifier() -> None:
 
 
 def test_every_studio_reason_folds_onto_a_label() -> None:
-    """The ten labels partition cleanly into the two answers."""
+    """The labels partition cleanly into the two answers."""
     stopping = (
         "Adverse reactions",
         "Treatment success",
@@ -44,6 +44,7 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
 
     continued = (
         "Adverse reaction without discontinuation",
+        "Treatment inefficacy without discontinuation",
         "Dosage change",
         "Other non-discontinuation",
     )

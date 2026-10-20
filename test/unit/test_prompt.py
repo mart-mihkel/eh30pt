@@ -109,7 +109,7 @@ def test_few_shots_derive_from_extract_shots() -> None:
 def test_registry() -> None:
     _obl_fewshots = 5
     _multinerd_labels = 15
-    _classifier_labels = 8
+    _classifier_labels = 9
 
     assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
     assert len(get_labels("multinerd")) == _multinerd_labels
@@ -338,7 +338,7 @@ def test_get_few_shots_covers_datasets() -> None:
     assert len(get_few_shots("discont-classifier/extract-labels", _n_shots)) == _n_shots
     assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
 
-    with pytest.raises(ValueError, match="only 8 defined"):
+    with pytest.raises(ValueError, match="only 9 defined"):
         get_few_shots(
             "discont-classifier/extract-labels",
             len(DiscontClassifier.few_shots) + 1,

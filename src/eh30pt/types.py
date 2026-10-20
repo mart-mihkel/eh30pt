@@ -77,8 +77,11 @@ type DiscontClassifierLabel = Literal[
     "Contraindication/unsafe co-usage",
     "Other",
     "Adverse reaction without discontinuation",
+    "Treatment inefficacy without discontinuation",
     "Dosage change",
     "Other non-discontinuation",
+    "Incomplete phrase",
+    "Incorrect phrase",
 ]
 
 type DataSource = Literal[

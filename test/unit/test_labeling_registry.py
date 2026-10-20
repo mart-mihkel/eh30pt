@@ -50,7 +50,14 @@ def test_export_frame_dispatches_on_task_type() -> None:
                             "to_name": "text",
                             "type": "choices",
                             "value": {"choices": ["Other"]},
-                        }
+                        },
+                        {
+                            "id": "res-2",
+                            "from_name": "meta",
+                            "to_name": "text",
+                            "type": "choices",
+                            "value": {"choices": ["Incomplete phrase"]},
+                        },
                     ],
                 }
             ],

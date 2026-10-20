@@ -49,34 +49,54 @@ class ExtractionFrameSchema(pa.DataFrameModel):
     label: pl.String = pa.Field(isin=get_args(DiscontClassifierLabel.__value__))
 
 
-def extraction_frame(
+def extraction_df(
     tasks: Sequence[StudioTask],
     project: int,
 ) -> DataFrame[ExtractionFrameSchema]:
-    """Build one row per annotation with a label list column per control."""
+    """Build one row per annotated choice, ignoring the meta phrase flags."""
     rows = []
+    skipped = 0
     for task in tasks:
+        tid = task["id"]
         data = cast("_ExtractionData", task["data"])
 
         for annt in task["annotations"]:
-            results = [
-                res
-                for res in annt["result"]
-                if res["type"] == "choices" and res["from_name"] != "meta"
-            ]
-
+            results = [res for res in annt["result"] if res["type"] == "choices"]
             if len(results) == 0:
+                logger.warning("missing results for task %d, skipping", tid)
+                skipped += 1
                 continue
+
+            n_res = len(results)
+            n_meta = len([res for res in results if res["from_name"] == "meta"])
 
             res = results[0]
             val = cast("ChoiceValue", res["value"])
             choices = val["choices"]
-            if len(choices) == 0:
-                continue
+            choice = choices[0]
+
+            if n_res == n_meta:
+                choice = "Other non-discontinuation"
+                logger.warning(
+                    "only meta annotation for task %d, defaulting to '%s'",
+                    tid,
+                    choice,
+                )
+            elif n_res - n_meta > 1:
+                logger.warning(
+                    "multiple results for task %d, defaulting to first",
+                    tid,
+                )
+            elif len(choices) > 1:
+                logger.warning(
+                    "multiple choices for task %d: %s, defaulting to first",
+                    tid,
+                    choices,
+                )
 
             row = {
                 "project_id": project,
-                "task_id": task["id"],
+                "task_id": tid,
                 "annotation_id": annt["id"],
                 "result_id": res["id"],
                 "annotator": annt["completed_by"],
@@ -85,10 +105,17 @@ def extraction_frame(
                 "phrase": data["phrase"],
                 "reason": data["reason"],
                 "drug": data["drug"],
-                "label": choices[0],
+                "label": choice,
             }
 
             rows.append(row)
+
+    if skipped > 0:
+        logger.warning(
+            "skipped %d missing annotations from project %d",
+            skipped,
+            project,
+        )
 
     return ExtractionFrameSchema.validate(pl.DataFrame(rows))
 

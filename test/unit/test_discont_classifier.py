@@ -7,7 +7,7 @@ import polars as pl
 from eh30pt.datasets.discontinuation.classify import DiscontClassifier
 from eh30pt.labeling.loaders.extract import ExtractionFrameSchema, stratify
 
-_labels: Final = 8
+_labels: Final = 9
 
 
 def test_labels_cover_reasons_and_phrase_flags() -> None:
@@ -19,8 +19,9 @@ def test_labels_cover_reasons_and_phrase_flags() -> None:
 def test_extraction_frame_schema_matches_classifier_labels() -> None:
     """The export schema accepts the English labels mapped to Estonian outputs."""
     [check] = ExtractionFrameSchema.to_schema().columns["label"].checks
+    meta = {"Incomplete phrase", "Incorrect phrase"}
 
-    assert set(check.statistics["allowed_values"]) == set(
+    assert set(check.statistics["allowed_values"]) - meta == set(
         DiscontClassifier.label2margend
     )
     assert set(DiscontClassifier.id2label.values()) == set(

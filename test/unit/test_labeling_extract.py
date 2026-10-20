@@ -58,6 +58,7 @@ def test_span_config_has_three_choice_boxes() -> None:
         "Contraindication/unsafe co-usage",
         "Adverse reactions",
         "Adverse reaction without discontinuation",
+        "Treatment inefficacy without discontinuation",
         "Dosage change",
         "Incomplete phrase",
         "Incorrect phrase",

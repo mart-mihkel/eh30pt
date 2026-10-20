@@ -73,7 +73,11 @@ class _TqdmSafeStream:
 
 def rich_handler(stream: TextIO) -> RichHandler:
     """Build a rich handler writing to a stream."""
-    return RichHandler(console=Console(file=stream), rich_tracebacks=True)
+    return RichHandler(
+        console=Console(file=stream),
+        rich_tracebacks=True,
+        omit_repeated_times=False,
+    )
 
 
 def _forward_filters(removed: logging.Handler, root: logging.Logger) -> None:

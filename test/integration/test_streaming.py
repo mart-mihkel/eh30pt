@@ -553,6 +553,7 @@ def test_run_labeling_builds_span_tasks(
 
     other = (
         "Adverse reaction without discontinuation",
+        "Treatment inefficacy without discontinuation",
         "Dosage change",
         "Other non-discontinuation",
     )

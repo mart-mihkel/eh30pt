@@ -53,6 +53,7 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Contraindication/unsafe co-usage": "jah",
         "Other": "jah",
         "Adverse reaction without discontinuation": "ei",
+        "Treatment inefficacy without discontinuation": "ei",
         "Dosage change": "ei",
         "Other non-discontinuation": "ei",
     }
@@ -126,6 +127,14 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
                 "Metformiini kasutamisel tekkis iiveldus, aga ravi jätkub samas doosis",
                 "tekkis iiveldus, aga ravi jätkub",
                 "metformiin",
+            ),
+            label="ei",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient jätkab ibuprofeeni kasutamist, kuigi valu ei leevenenud.",
+                "kuigi valu ei leevenenud",
+                "ibuprofeen",
             ),
             label="ei",
         ),
@@ -249,7 +258,7 @@ def load_discont_binary(
         for frame in stratify(df, on="label", ratios=(0.8, 0.1, 0.1), seed=seed)
     )
 
-    logger.debug(
+    logger.info(
         "binary splits train=(%s) eval=(%s) test=(%s)",
         format_counts(Counter(train["label"])),
         format_counts(Counter(eval_["label"])),

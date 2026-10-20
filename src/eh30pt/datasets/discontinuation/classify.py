@@ -35,13 +35,14 @@ type DiscontClassifierLabelEst = Literal[
     "Vastunäidustus või ohtlik kooskasutamine",
     "Muu põhjus",
     "Kõrvaltoimed ilma lõpetamiseta",
+    "Ravi ebaefektiivne ilma lõpetamiseta",
     "Annuse muutmine",
     "Muu sündmus ilma ravi lõpetamiseta",
 ]
 
 
 class DiscontClassifierRow(TypedDict):
-    """One discontinuation event carrying one of the ten classifier labels."""
+    """One discontinuation event carrying one of the classifier labels."""
 
     id: int
     text: str
@@ -60,8 +61,9 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         3: "Vastunäidustus või ohtlik kooskasutamine",
         4: "Muu põhjus",
         5: "Kõrvaltoimed ilma lõpetamiseta",
-        6: "Annuse muutmine",
-        7: "Muu sündmus ilma ravi lõpetamiseta",
+        6: "Ravi ebaefektiivne ilma lõpetamiseta",
+        7: "Annuse muutmine",
+        8: "Muu sündmus ilma ravi lõpetamiseta",
     }
 
     label2id: ClassVar[Mapping[str, int]] = {
@@ -71,8 +73,9 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Vastunäidustus või ohtlik kooskasutamine": 3,
         "Muu põhjus": 4,
         "Kõrvaltoimed ilma lõpetamiseta": 5,
-        "Annuse muutmine": 6,
-        "Muu sündmus ilma ravi lõpetamiseta": 7,
+        "Ravi ebaefektiivne ilma lõpetamiseta": 6,
+        "Annuse muutmine": 7,
+        "Muu sündmus ilma ravi lõpetamiseta": 8,
     }
 
     label2margend: ClassVar[
@@ -84,6 +87,9 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Contraindication/unsafe co-usage": "Vastunäidustus või ohtlik kooskasutamine",
         "Other": "Muu põhjus",
         "Adverse reaction without discontinuation": "Kõrvaltoimed ilma lõpetamiseta",
+        "Treatment inefficacy without discontinuation": (
+            "Ravi ebaefektiivne ilma lõpetamiseta"
+        ),
         "Dosage change": "Annuse muutmine",
         "Other non-discontinuation": "Muu sündmus ilma ravi lõpetamiseta",
     }
@@ -105,7 +111,8 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         5. **Muu põhjus**: Ravimi kasutamine lõpetati muul meditsiinilisel või mittemeditsiinilisel põhjusel, mida eespool nimetatud kategooriad ei hõlma. Siia kuuluvad näiteks patsiendi isiklik otsus, ravimi kättesaadavuse probleemid või muud täpsustamata lõpetamise põhjused. Kasuta seda kategooriat ka juhul, kui lõpetamise põhjus on ebaselge, kuid ravimi kasutamise lõpetamine on kinnitatud.
         6. **Kõrvaltoimed ilma lõpetamiseta**: Esines kõrvaltoime, allergiline reaktsioon või kahjulik koostoime, kuid tekstist selgub, et ravimi kasutamist jätkati ega lõpetatud selle sündmuse tõttu.
         7. **Annuse muutmine**: Ravimi annust suurendati või vähendati, kuid ravimi kasutamist ei lõpetatud. Kasuta seda kategooriat ka juhul, kui annuse muutmine on sündmuse peamine kirjeldatud tegevus ning ravi jätkub muudetud annusega.
-        8. **Muu sündmus ilma ravi lõpetamiseta**: Ravimi kasutamist ei lõpetatud ning sündmus ei kuulu kategooriasse **Kõrvaltoimed ilma lõpetamiseta** ega **Annuse muutmine**. Siia kuuluvad näiteks ravi jätkamine muutusteta, ravimi kasutamise lõpetamise kavatsus või soovitus ilma kinnitatud lõpetamiseta, ajutine ravi katkestamine, kui lõplikku lõpetamist ei ole kinnitatud, ning olukorrad, kus puudub piisav tõendus ravimi kasutamise lõpetamise kohta.
+        8. **Ravi ebaefektiivne ilma lõpetamiseta**: Ravimi kasutamist jätkati, kuigi ravi ei olnud piisavalt tõhus, selle toime oli kadunud või patsient ei uskunud enam ravi tõhususse.
+        9. **Muu sündmus ilma ravi lõpetamiseta**: Ravimi kasutamist ei lõpetatud ning sündmus ei kuulu kategooriasse **Kõrvaltoimed ilma lõpetamiseta**, **Ravi ebaefektiivne ilma lõpetamiseta** ega **Annuse muutmine**. Siia kuuluvad näiteks ravi jätkamine muutusteta, ravimi kasutamise lõpetamise kavatsus või soovitus ilma kinnitatud lõpetamiseta, ajutine ravi katkestamine, kui lõplikku lõpetamist ei ole kinnitatud, ning olukorrad, kus puudub piisav tõendus ravimi kasutamise lõpetamise kohta.
 
         Väljasta ainult üks kategooria nimi, ära lisa selgitusi, põhjendusi ega muud teksti.
         """  # noqa: E501
@@ -172,6 +179,14 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
                 "metformiin",
             ),
             label="Kõrvaltoimed ilma lõpetamiseta",
+        ),
+        FewShot(
+            user=_format_user_prompt(
+                "Patsient jätkab ibuprofeeni kasutamist, kuigi valu ei leevenenud.",
+                "kuigi valu ei leevenenud",
+                "ibuprofeen",
+            ),
+            label="Ravi ebaefektiivne ilma lõpetamiseta",
         ),
         FewShot(
             user=_format_user_prompt(
@@ -289,7 +304,7 @@ def load_discont_classifier(
     df = pl.read_parquet(data_path)
     df = ExtractionFrameSchema.validate(df)
     train, eval_, test = stratify(df, on="label", ratios=(0.8, 0.1, 0.1), seed=seed)
-    logger.debug(
+    logger.info(
         "classifier splits train=(%s) eval=(%s) test=(%s)",
         format_counts(Counter(train["label"])),
         format_counts(Counter(eval_["label"])),

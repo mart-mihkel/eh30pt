@@ -157,6 +157,10 @@ def _boxes() -> tuple[_ChoiceBox, ...]:
             ),
         ),
         _Choice(
+            "Treatment inefficacy without discontinuation",
+            "Treatment was seen as ineffective but was not stopped because of it.",
+        ),
+        _Choice(
             "Dosage change",
             ("Dose was increased or decreased. No justification or cause is needed."),
         ),

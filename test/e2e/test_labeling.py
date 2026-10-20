@@ -177,7 +177,10 @@ def test_export_labels_writes_annotations_to_parquet(
     _rows = 1
     assert df.height == _rows
     assert df["label"].to_list() == [labels[0]]
-    assert df["drug"].to_list() == [DiscontExtract.extract_shots[0].extractions["drug"]]
+    assert (
+        df["drug"].to_list()
+        == [DiscontExtract.extract_shots[0].extractions["drug"]] * _rows
+    )
 
 
 def test_export_labels_combines_projects_into_one_frame(
