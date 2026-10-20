@@ -1,6 +1,6 @@
 """QLoRA model construction: 4-bit quantization and LoRA adapter wrapping."""
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -16,6 +16,33 @@ if TYPE_CHECKING:
 
     from eh30pt.settings import LoRASettings
     from eh30pt.types import Architecture, DatasetName
+
+
+class LoraKwargs(TypedDict, total=False):
+    """Arch-specific extras for LoraConfig."""
+
+    target_modules: str | list[str]
+    target_parameters: list[str]
+
+
+def _medgemma_lora_kwargs() -> LoraKwargs:
+    """Return LoRA targets for MedGemma's text decoder, excluding its vision tower."""
+    logger.debug("get lora args for medgemma")
+
+    return {
+        "target_modules": (
+            r".*language_model\..*\."
+            r"(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)"
+        ),
+    }
+
+
+def _lora_kwargs(model_path: str) -> LoraKwargs:
+    """Return model-specific LoRA extras."""
+    if "medgemma-4b-it" in model_path:
+        return _medgemma_lora_kwargs()
+
+    return {}
 
 
 def build_quantization_config() -> BitsAndBytesConfig:
@@ -35,16 +62,24 @@ def build_lora_config(
     arch: Architecture,
     *,
     sequence_classification: bool = False,
+    lora_kwargs: LoraKwargs | None = None,
 ) -> LoraConfig:
-    """Build the LoRA adapter config for architecture, inferring target modules."""
+    """Build the LoRA adapter config, using model-specific targets when provided."""
+    target_modules = lora_kwargs.get("target_modules") if lora_kwargs else None
+    target_parameters = lora_kwargs.get("target_parameters") if lora_kwargs else None
+
+    task = get_task_type(
+        arch,
+        sequence_classification=sequence_classification,
+    )
+
     return LoraConfig(
-        task_type=get_task_type(
-            arch,
-            sequence_classification=sequence_classification,
-        ),
+        task_type=task,
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
+        target_modules=target_modules,
+        target_parameters=target_parameters,
     )
 
 
@@ -83,6 +118,7 @@ def prepare_lora_model(
         lora.dropout,
         arch,
         sequence_classification=sequence_classification,
+        lora_kwargs=_lora_kwargs(model_path),
     )
 
     return cast("PeftModel", get_peft_model(base, config))

@@ -1,5 +1,6 @@
 """Tests for pretrained model loading and parameter freezing."""
 
+import re
 from typing import TYPE_CHECKING, Final, cast
 
 import pytest
@@ -12,7 +13,11 @@ from eh30pt.modeling.loader import (
     _load_with_attn_fallback,
     load_model,
 )
-from eh30pt.modeling.lora import build_lora_config, build_quantization_config
+from eh30pt.modeling.lora import (
+    _lora_kwargs,
+    build_lora_config,
+    build_quantization_config,
+)
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -76,6 +81,51 @@ def test_build_lora_config_maps_sequence_classification(arch: Architecture) -> N
     )
 
     assert config.task_type == TaskType.SEQ_CLS
+
+
+def test_build_lora_config_passes_explicit_target_modules() -> None:
+    config = build_lora_config(
+        _lora_r,
+        _lora_alpha,
+        _lora_dropout,
+        "decoder",
+        lora_kwargs={"target_modules": "q_proj|v_proj"},
+    )
+
+    assert config.target_modules == "q_proj|v_proj"
+
+
+def test_build_lora_config_passes_explicit_target_parameters() -> None:
+    params = ["model.layers.0.mlp.experts.0.gate_proj.weight"]
+    config = build_lora_config(
+        _lora_r,
+        _lora_alpha,
+        _lora_dropout,
+        "decoder",
+        lora_kwargs={"target_parameters": params},
+    )
+
+    assert config.target_parameters == params
+
+
+def test_medgemma_lora_targets_only_the_text_language_model() -> None:
+    kwargs = _lora_kwargs("google/medgemma-4b-it")
+    target = kwargs["target_modules"]
+    assert isinstance(target, str)
+
+    assert re.fullmatch(target, "model.language_model.layers.0.self_attn.q_proj")
+    assert re.fullmatch(target, "model.language_model.layers.0.mlp.down_proj")
+    assert (
+        re.fullmatch(
+            target,
+            "model.vision_tower.encoder.layers.0.self_attn.q_proj",
+        )
+        is None
+    )
+
+
+def test_lora_kwargs_leave_other_models_to_peft_defaults() -> None:
+    assert _lora_kwargs("hf-internal-testing/tiny-random-gpt2") == {}
 
 
 @pytest.mark.parametrize("arch", ["encoder", "decoder", "encoder-decoder"])
