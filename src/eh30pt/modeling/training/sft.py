@@ -33,7 +33,6 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         batch_eval_metrics=True,
         remove_unused_columns=False,
         logging_steps=100,
-        load_best_model_at_end=spec.load_best,
         metric_for_best_model="f1",
         learning_rate=spec.learning_rate,
         warmup_steps=spec.warmup_ratio,

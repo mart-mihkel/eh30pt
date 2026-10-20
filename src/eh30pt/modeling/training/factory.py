@@ -62,7 +62,6 @@ def get_trainer(
         run_name=run_name,
         report_to=report_to,
         checkpoints=checkpoints,
-        patience=patience,
         callbacks=callbacks,
     )
 

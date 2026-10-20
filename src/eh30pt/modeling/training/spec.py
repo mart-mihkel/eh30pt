@@ -40,7 +40,6 @@ class _Spec(NamedTuple):
     eval_strategy: str
     save_strategy: str
     save_steps: int
-    load_best: bool
     have_accel: bool
 
 
@@ -60,7 +59,6 @@ def _build_spec(
     run_name: str = "default",
     report_to: str = "none",
     checkpoints: bool = False,
-    patience: int = 0,
     callbacks: tuple[TrainerCallback, ...] = (),
 ) -> _Spec:
     """Resolve datasets, hyperparameters, and derived loop settings."""
@@ -69,14 +67,10 @@ def _build_spec(
     have_accel = have_cuda or have_mps
     every_epoch = eval_steps == "epoch"
     every_steps = isinstance(eval_steps, int) and eval_steps > 0
-    evaluates = every_epoch or every_steps
-    saves_checkpoints = checkpoints or (evaluates and patience > 0)
     hf_eval_steps = eval_steps if isinstance(eval_steps, int) else 500
 
     save_strategy = (
-        "steps"
-        if every_steps and saves_checkpoints
-        else ("epoch" if saves_checkpoints else "no")
+        "steps" if every_steps and checkpoints else ("epoch" if checkpoints else "no")
     )
 
     return _Spec(
@@ -99,6 +93,5 @@ def _build_spec(
         eval_strategy="epoch" if every_epoch else ("steps" if every_steps else "no"),
         save_strategy=save_strategy,
         save_steps=hf_eval_steps if every_steps else 500,
-        load_best=saves_checkpoints and evaluates,
         have_accel=have_accel,
     )
