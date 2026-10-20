@@ -37,7 +37,6 @@ class _Spec(NamedTuple):
     warmup_ratio: float
     run_name: str
     report_to: str
-    checkpoints: bool
     callbacks: list[TrainerCallback]
     optim: str
     eval_strategy: str
@@ -66,6 +65,7 @@ def _build_spec(
     run_name: str = "default",
     report_to: str = "none",
     checkpoints: bool = False,
+    patience: int = 0,
     callbacks: tuple[TrainerCallback, ...] = (),
     constrain: bool = False,
 ) -> _Spec:
@@ -76,12 +76,19 @@ def _build_spec(
     every_epoch = eval_steps == "epoch"
     every_steps = isinstance(eval_steps, int) and eval_steps > 0
     evaluates = every_epoch or every_steps
-    do_checkpoints = evaluates and checkpoints
+    saves_checkpoints = checkpoints or (evaluates and patience > 0)
     hf_eval_steps = eval_steps if isinstance(eval_steps, int) else 500
+
     label_completions = (
         _label_completions(data, eos_token_id=tokenizer.eos_token_id)
         if constrain and arch != "encoder"
         else ()
+    )
+
+    save_strategy = (
+        "steps"
+        if every_steps and saves_checkpoints
+        else ("epoch" if saves_checkpoints else "no")
     )
 
     return _Spec(
@@ -99,17 +106,12 @@ def _build_spec(
         warmup_ratio=warmup_ratio,
         run_name=run_name,
         report_to=report_to,
-        checkpoints=checkpoints,
         callbacks=list(callbacks),
         optim="adamw_8bit" if have_cuda else "adamw_torch_fused",
         eval_strategy="epoch" if every_epoch else ("steps" if every_steps else "no"),
-        save_strategy=(
-            "steps"
-            if every_steps and checkpoints
-            else ("epoch" if checkpoints else "no")
-        ),
+        save_strategy=save_strategy,
         save_steps=hf_eval_steps if every_steps else 500,
-        load_best=do_checkpoints,
+        load_best=saves_checkpoints and evaluates,
         have_accel=have_accel,
         constrain=constrain,
         label_completions=label_completions,

@@ -6,6 +6,7 @@ from transformers import AutoConfig
 
 from eh30pt.datasets.registry import (
     assert_classification,
+    get_positive_label,
     get_sys_prompt,
     load_data,
 )
@@ -41,7 +42,9 @@ def main(
     cap_tokenizer_length(tokenizer, config)
 
     collate_fn = get_collator(tokenizer, arch)
-    metrics_fn = MetricsAccumulator(tokenizer, arch)
+    metrics_fn = MetricsAccumulator(
+        tokenizer, arch, get_positive_label(common.dataset, arch)
+    )
     splits = load_data(
         tokenizer,
         common.dataset,

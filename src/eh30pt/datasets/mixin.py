@@ -34,6 +34,20 @@ class DatasetMixin[RowType]:
         return cls.system_prompt
 
     @classmethod
+    def positive_label_for(cls, arch: Architecture) -> str | int | None:
+        """Return the positive class of a binary task in the label space `arch` uses."""
+        labels = list(cls.id2label.values())
+        if not labels:
+            return None
+
+        positive = labels[0]
+        others = [label for label in labels if label != positive]
+        if len(others) != 1:
+            return None
+
+        return cls.label2id[positive] if arch == "encoder" else positive
+
+    @classmethod
     def response_format(cls) -> ResponseFormatJSONSchema:
         """Build the response format constraining generation to labels."""
         return {

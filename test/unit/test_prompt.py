@@ -22,6 +22,7 @@ from eh30pt.datasets.registry import (
     get_extract_shots,
     get_few_shots,
     get_labels,
+    get_positive_label,
     get_response_schema,
     get_sys_prompt,
     get_task,
@@ -126,6 +127,22 @@ def test_registry() -> None:
 
     with pytest.raises(ValueError, match="only 10 defined"):
         get_few_shots("oblique", 11)
+
+
+def test_get_positive_label_only_for_binary_datasets() -> None:
+    assert get_positive_label("discont-binary/extract-labels", "decoder") == "jah"
+    assert get_positive_label("discont-binary/extract-labels", "encoder") == 0
+    assert (
+        get_positive_label("discont-binary/extract-labels", "encoder-decoder") == "jah"
+    )
+
+    assert get_positive_label("oblique", "decoder") is None
+    assert get_positive_label("multinerd", "encoder") is None
+    assert get_positive_label("discont-classifier/extract-labels", "decoder") is None
+    assert get_positive_label("discont-extract/trigger", "decoder") is None
+
+    with pytest.raises(ValueError, match="invalid dataset"):
+        get_positive_label(cast("DatasetName", "unknown"), "decoder")
 
 
 @pytest.mark.parametrize(

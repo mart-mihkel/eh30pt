@@ -11,6 +11,7 @@ from sklearn.metrics import (
     confusion_matrix,
     f1_score,
     matthews_corrcoef,
+    precision_recall_fscore_support,
     precision_score,
     recall_score,
     roc_auc_score,
@@ -20,7 +21,7 @@ from tqdm.rich import tqdm
 from transformers import EvalPrediction  # noqa: TC002
 
 from eh30pt.constants import SENTINEL_TOKEN
-from eh30pt.logging import format_counts, logger
+from eh30pt.logging import format_confusion_matrix, format_counts, logger
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
@@ -31,10 +32,16 @@ if TYPE_CHECKING:
 class MetricsAccumulator(Callable):
     """Collect per-batch eval outputs and computes metrics on the final call."""
 
-    def __init__(self, tokenizer: PreTrainedTokenizerFast, arch: Architecture) -> None:
-        """Store the tokenizer and architecture."""
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizerFast,
+        arch: Architecture,
+        positive_label: str | int | None = None,
+    ) -> None:
+        """Store the tokenizer, architecture, and binary positive class."""
         self._tokenizer = tokenizer
         self._arch = arch
+        self._positive_label = positive_label
         self._labels: list[np.ndarray] = []
         self._preds: list[np.ndarray] = []
         self._probs: list[np.ndarray] = []
@@ -127,6 +134,7 @@ class MetricsAccumulator(Callable):
                 all_labels[mask],
                 all_preds[mask],
                 scores=all_probs[mask],
+                positive_label=self._positive_label,
             )
 
         labels = []
@@ -161,14 +169,19 @@ class MetricsAccumulator(Callable):
         self.last_labels = list(references)
         self.last_predictions = list(predictions)
 
-        return compute_classification_metrics(references, predictions)
+        return compute_classification_metrics(
+            references,
+            predictions,
+            positive_label=self._positive_label,
+        )
 
 
 class StreamingClassificationMetrics:
     """Accumulate prediction pairs and derive metrics with scikit-learn."""
 
-    def __init__(self) -> None:
+    def __init__(self, positive_label: str | int | None = None) -> None:
         """Initialize empty label and prediction lists."""
+        self._positive_label = positive_label
         self._labels: list[str] = []
         self._predictions: list[str] = []
 
@@ -191,7 +204,11 @@ class StreamingClassificationMetrics:
                 "kappa": 0.0,
             }
 
-        return compute_classification_metrics(self._labels, self._predictions)
+        return compute_classification_metrics(
+            self._labels,
+            self._predictions,
+            positive_label=self._positive_label,
+        )
 
 
 def _batch_to_numpy(
@@ -237,33 +254,85 @@ def _safe_rate(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
     )
 
 
-def _hard_rates(labels: np.ndarray, preds: np.ndarray) -> dict[str, float]:
-    """
-    Macro one-vs-rest rates and agreement scores from hard predictions.
-
-    A single-class target has no false positives or negatives to speak of, so
-    every rate is 0. Calling scikit-learn there would only emit warnings about
-    the degenerate confusion matrix.
-    """
+def _hard_rates(
+    labels: np.ndarray,
+    preds: np.ndarray,
+    positive_label: str | int | None = None,
+) -> dict[str, float]:
+    """Rates and agreement scores from hard predictions."""
     classes = np.union1d(labels, preds)
     if classes.size == 1:
         return {"tpr": 0.0, "fpr": 0.0, "mcc": 0.0, "kappa": 0.0}
 
-    matrix = confusion_matrix(labels, preds, labels=classes).astype(float)
-    true_positives = np.diag(matrix)
-    false_negatives = matrix.sum(axis=1) - true_positives
-    false_positives = matrix.sum(axis=0) - true_positives
-    true_negatives = matrix.sum() - true_positives - false_positives - false_negatives
+    counts = confusion_matrix(labels, preds, labels=classes)
+    cmat = format_confusion_matrix([str(label) for label in classes], counts.tolist())
+    logger.info("confusion matrix:\n%s", cmat)
+
+    matrix = counts.astype(float)
+    tp = np.diag(matrix)
+    fn = matrix.sum(axis=1) - tp
+    fp = matrix.sum(axis=0) - tp
+    tn = matrix.sum() - tp - fp - fn
+    tpr = _safe_rate(tp, tp + fn)
+    fpr = _safe_rate(fp, fp + tn)
+
+    if positive_label is None:
+        tpr_value = float(tpr.mean())
+        fpr_value = float(fpr.mean())
+    else:
+        index = int(np.flatnonzero(classes == positive_label)[0])
+        tpr_value = float(tpr[index])
+        fpr_value = float(fpr[index])
 
     return {
-        "tpr": float(
-            _safe_rate(true_positives, true_positives + false_negatives).mean()
-        ),
-        "fpr": float(
-            _safe_rate(false_positives, false_positives + true_negatives).mean()
-        ),
-        "mcc": float(matthews_corrcoef(labels, preds)),
-        "kappa": float(cohen_kappa_score(labels, preds)),
+        "tpr": tpr_value,
+        "fpr": fpr_value,
+        "mcc": matthews_corrcoef(labels, preds),
+        "kappa": cohen_kappa_score(labels, preds),
+    }
+
+
+def _positive_class(
+    labels: np.ndarray,
+    positive_label: str | int | None,
+) -> str | int | None:
+    """Return `positive_label` when it labels at least one gold example."""
+    if positive_label is None:
+        return None
+
+    return positive_label if positive_label in set(labels.tolist()) else None
+
+
+def _label_scores(
+    labels: np.ndarray | list,
+    preds: np.ndarray | list,
+    positive_label: str | int | None,
+) -> dict[str, float]:
+    """Score the positive class one-vs-rest, or all classes as macro."""
+    if positive_label is None:
+        return {
+            "precision": precision_score(
+                labels, preds, average="macro", zero_division=0
+            ),
+            "recall": recall_score(labels, preds, average="macro", zero_division=0),
+            "f1": f1_score(labels, preds, average="macro", zero_division=0),
+        }
+
+    classes = np.union1d(np.asarray(labels), np.asarray(preds))
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels,
+        preds,
+        labels=classes,
+        average=None,
+        zero_division=0,
+    )
+
+    index = int(np.flatnonzero(classes == positive_label)[0])
+
+    return {
+        "precision": float(precision[index]),
+        "recall": float(recall[index]),
+        "f1": float(f1[index]),
     }
 
 
@@ -292,19 +361,21 @@ def compute_classification_metrics(
     labels: np.ndarray | list,
     preds: np.ndarray | list,
     scores: np.ndarray | None = None,
+    positive_label: str | int | None = None,
 ) -> dict[str, float]:
     """Compute hard-label metrics plus AUC when class scores are given."""
     logger.debug("computing classification metrics")
+    label_values = np.asarray(labels)
+    pred_values = np.asarray(preds)
+    positive = _positive_class(label_values, positive_label)
 
     metrics = {
         "accuracy": accuracy_score(labels, preds),
-        "precision": precision_score(labels, preds, average="macro", zero_division=0),
-        "recall": recall_score(labels, preds, average="macro", zero_division=0),
-        "f1": f1_score(labels, preds, average="macro", zero_division=0),
-        **_hard_rates(np.asarray(labels), np.asarray(preds)),
+        **_label_scores(labels, preds, positive),
+        **_hard_rates(label_values, pred_values, positive),
     }
 
     if scores is not None:
-        metrics["auc"] = _macro_auc(np.asarray(labels), scores)
+        metrics["auc"] = _macro_auc(label_values, scores)
 
     return metrics

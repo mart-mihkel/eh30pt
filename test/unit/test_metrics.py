@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import numpy as np
 import pytest
@@ -10,6 +10,7 @@ import torch
 from transformers import EvalPrediction
 
 from eh30pt.modeling.metrics import (
+    MetricsAccumulator,
     StreamingClassificationMetrics,
     _batch_to_numpy,
     _filter_other,
@@ -19,6 +20,9 @@ from eh30pt.modeling.metrics import (
 _batch: Final = 2
 _classes: Final = 3
 _seq: Final = 4
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerFast
 
 
 def test_batch_to_numpy_handles_tensors_and_tuples() -> None:
@@ -74,6 +78,99 @@ def test_compute_classification_metrics_zeroes_rates_for_single_class() -> None:
     assert metrics["fpr"] == 0.0
     assert metrics["mcc"] == 0.0
     assert metrics["kappa"] == 0.0
+
+
+def test_compute_classification_metrics_logs_confusion_matrix(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The gold-by-predicted matrix is logged for every computation."""
+    with caplog.at_level("INFO", logger="eh30pt"):
+        compute_classification_metrics(["ei", "jah", "jah"], ["jah", "jah", "jah"])
+
+    assert "confusion matrix" in caplog.text
+    assert "gold\\pred" in caplog.text
+    assert "jah" in caplog.text
+
+
+def test_compute_classification_metrics_scores_binary_positive_class() -> None:
+    """A binary target reports the positive class instead of averaging classes."""
+    labels = ["ei"] * 95 + ["jah"] * 165
+    preds = ["jah"] * 260
+
+    metrics = compute_classification_metrics(labels, preds, positive_label="jah")
+
+    precision = 165 / 260
+    assert metrics["precision"] == pytest.approx(precision)
+    assert metrics["recall"] == pytest.approx(1.0)
+    assert metrics["f1"] == pytest.approx(2 * precision / (precision + 1))
+    assert metrics["tpr"] == pytest.approx(1.0)
+    assert metrics["fpr"] == pytest.approx(1.0)
+
+
+def test_compute_classification_metrics_positive_with_other_prediction() -> None:
+    """An unseen prediction stays out of the positive class's one-vs-rest score."""
+    metrics = compute_classification_metrics(
+        ["ei", "ei", "jah", "jah"],
+        ["ei", "other", "jah", "jah"],
+        positive_label="jah",
+    )
+
+    assert metrics["precision"] == pytest.approx(1.0)
+    assert metrics["recall"] == pytest.approx(1.0)
+    assert metrics["f1"] == pytest.approx(1.0)
+    assert metrics["tpr"] == pytest.approx(1.0)
+    assert metrics["fpr"] == pytest.approx(0.0)
+
+
+def test_compute_classification_metrics_binary_scores_zero_when_all_negative() -> None:
+    """All-negative predictions score the positive class zero."""
+    metrics = compute_classification_metrics(
+        ["ei", "ei", "jah", "jah"],
+        ["ei", "ei", "ei", "ei"],
+        positive_label="jah",
+    )
+
+    assert metrics["precision"] == pytest.approx(0.0)
+    assert metrics["recall"] == pytest.approx(0.0)
+    assert metrics["f1"] == pytest.approx(0.0)
+    assert metrics["tpr"] == pytest.approx(0.0)
+    assert metrics["fpr"] == pytest.approx(0.0)
+
+
+def test_compute_classification_metrics_scores_positive_one_vs_rest() -> None:
+    """A supplied positive class is scored one-vs-rest rather than as macro."""
+    metrics = compute_classification_metrics(
+        ["a", "a", "b", "b", "c", "c"],
+        ["a", "b", "b", "b", "c", "c"],
+        positive_label="a",
+    )
+
+    assert metrics["precision"] == pytest.approx(1.0)
+    assert metrics["recall"] == pytest.approx(0.5)
+    assert metrics["f1"] == pytest.approx(2 / 3)
+
+
+def test_compute_classification_metrics_falls_back_when_positive_absent() -> None:
+    """A positive class missing from the gold labels leaves scoring as macro."""
+    metrics = compute_classification_metrics(
+        ["ei", "ei"], ["ei", "jah"], positive_label="jah"
+    )
+
+    assert metrics["recall"] == pytest.approx(0.25)
+
+
+def test_encoder_accumulator_scores_binary_positive_class() -> None:
+    """The encoder accumulator applies the positive class to a binary target."""
+    accumulator = MetricsAccumulator(
+        cast("PreTrainedTokenizerFast", None), "encoder", positive_label=0
+    )
+    logits = np.array([[0.9, 0.1]] * 4)
+    labels = np.array([0, 0, 1, 1])
+
+    metrics = accumulator(EvalPrediction(predictions=logits, label_ids=labels))
+
+    assert metrics["precision"] == pytest.approx(0.5)
+    assert metrics["recall"] == pytest.approx(1.0)
 
 
 def test_compute_classification_metrics_reports_binary_auc() -> None:
@@ -150,6 +247,18 @@ def test_streaming_matches_sklearn_on_single_class() -> None:
         accumulator.update(label, pred)
 
     assert accumulator.finalize() == compute_classification_metrics(labels, preds)
+
+
+def test_streaming_scores_binary_positive_class() -> None:
+    """Streaming evaluation honors the binary positive class."""
+    accumulator = StreamingClassificationMetrics(positive_label="jah")
+    for label, pred in [("ei", "jah"), ("jah", "jah")]:
+        accumulator.update(label, pred)
+
+    metrics = accumulator.finalize()
+
+    assert metrics["precision"] == pytest.approx(0.5)
+    assert metrics["recall"] == pytest.approx(1.0)
 
 
 def test_streaming_finalize_without_updates_returns_zeros() -> None:

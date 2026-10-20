@@ -324,6 +324,26 @@ def test_run_context_routes_mlflow_logs_to_rich(
     assert "rich mlflow probe" in caplog.text
 
 
+def test_run_context_logs_completion_duration(
+    mlflow_client: MlflowClient,
+    run_config: RunConfig,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mlflow.set_experiment("finish-exp")
+
+    mlflow_settings = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri, experiment="finish-exp"
+    )
+    with (
+        caplog.at_level("INFO", logger="eh30pt"),
+        RunContext(mlflow_settings, config=run_config) as ctx,
+    ):
+        run_id = ctx.run_id
+
+    assert f"run '{run_id}' finished in" in caplog.text
+    assert mlflow_client.get_run(run_id).data.metrics["duration_seconds"] >= 0.0
+
+
 def test_run_context_reattaches_by_explicit_id(
     mlflow_client: MlflowClient,
     run_config: RunConfig,

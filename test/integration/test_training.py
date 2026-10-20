@@ -179,6 +179,102 @@ def test_build_spec_epoch_eval_without_checkpoints(
     assert spec.load_best is False
 
 
+def test_build_spec_early_stopping_loads_best_without_checkpoint_request(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Early stopping must save and reload the best model even without --save-model."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=_eval_steps,
+        train_steps=_train_steps,
+        checkpoints=False,
+        patience=2,
+    )
+
+    assert spec.load_best is True
+    assert spec.save_strategy == spec.eval_strategy == "steps"
+    assert spec.save_steps == _eval_steps
+
+
+def test_build_spec_early_stopping_epoch_eval_loads_best(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Early stopping with epoch eval saves and reloads the best model each epoch."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps="epoch",
+        train_steps=_train_steps,
+        checkpoints=False,
+        patience=2,
+    )
+
+    assert spec.load_best is True
+    assert spec.save_strategy == spec.eval_strategy == "epoch"
+
+
+def test_build_spec_patience_without_eval_never_saves(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Patience without evaluation neither saves checkpoints nor loads a best model."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=0,
+        train_steps=_train_steps,
+        checkpoints=False,
+        patience=2,
+    )
+
+    assert spec.load_best is False
+    assert spec.save_strategy == "no"
+
+
+def test_build_spec_saves_without_eval_when_requested(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    """Checkpoint saving does not require evaluation when --save-model is set."""
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=lambda _pred: {},
+        output_dir="log",
+        eval_steps=0,
+        train_steps=_train_steps,
+        checkpoints=True,
+    )
+
+    assert spec.save_strategy == "epoch"
+    assert spec.load_best is False
+
+
 def test_label_completions_collects_unmasked_tails(
     oblique_splits: DataSplits,
 ) -> None:
@@ -475,6 +571,7 @@ def test_maybe_add_early_stopping_branches(
         isinstance(cb, EarlyStoppingCallback)
         for cb in trainer.callback_handler.callbacks
     )
+    assert trainer.args.load_best_model_at_end is True
 
     epoch_trainer = get_trainer(
         model=oblique_gpt2_model,
@@ -493,3 +590,4 @@ def test_maybe_add_early_stopping_branches(
         isinstance(cb, EarlyStoppingCallback)
         for cb in epoch_trainer.callback_handler.callbacks
     )
+    assert epoch_trainer.args.load_best_model_at_end is True

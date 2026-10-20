@@ -8,6 +8,7 @@ from rich.logging import RichHandler
 
 from eh30pt.logging import (
     _TqdmSafeStream,
+    format_confusion_matrix,
     format_counts,
     logger,
     setup_logging,
@@ -28,6 +29,16 @@ def _record(level: int, message: str) -> logging.LogRecord:
 
 def test_format_counts_sorts_keys() -> None:
     assert format_counts(Counter({"b": 2, "a": 1})) == "'a'=1 'b'=2"
+
+
+def test_format_confusion_matrix_renders_labels_and_counts() -> None:
+    text = format_confusion_matrix(["ei", "jah"], [[0, 95], [0, 165]])
+
+    assert "gold\\pred" in text
+    for token in ("ei", "jah", "95", "165"):
+        assert token in text
+
+    assert "\n" in text
 
 
 def test_tqdm_stream_buffers_partial_lines() -> None:

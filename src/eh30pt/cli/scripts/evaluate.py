@@ -6,6 +6,7 @@ from tqdm.rich import tqdm
 
 from eh30pt.datasets.registry import (
     assert_classification,
+    get_positive_label,
     get_sys_prompt,
     load_data,
 )
@@ -157,7 +158,9 @@ async def main(
         else:
             step_offset = 0
 
-        accumulator = StreamingClassificationMetrics()
+        accumulator = StreamingClassificationMetrics(
+            get_positive_label(dataset, "decoder")
+        )
 
         logger.info("starting eval loop")
         with tqdm(

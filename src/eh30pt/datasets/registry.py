@@ -178,6 +178,27 @@ def get_sys_prompt(dataset: DatasetName, arch: Architecture | None = None) -> st
     raise ValueError(msg)
 
 
+def get_positive_label(dataset: DatasetName, arch: Architecture) -> str | int | None:
+    """Return the positive class of a binary `dataset` in `arch`'s label space."""
+    if dataset == "multinerd":
+        return Multinerd.positive_label_for(arch)
+
+    if dataset == "oblique":
+        return Obl.positive_label_for(arch)
+
+    if dataset == "discont-classifier/extract-labels":
+        return DiscontClassifier.positive_label_for(arch)
+
+    if dataset == "discont-binary/extract-labels":
+        return DiscontBinary.positive_label_for(arch)
+
+    if _is_extract(dataset):
+        return None
+
+    msg = f"invalid dataset {dataset}"
+    raise ValueError(msg)
+
+
 def get_response_schema(dataset: DatasetName) -> ResponseFormatJSONSchema:
     """Return the structured generation schema for `dataset` without loading data."""
     if dataset == "multinerd":

@@ -5,6 +5,7 @@ import re
 import traceback
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import monotonic
 from typing import TYPE_CHECKING, Literal, NamedTuple, Self, TextIO, cast
 
 import mlflow
@@ -110,6 +111,7 @@ class RunContext:
 
     _client: MlflowClient
     _run_log: _RunLog
+    _started: float
 
     def __init__(
         self,
@@ -123,6 +125,7 @@ class RunContext:
 
     def __enter__(self) -> Self:
         """Open a fresh run, or reattach to run_id after verifying its config."""
+        self._started = monotonic()
         route_library_loggers()
         uri = self.settings.tracking_uri
         exp = self.settings.experiment
@@ -186,12 +189,19 @@ class RunContext:
         """Upload the run log and finish the run, marking failures."""
         if exc_type is None:
             try:
+                self._log_finish()
                 self._persist_run_log()
                 mlflow.end_run("FINISHED")
             finally:
                 self._detach_run_log()
         else:
             self._fail()
+
+    def _log_finish(self) -> None:
+        """Log the wall-clock duration and announce the completed run."""
+        elapsed = monotonic() - self._started
+        self.log_metrics({"duration_seconds": elapsed})
+        logger.info("run '%s' finished in %.1fs", self.run_id, elapsed)
 
     def _fail(self) -> None:
         """Upload the run log with its traceback and mark the run failed."""

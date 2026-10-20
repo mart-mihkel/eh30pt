@@ -3,16 +3,20 @@
 import logging
 import sys
 import warnings
+from io import StringIO
 from typing import TYPE_CHECKING, TextIO, cast
 
 import rich.traceback
 import tqdm.std
+from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.table import Table
 from tqdm import TqdmExperimentalWarning
 
 if TYPE_CHECKING:
     from collections import Counter
+    from collections.abc import Sequence
 
 logger = logging.getLogger("eh30pt")
 """Project logger."""
@@ -21,6 +25,24 @@ logger = logging.getLogger("eh30pt")
 def format_counts(counts: Counter[int] | Counter[str]) -> str:
     """Format label counts as a compact `key=value` string for debug logs."""
     return " ".join(f"'{key}'={value}" for key, value in sorted(counts.items()))
+
+
+def format_confusion_matrix(
+    labels: Sequence[str],
+    counts: Sequence[Sequence[int]],
+) -> str:
+    """Render a gold-by-predicted confusion matrix as a monospace table."""
+    table = Table(box=box.SQUARE, header_style="bold")
+    table.add_column("gold\\pred", justify="right")
+    for label in labels:
+        table.add_column(label, justify="right")
+
+    for label, row in zip(labels, counts, strict=True):
+        table.add_row(label, *(str(value) for value in row))
+
+    buffer = StringIO()
+    Console(file=buffer, width=100).print(table)
+    return buffer.getvalue().rstrip()
 
 
 class _TqdmSafeStream:
