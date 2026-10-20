@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from transformers import EarlyStoppingCallback
 
 from eh30pt.logging import logger
+from eh30pt.modeling.training.callbacks import CudaMetricsCallback
 from eh30pt.modeling.training.encoder import _encoder_trainer
 from eh30pt.modeling.training.seq2seq import _seq2seq_trainer
 from eh30pt.modeling.training.sft import _decoder_trainer
@@ -73,6 +74,9 @@ def get_trainer(
         trainer = _decoder_trainer(spec)
     else:
         trainer = _encoder_trainer(spec)
+
+    if report_to == "mlflow":
+        trainer.add_callback(CudaMetricsCallback())
 
     _maybe_add_early_stopping(
         trainer,

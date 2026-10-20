@@ -301,6 +301,37 @@ def test_get_trainer_builds_per_architecture(
     )
 
 
+def test_get_trainer_adds_cuda_metrics_for_mlflow(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+    tmp_path: Path,
+) -> None:
+    from eh30pt.modeling.training.callbacks import CudaMetricsCallback
+    from eh30pt.modeling.training.factory import get_trainer
+
+    def _metrics(_pred: object, *, compute_result: bool = True) -> dict[str, float]:
+        return {"computed": 1.0} if compute_result else {}
+
+    trainer = get_trainer(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="encoder",
+        collate_fn=get_collator(gpt2_tokenizer, "encoder"),
+        metrics_fn=_metrics,
+        output_dir=str(tmp_path),
+        eval_steps=0,
+        train_steps=10,
+        report_to="mlflow",
+    )
+
+    assert any(
+        isinstance(callback, CudaMetricsCallback)
+        for callback in trainer.callback_handler.callbacks
+    )
+
+
 def test_maybe_add_early_stopping_branches(
     oblique_splits: DataSplits,
     oblique_gpt2_model: PreTrainedModel,
