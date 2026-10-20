@@ -59,14 +59,15 @@ def load_model(
     dataset: DatasetName,
     arch: Architecture,
     *,
-    head_only: bool,
+    head_only: bool = False,
+    sequence_classification: bool = False,
     quantization_config: BitsAndBytesConfig | None = None,
 ) -> PreTrainedModel:
     """Load a pretrained model for the architecture, optionally freezing the base."""
     assert_classification(dataset, "model heads need labels")
+    sequence_classification = sequence_classification or arch == "encoder"
 
     logger.info("loading '%s'", model_path)
-
     have_cuda = torch.cuda.is_available()
     have_mps = not have_cuda and torch.mps.is_available()
     if have_cuda:
@@ -84,11 +85,11 @@ def load_model(
 
     skip_freeze = None
     attn = _attn_implementation()
-    if arch == "encoder":
+    if sequence_classification:
         labels = get_labels(dataset)
         id2label = dict(enumerate(labels))
         label2id = {label: index for index, label in id2label.items()}
-        logger.debug("loading '%s' for sequence classification", model_path)
+        logger.debug("loading model for sequence classification")
         model, loading_info = _load_with_attn_fallback(
             lambda implementation: AutoModelForSequenceClassification.from_pretrained(
                 model_path,
@@ -107,7 +108,7 @@ def load_model(
 
         skip_freeze = loading_info["missing_keys"]
     elif arch == "decoder":
-        logger.debug("loading '%s' for causal language modeling", model_path)
+        logger.debug("loading model for causal language modeling")
         model = _load_with_attn_fallback(
             lambda implementation: AutoModelForCausalLM.from_pretrained(
                 model_path,
@@ -119,7 +120,7 @@ def load_model(
             attn,
         )
     elif arch == "encoder-decoder":
-        logger.debug("loading '%s' for sequence to sequence", model_path)
+        logger.debug("loading model for sequence to sequence", model_path)
         model = _load_with_attn_fallback(
             lambda implementation: AutoModelForSeq2SeqLM.from_pretrained(
                 model_path,

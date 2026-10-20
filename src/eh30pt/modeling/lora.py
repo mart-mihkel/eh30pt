@@ -33,10 +33,15 @@ def build_lora_config(
     lora_alpha: int,
     lora_dropout: float,
     arch: Architecture,
+    *,
+    sequence_classification: bool = False,
 ) -> LoraConfig:
     """Build the LoRA adapter config for architecture, inferring target modules."""
     return LoraConfig(
-        task_type=get_task_type(arch),
+        task_type=get_task_type(
+            arch,
+            sequence_classification=sequence_classification,
+        ),
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
@@ -50,6 +55,7 @@ def prepare_lora_model(
     dataset: DatasetName,
     *,
     lora: LoRASettings,
+    sequence_classification: bool = False,
 ) -> PeftModel:
     """Load a 4-bit quantized model wrapped with a trainable LoRA adapter."""
     logger.info(
@@ -66,10 +72,17 @@ def prepare_lora_model(
         dataset,
         arch,
         head_only=False,
+        sequence_classification=sequence_classification,
         quantization_config=build_quantization_config(),
     )
 
     base = prepare_model_for_kbit_training(base)
-    config = build_lora_config(lora.rank, lora.alpha, lora.dropout, arch)
+    config = build_lora_config(
+        lora.rank,
+        lora.alpha,
+        lora.dropout,
+        arch,
+        sequence_classification=sequence_classification,
+    )
 
     return cast("PeftModel", get_peft_model(base, config))

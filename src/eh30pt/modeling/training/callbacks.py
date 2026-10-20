@@ -24,10 +24,12 @@ class RichProgressCallback(ProgressCallback):
         """Log metrics through the project logger, keeping the progress bars."""
         if not state.is_world_process_zero or logs is None:
             return
+
         formatted: dict[str, float | int | str] = {}
         for key, value in logs.items():
             if key == "total_flos":
                 continue
+
             if isinstance(value, str) and len(value) > self.max_str_len:
                 formatted[key] = (
                     f"[String too long to display, length: {len(value)} > "
@@ -37,6 +39,7 @@ class RichProgressCallback(ProgressCallback):
                 formatted[key] = f"{value:.4g}"
             else:
                 formatted[key] = value
+
         logger.info("%s", formatted)
 
 
@@ -45,8 +48,11 @@ def use_rich_logging(trainer: Trainer) -> None:
     for callback in list(trainer.callback_handler.callbacks):
         if type(callback) in (ProgressCallback, PrinterCallback):
             trainer.callback_handler.remove_callback(callback)
-    if not any(
+
+    has = any(
         isinstance(callback, RichProgressCallback)
         for callback in trainer.callback_handler.callbacks
-    ):
+    )
+
+    if not has:
         trainer.add_callback(RichProgressCallback())

@@ -56,7 +56,6 @@ from eh30pt.cli.options.slurm import (
 )
 from eh30pt.cli.options.training import (
     batch_size_option,
-    constrain_option,
     epochs_option,
     eval_steps_option,
     head_only_option,
@@ -65,6 +64,7 @@ from eh30pt.cli.options.training import (
     patience_option,
     prefix_init_option,
     save_model_option,
+    sequence_classification_option,
     tolerance_option,
     train_size_option,
     warmup_ratio_option,
@@ -120,7 +120,10 @@ if TYPE_CHECKING:
         },
         option_groups={
             "ehpt *": [
-                {"name": "Model", "options": ["--model", "--arch"]},
+                {
+                    "name": "Model",
+                    "options": ["--model", "--arch", "--sequence-classification"],
+                },
                 {
                     "name": "Data",
                     "options": [
@@ -146,7 +149,6 @@ if TYPE_CHECKING:
                         "--lora-alpha",
                         "--lora-dropout",
                         "--save-model",
-                        "--constrain",
                     ],
                 },
                 {
@@ -240,7 +242,7 @@ def log_accelerator() -> None:
 @model_option
 @dataset_option
 @head_only_option
-@constrain_option
+@sequence_classification_option
 @n_shot_option
 @system_prompt_option
 @epochs_option
@@ -265,7 +267,7 @@ def fine_tune(
     model: str,
     dataset: DatasetName,
     head_only: bool,
-    constrain: bool,
+    sequence_classification: bool,
     n_shot: int,
     system_prompt: str | None,
     epochs: float,
@@ -297,6 +299,7 @@ def fine_tune(
         model=model,
         dataset=dataset,
         arch=arch,
+        sequence_classification=sequence_classification,
         n_shot=n_shot,
         system_prompt=system_prompt,
         data_path=data_path,
@@ -320,7 +323,6 @@ def fine_tune(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
-        constrain=constrain,
     )
 
     main(
@@ -336,7 +338,7 @@ def fine_tune(
 @dataset_option
 @prefix_init_option
 @num_virtual_option
-@constrain_option
+@sequence_classification_option
 @n_shot_option
 @system_prompt_option
 @epochs_option
@@ -362,7 +364,7 @@ def prompt_tune(
     dataset: DatasetName,
     prefix_init: PrefixInit,
     num_virtual: int | None,
-    constrain: bool,
+    sequence_classification: bool,
     n_shot: int,
     system_prompt: str | None,
     epochs: float,
@@ -394,6 +396,7 @@ def prompt_tune(
         model=model,
         dataset=dataset,
         arch=arch,
+        sequence_classification=sequence_classification,
         n_shot=n_shot,
         system_prompt=system_prompt,
         data_path=data_path,
@@ -417,7 +420,6 @@ def prompt_tune(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
-        constrain=constrain,
     )
 
     main(
@@ -435,7 +437,7 @@ def prompt_tune(
 @lora_rank_option
 @lora_alpha_option
 @lora_dropout_option
-@constrain_option
+@sequence_classification_option
 @n_shot_option
 @system_prompt_option
 @epochs_option
@@ -462,7 +464,7 @@ def qlora(
     lora_rank: int,
     lora_alpha: int,
     lora_dropout: float,
-    constrain: bool,
+    sequence_classification: bool,
     n_shot: int,
     system_prompt: str | None,
     epochs: float,
@@ -494,6 +496,7 @@ def qlora(
         model=model,
         dataset=dataset,
         arch=arch,
+        sequence_classification=sequence_classification,
         n_shot=n_shot,
         system_prompt=system_prompt,
         data_path=data_path,
@@ -523,7 +526,6 @@ def qlora(
         batch_size=batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
-        constrain=constrain,
     )
 
     main(
@@ -537,7 +539,7 @@ def qlora(
 @app.command("few-shot", help="Run test evaluation with few-shot learning")
 @model_option
 @dataset_option
-@constrain_option
+@sequence_classification_option
 @n_shot_option
 @system_prompt_option
 @batch_size_option
@@ -553,7 +555,7 @@ def few_shot(
     *,
     model: str,
     dataset: DatasetName,
-    constrain: bool,
+    sequence_classification: bool,
     n_shot: int,
     system_prompt: str | None,
     batch_size: int,
@@ -577,6 +579,7 @@ def few_shot(
         model=model,
         dataset=dataset,
         arch=arch,
+        sequence_classification=sequence_classification,
         n_shot=n_shot,
         system_prompt=system_prompt,
         data_path=data_path,
@@ -590,7 +593,7 @@ def few_shot(
         run_id=mlflow_run_id,
     )
 
-    main(common=common, batch_size=batch_size, constrain=constrain, mlflow=mlflow)
+    main(common=common, batch_size=batch_size, mlflow=mlflow)
 
 
 @app.command(

@@ -1,1 +1,1 @@
-"""Trainer construction per architecture and label constraint."""
+"""Trainer construction per architecture."""

@@ -173,6 +173,22 @@ def test_encoder_accumulator_scores_binary_positive_class() -> None:
     assert metrics["recall"] == pytest.approx(1.0)
 
 
+def test_sequence_classification_accumulator_scores_decoder_logits() -> None:
+    """A decoder classification head reports class logits, not token sequences."""
+    accumulator = MetricsAccumulator(
+        cast("PreTrainedTokenizerFast", None),
+        "decoder",
+        sequence_classification=True,
+    )
+    logits = np.array([[0.9, 0.1]] * 4)
+    labels = np.array([0, 0, 1, 1])
+
+    metrics = accumulator(EvalPrediction(predictions=logits, label_ids=labels))
+
+    assert metrics["accuracy"] == pytest.approx(0.5)
+    assert accumulator.last_predictions == [0, 0, 0, 0]
+
+
 def test_compute_classification_metrics_reports_binary_auc() -> None:
     labels = np.array([0, 0, 1, 1])
     preds = np.array([0, 1, 1, 1])

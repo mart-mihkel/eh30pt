@@ -136,6 +136,14 @@ def test_get_positive_label_only_for_binary_datasets() -> None:
     assert (
         get_positive_label("discont-binary/extract-labels", "encoder-decoder") == "jah"
     )
+    assert (
+        get_positive_label(
+            "discont-binary/extract-labels",
+            "decoder",
+            sequence_classification=True,
+        )
+        == 0
+    )
 
     assert get_positive_label("oblique", "decoder") is None
     assert get_positive_label("multinerd", "encoder") is None

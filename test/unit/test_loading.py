@@ -65,6 +65,19 @@ def test_build_lora_config_maps_task_type(arch: Architecture, task: TaskType) ->
     assert config.task_type == task
 
 
+@pytest.mark.parametrize("arch", ["decoder", "encoder-decoder"])
+def test_build_lora_config_maps_sequence_classification(arch: Architecture) -> None:
+    config = build_lora_config(
+        _lora_r,
+        _lora_alpha,
+        _lora_dropout,
+        arch,
+        sequence_classification=True,
+    )
+
+    assert config.task_type == TaskType.SEQ_CLS
+
+
 @pytest.mark.parametrize("arch", ["encoder", "decoder", "encoder-decoder"])
 def test_load_model_rejects_extraction_dataset(arch: Architecture) -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)

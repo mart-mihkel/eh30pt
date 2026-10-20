@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from eh30pt.constants import SENTINEL_TOKEN
 from eh30pt.datasets.oblique import Obl
 from eh30pt.modeling.collator import get_collator
-from eh30pt.modeling.training.constraints import _label_completions
 from eh30pt.modeling.training.spec import _build_spec
 from eh30pt.types import DataSplits
 
@@ -56,7 +54,6 @@ def test_build_spec_hyperparameters(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -72,7 +69,6 @@ def test_build_spec_hyperparameters(
             model=oblique_gpt2_model,
             tokenizer=gpt2_tokenizer,
             data=oblique_splits,
-            arch="decoder",
             collate_fn=get_collator(gpt2_tokenizer, "decoder"),
             metrics_fn=lambda _pred: {},
             output_dir="log",
@@ -94,7 +90,6 @@ def test_build_spec_aligns_save_with_eval_for_best_checkpoints(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -118,7 +113,6 @@ def test_build_spec_disables_saving_without_checkpoints(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -141,7 +135,6 @@ def test_build_spec_evaluates_every_epoch(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -165,7 +158,6 @@ def test_build_spec_epoch_eval_without_checkpoints(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -189,7 +181,6 @@ def test_build_spec_early_stopping_loads_best_without_checkpoint_request(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -214,7 +205,6 @@ def test_build_spec_early_stopping_epoch_eval_loads_best(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -238,7 +228,6 @@ def test_build_spec_patience_without_eval_never_saves(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -262,7 +251,6 @@ def test_build_spec_saves_without_eval_when_requested(
         model=oblique_gpt2_model,
         tokenizer=gpt2_tokenizer,
         data=oblique_splits,
-        arch="decoder",
         collate_fn=get_collator(gpt2_tokenizer, "decoder"),
         metrics_fn=lambda _pred: {},
         output_dir="log",
@@ -273,160 +261,6 @@ def test_build_spec_saves_without_eval_when_requested(
 
     assert spec.save_strategy == "epoch"
     assert spec.load_best is False
-
-
-def test_label_completions_collects_unmasked_tails(
-    oblique_splits: DataSplits,
-) -> None:
-    first, second = _label_completions(oblique_splits)
-
-    assert first != second
-    assert all(SENTINEL_TOKEN not in completion for completion in (first, second))
-
-
-def test_label_completions_dedupes(
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-) -> None:
-    from datasets import Dataset as _Dataset
-
-    from eh30pt.datasets.oblique import Obl as _Obl
-
-    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
-    raw = raw.rename_column("type", "label")
-    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
-    data = raw.select(range(1))
-    split = _Obl(data, gpt2_tokenizer, "decoder")
-    splits = DataSplits(train=split, eval=split, test=split)
-
-    assert len(_label_completions(splits)) == 1
-
-
-def test_label_completions_skips_fully_masked() -> None:
-    from datasets import Dataset as _Dataset
-
-    from eh30pt.datasets.oblique import Obl as _Obl
-    from eh30pt.modeling.tokenizer import load_tokenizer
-
-    capped = load_tokenizer("hf-internal-testing/tiny-random-gpt2")
-    capped.model_max_length = 8
-    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
-    raw = raw.rename_column("type", "label")
-    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
-    data = raw.select(range(2))
-    split = _Obl(data, capped, "decoder")
-    splits = DataSplits(train=split, eval=split, test=split)
-
-    assert _label_completions(splits) == ()
-
-
-def test_build_spec_collects_completions_when_constrained(
-    oblique_splits: DataSplits,
-    oblique_gpt2_model: PreTrainedModel,
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-) -> None:
-    spec = _build_spec(
-        model=oblique_gpt2_model,
-        tokenizer=gpt2_tokenizer,
-        data=oblique_splits,
-        arch="decoder",
-        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
-        metrics_fn=lambda _pred: {},
-        output_dir="log",
-        eval_steps=_eval_steps,
-        train_steps=_train_steps,
-        constrain=True,
-    )
-
-    assert spec.constrain is True
-    assert spec.label_completions
-
-
-def test_build_spec_drops_completions_when_unconstrained(
-    oblique_splits: DataSplits,
-    oblique_gpt2_model: PreTrainedModel,
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-) -> None:
-    """An empty completion set is what makes the trainers skip constraining."""
-    spec = _build_spec(
-        model=oblique_gpt2_model,
-        tokenizer=gpt2_tokenizer,
-        data=oblique_splits,
-        arch="decoder",
-        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
-        metrics_fn=lambda _pred: {},
-        output_dir="log",
-        eval_steps=_eval_steps,
-        train_steps=_train_steps,
-        constrain=False,
-    )
-
-    assert spec.constrain is False
-    assert spec.label_completions == ()
-
-
-def test_build_spec_is_unconstrained_by_default(
-    oblique_splits: DataSplits,
-    oblique_gpt2_model: PreTrainedModel,
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-) -> None:
-    spec = _build_spec(
-        model=oblique_gpt2_model,
-        tokenizer=gpt2_tokenizer,
-        data=oblique_splits,
-        arch="decoder",
-        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
-        metrics_fn=lambda _pred: {},
-        output_dir="log",
-        eval_steps=_eval_steps,
-        train_steps=_train_steps,
-    )
-
-    assert spec.constrain is False
-    assert spec.label_completions == ()
-
-
-def test_constrained_seq2seq_trainer_omits_processor_without_completions(
-    gpt2_tokenizer: PreTrainedTokenizerFast,
-    tmp_path: Path,
-) -> None:
-    """An empty completion set must not mask generation down to the pad token."""
-    from datasets import Dataset as _Dataset
-    from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments
-
-    from eh30pt.datasets.oblique import Obl as _Obl
-    from eh30pt.modeling.training.seq2seq import ConstrainedSeq2SeqTrainer
-    from test.conftest import models
-
-    raw = _Dataset.from_csv(_Obl.data_permalink, sep=";")
-    raw = raw.rename_column("type", "label")
-    raw = raw.map(lambda row: {"label": _Obl.label_entoet[row["label"]]})
-    data = raw.select(range(2))
-    split = Obl(data, gpt2_tokenizer, "encoder-decoder")
-    model = AutoModelForSeq2SeqLM.from_pretrained(models["t5"])
-    args = Seq2SeqTrainingArguments(
-        output_dir=str(tmp_path),
-        report_to=[],
-        predict_with_generate=True,
-        max_steps=1,
-    )
-
-    def _gen_kwargs(completions: tuple[tuple[int, ...], ...]) -> dict[str, object]:
-        trainer = ConstrainedSeq2SeqTrainer(
-            model=model,
-            args=args,
-            data_collator=get_collator(gpt2_tokenizer, "encoder-decoder"),
-            train_dataset=None,
-            eval_dataset=split,
-            compute_metrics=lambda _pred: {},
-            callbacks=[],
-            label_completions=completions,
-            pad_token_id=cast("int", gpt2_tokenizer.pad_token_id),
-        )
-
-        return trainer._gen_kwargs
-
-    assert _gen_kwargs(()) == {}
-    assert "logits_processor" in _gen_kwargs(((1, 2),))
 
 
 def test_get_trainer_builds_per_architecture(
@@ -483,6 +317,27 @@ def test_get_trainer_builds_per_architecture(
     )
 
     assert type(encoder) is Trainer
+    assert seen == ["encoder"]
+
+    seen.clear()
+    classifier = get_trainer(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        arch="decoder",
+        collate_fn=get_collator(
+            gpt2_tokenizer,
+            "decoder",
+            sequence_classification=True,
+        ),
+        metrics_fn=_metrics,
+        output_dir=out,
+        eval_steps=0,
+        train_steps=10,
+        sequence_classification=True,
+    )
+
+    assert type(classifier) is Trainer
     assert seen == ["encoder"]
 
     sentinel_decoder = object()

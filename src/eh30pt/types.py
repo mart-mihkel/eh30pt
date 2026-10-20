@@ -121,6 +121,7 @@ class RunConfig(TypedDict):
     base_model: str
     n_shot: int
     batch_size: int
+    sequence_classification: NotRequired[bool]
     system_prompt: NotRequired[str]
     total_parameters: NotRequired[int]
     trainable_parameters: NotRequired[int]
@@ -136,7 +137,6 @@ class TrainingRunConfig(RunConfig):
     train_size: int | None
     learning_rate: float
     warmup_ratio: float
-    constrain: bool
     save_model: bool
 
 
@@ -163,12 +163,6 @@ class QLoRaRunConfig(TrainingRunConfig):
 
 class FewShotRunConfig(RunConfig):
     """Run configuration for few-shot evaluation."""
-
-    constrain: NotRequired[bool]
-    """
-    Whether the local trainer masks predictions to legal label completions.
-    Absent for server-backed runs, where the response schema does that instead.
-    """
 
 
 class FewShot(NamedTuple):

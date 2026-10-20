@@ -55,14 +55,8 @@ def get_n_virtual(
     tokenizer: PreTrainedTokenizerFast,
     sys_prompt: str,
 ) -> int:
-    """Count the tokens a virtual prompt initialized from `sys_prompt` will occupy."""
-    if tokenizer.chat_template is None:
-        sys_enc = tokenizer(sys_prompt, truncation=True)
-    else:
-        conv = [{"role": "system", "content": sys_prompt}]
-        sys_enc = tokenizer.apply_chat_template(conv, truncation=True)
-
-    return len(cast("dict[str, list[int]]", sys_enc)["input_ids"])
+    """Count the tokens PEFT will use to initialize the virtual prompt."""
+    return len(tokenizer(sys_prompt, truncation=True)["input_ids"])
 
 
 def prepare_pt_model(
@@ -74,6 +68,7 @@ def prepare_pt_model(
     *,
     system_prompt: str,
     num_virtual: int,
+    sequence_classification: bool = False,
 ) -> PeftModel:
     """Load a pretrained model wrapped for prompt tuning."""
     logger.info(
@@ -82,8 +77,19 @@ def prepare_pt_model(
         prefix_init,
     )
 
-    base = load_model(tokenizer, model_path, dataset, arch, head_only=False)
-    task_type = get_task_type(arch)
+    base = load_model(
+        tokenizer,
+        model_path,
+        dataset,
+        arch,
+        sequence_classification=sequence_classification,
+        head_only=False,
+    )
+
+    task_type = get_task_type(
+        arch,
+        sequence_classification=sequence_classification,
+    )
 
     if prefix_init == "pretrained":
         init = "TEXT"

@@ -158,10 +158,11 @@ head_only_option = click.option(
     help="Freeze all parameters except for classifier head",
 )
 
-constrain_option = click.option(
-    "--constrain/--no-constrain",
-    "constrain",
+sequence_classification_option = click.option(
+    "--sequence-classification",
+    "-sc",
+    "sequence_classification",
+    is_flag=True,
     default=False,
-    show_default=True,
-    help="Constrain eval predictions to legal label token sequences",
+    help="Load decoder and encoder-decoder models with a classification head",
 )

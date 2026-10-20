@@ -709,7 +709,6 @@ def test_helpers_require_run_name(
                 collate_fn=get_collator(bert_tokenizer, "encoder"),
                 metrics_fn=metrics,
                 batch_size=8,
-                constrain=False,
             )
 
         with pytest.raises(ValueError, match="no mlflow run name"):
@@ -967,7 +966,6 @@ def test_evaluate_and_log_saves_test_predictions(
             collate_fn=get_collator(bert_tokenizer, "encoder"),
             metrics_fn=metrics,
             batch_size=8,
-            constrain=False,
         )
         run_id = ctx.run_id
 

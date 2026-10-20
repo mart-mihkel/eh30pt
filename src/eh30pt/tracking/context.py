@@ -537,6 +537,7 @@ class RunContext:
         metrics_fn: ComputeMetricsFn,
         registered_name: str,
         training: TrainingSettings,
+        sequence_classification: bool = False,
     ) -> dict[str, float]:
         """Train model under run context, then evaluate, log, and register the best."""
         run = self.settings.run_name
@@ -568,7 +569,7 @@ class RunContext:
             run_name=run,
             report_to="mlflow",
             checkpoints=training.save_model,
-            constrain=training.constrain,
+            sequence_classification=sequence_classification,
         )
 
         logger.debug("starting trainer")
@@ -580,13 +581,23 @@ class RunContext:
 
         logger.debug("starting test eval")
         test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
-        self.log_test_predictions(data=data, arch=arch, metrics_fn=metrics_fn)
+        self.log_test_predictions(
+            data=data,
+            arch=arch,
+            metrics_fn=metrics_fn,
+            sequence_classification=sequence_classification,
+        )
+
+        task = get_pipeline_task(
+            arch,
+            sequence_classification=sequence_classification,
+        )
 
         self.finish_training(
             registered_name,
             model=model,
             tokenizer=tokenizer,
-            task=get_pipeline_task(arch),
+            task=task,
             test_metrics=dict(test_metrics),
             save_model=training.save_model,
         )
@@ -603,7 +614,7 @@ class RunContext:
         collate_fn: DataCollator,
         metrics_fn: ComputeMetricsFn,
         batch_size: int,
-        constrain: bool,
+        sequence_classification: bool = False,
     ) -> dict[str, float]:
         """Evaluate model on the test split and log the returned metrics."""
         run = self.settings.run_name
@@ -624,13 +635,18 @@ class RunContext:
             batch_size=batch_size,
             run_name=run,
             report_to="mlflow",
-            constrain=constrain,
+            sequence_classification=sequence_classification,
         )
 
         logger.debug("starting test eval")
         test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
         self.log_metrics(dict(test_metrics))
-        self.log_test_predictions(data=data, arch=arch, metrics_fn=metrics_fn)
+        self.log_test_predictions(
+            data=data,
+            arch=arch,
+            metrics_fn=metrics_fn,
+            sequence_classification=sequence_classification,
+        )
         return test_metrics
 
     def log_test_predictions(
@@ -639,6 +655,7 @@ class RunContext:
         data: DataSplits,
         arch: Architecture,
         metrics_fn: ComputeMetricsFn,
+        sequence_classification: bool = False,
     ) -> None:
         """Log test labels and predictions as a Parquet artifact."""
         if not isinstance(metrics_fn, MetricsAccumulator):
@@ -658,13 +675,14 @@ class RunContext:
                 len(predictions),
             )
 
+        classification = sequence_classification or arch == "encoder"
         label_names: tuple[str, ...] = (
-            get_labels(self.config["dataset"]) if arch == "encoder" else ()
+            get_labels(self.config["dataset"]) if classification else ()
         )
 
         records: list[EvalRecord] = []
         for sample, prediction in zip(samples, predictions, strict=False):
-            if arch == "encoder":
+            if classification:
                 pred_id = int(prediction)
                 pred = (
                     label_names[pred_id]
@@ -674,20 +692,22 @@ class RunContext:
             else:
                 pred = str(prediction)
 
-            records.append(
-                EvalRecord(
-                    id=sample.id,
-                    user=sample.user,
-                    label=sample.label,
-                    prediction=pred,
-                )
+            record = EvalRecord(
+                id=sample.id,
+                user=sample.user,
+                label=sample.label,
+                prediction=pred,
             )
+
+            records.append(record)
 
         with TemporaryDirectory(prefix="eh30pt-test-predictions-") as tmp:
             log_shard(self, tmp, MlflowSettings.predictions_path, 0, records)
 
         logger.info(
-            "logged %d test predictions to '%s'", len(records), self.artifact_uri
+            "logged %d test predictions to '%s'",
+            len(records),
+            self.artifact_uri,
         )
 
     def finish_training(

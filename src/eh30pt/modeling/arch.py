@@ -44,9 +44,13 @@ def infer_architecture(
     return arch
 
 
-def get_pipeline_task(arch: Architecture) -> PipelineTask:
+def get_pipeline_task(
+    arch: Architecture,
+    *,
+    sequence_classification: bool = False,
+) -> PipelineTask:
     """Map architecture to its HuggingFace pipeline task."""
-    if arch == "encoder":
+    if sequence_classification or arch == "encoder":
         return "text-classification"
 
     if arch in {"decoder", "encoder-decoder"}:
@@ -56,9 +60,13 @@ def get_pipeline_task(arch: Architecture) -> PipelineTask:
     raise ValueError(msg)
 
 
-def get_task_type(arch: Architecture) -> TaskType:
+def get_task_type(
+    arch: Architecture,
+    *,
+    sequence_classification: bool = False,
+) -> TaskType:
     """Map architecture to peft task."""
-    if arch == "encoder":
+    if sequence_classification or arch == "encoder":
         return TaskType.SEQ_CLS
 
     if arch == "decoder":

@@ -37,10 +37,13 @@ class MetricsAccumulator(Callable):
         tokenizer: PreTrainedTokenizerFast,
         arch: Architecture,
         positive_label: str | int | None = None,
+        *,
+        sequence_classification: bool = False,
     ) -> None:
         """Store the tokenizer, architecture, and binary positive class."""
         self._tokenizer = tokenizer
         self._arch = arch
+        self._sequence_classification = sequence_classification
         self._positive_label = positive_label
         self._labels: list[np.ndarray] = []
         self._preds: list[np.ndarray] = []
@@ -85,6 +88,13 @@ class MetricsAccumulator(Callable):
             self._bar = None
 
     def _extend(self, eval_pred: EvalPrediction) -> None:
+        if self._sequence_classification or self._arch == "encoder":
+            labels, preds, logits = _batch_to_numpy(eval_pred)
+            self._labels.extend(labels)
+            self._preds.extend(preds)
+            self._probs.extend(_softmax(logits))
+            return
+
         if self._arch == "encoder-decoder":
             batch_labels = eval_pred.label_ids
             batch_preds = eval_pred.predictions
@@ -115,7 +125,7 @@ class MetricsAccumulator(Callable):
         self._probs.extend(_softmax(logits))
 
     def _compute(self) -> dict[str, float]:
-        if self._arch == "encoder":
+        if self._sequence_classification or self._arch == "encoder":
             all_labels = np.array(self._labels)
             all_preds = np.array(self._preds)
             all_probs = np.array(self._probs)

@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING, Final, NamedTuple, cast
 
 import torch
 
-from eh30pt.modeling.training.constraints import _label_completions
-
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
@@ -14,7 +12,7 @@ if TYPE_CHECKING:
     from torch.utils.data import IterableDataset as TorchIterableDataset
     from transformers import DataCollator, PreTrainedTokenizerFast, TrainerCallback
 
-    from eh30pt.types import Architecture, ComputeMetricsFn, DataSplits, EvalSteps
+    from eh30pt.types import ComputeMetricsFn, DataSplits, EvalSteps
 
 
 _no_epoch_cap: Final = 0
@@ -44,8 +42,6 @@ class _Spec(NamedTuple):
     save_steps: int
     load_best: bool
     have_accel: bool
-    constrain: bool
-    label_completions: tuple[tuple[int, ...], ...]
 
 
 def _build_spec(
@@ -53,7 +49,6 @@ def _build_spec(
     *,
     tokenizer: PreTrainedTokenizerFast,
     data: DataSplits,
-    arch: Architecture,
     collate_fn: DataCollator,
     metrics_fn: ComputeMetricsFn,
     output_dir: Path | str,
@@ -67,7 +62,6 @@ def _build_spec(
     checkpoints: bool = False,
     patience: int = 0,
     callbacks: tuple[TrainerCallback, ...] = (),
-    constrain: bool = False,
 ) -> _Spec:
     """Resolve datasets, hyperparameters, and derived loop settings."""
     have_cuda = torch.cuda.is_available()
@@ -78,12 +72,6 @@ def _build_spec(
     evaluates = every_epoch or every_steps
     saves_checkpoints = checkpoints or (evaluates and patience > 0)
     hf_eval_steps = eval_steps if isinstance(eval_steps, int) else 500
-
-    label_completions = (
-        _label_completions(data, eos_token_id=tokenizer.eos_token_id)
-        if constrain and arch != "encoder"
-        else ()
-    )
 
     save_strategy = (
         "steps"
@@ -113,6 +101,4 @@ def _build_spec(
         save_steps=hf_eval_steps if every_steps else 500,
         load_best=saves_checkpoints and evaluates,
         have_accel=have_accel,
-        constrain=constrain,
-        label_completions=label_completions,
     )

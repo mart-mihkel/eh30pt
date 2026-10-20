@@ -10,6 +10,7 @@ import torch
 
 from eh30pt.constants import PAD_MULTIPLE, SENTINEL_TOKEN
 from eh30pt.datasets.discont.extract import DiscontExtract
+from eh30pt.datasets.oblique import load_obl
 from eh30pt.datasets.registry import (
     get_extract_fields,
     get_response_schema,
@@ -17,8 +18,10 @@ from eh30pt.datasets.registry import (
 )
 from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
+from eh30pt.modeling.loader import load_model
 from eh30pt.openai.complete import CompletionClient
 from eh30pt.settings import ServerSettings
+from test.conftest import models
 
 if TYPE_CHECKING:
     from transformers import PreTrainedModel
@@ -159,6 +162,53 @@ def test_forward(collated_inputs: _Inputs) -> None:
             label_ids.shape[1],
             collated_inputs.model_vocab_size,
         )
+
+
+@pytest.mark.parametrize("model_name", ["gemma", "t5"])
+def test_sequence_classification_forward(
+    model_name: str,
+    request: pytest.FixtureRequest,
+) -> None:
+    """Decoder and encoder-decoder classification heads consume class labels."""
+    path = models[model_name]
+    config = request.getfixturevalue(f"{model_name}_config")
+    tokenizer = request.getfixturevalue(f"{model_name}_tokenizer")
+    arch = infer_architecture(config)
+
+    splits = load_obl(tokenizer, arch, sequence_classification=True)
+    rows = []
+    for row in splits.train:
+        rows.append(row)
+        if len(rows) == _batch_size:
+            break
+
+    raw = get_collator(tokenizer, arch, sequence_classification=True)(rows)
+    labels = raw["labels"]
+    assert tuple(labels.shape) == (_batch_size,)
+
+    model = load_model(
+        tokenizer,
+        path,
+        "oblique",
+        arch,
+        head_only=False,
+        sequence_classification=True,
+    )
+    model.eval()
+
+    device = next(model.parameters()).device
+    input_ids = raw["input_ids"].to(device)
+    attention_mask = raw["attention_mask"].to(device)
+    with torch.inference_mode():
+        output = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels.to(device),
+        )
+
+    assert output.loss is not None
+    assert bool(torch.isfinite(output.loss))
+    assert tuple(output.logits.shape) == (_batch_size, len(splits.train.id2label))
 
 
 @pytest.mark.vcr

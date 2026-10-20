@@ -37,6 +37,14 @@ def test_help_lists_commands() -> None:
     assert "generate" in result.output
 
 
+def test_sequence_classification_flag_listed() -> None:
+    for command in ("fine-tune", "prompt-tune", "qlora", "few-shot"):
+        result = _invoke([command, "--help"])
+
+        assert result.exit_code == 0
+        assert "--sequence-classification" in result.output
+
+
 def test_rejects_unknown_dataset() -> None:
     result = _invoke(
         [

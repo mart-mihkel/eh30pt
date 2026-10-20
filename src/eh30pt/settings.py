@@ -68,7 +68,6 @@ class TrainingSettings(BaseModel):
     batch_size: int = Field(default=8, ge=1)
     learning_rate: float = Field(ge=0)
     warmup_ratio: float = Field(default=0.06, ge=0)
-    constrain: bool = False
     save_model: bool = False
 
 
@@ -144,6 +143,7 @@ class CommonSettings(BaseModel):
     model: str
     dataset: DatasetName
     arch: Architecture | None = None
+    sequence_classification: bool = False
     n_shot: int = Field(default=0, ge=0)
     system_prompt: str | None = None
     data_path: Path | None = None

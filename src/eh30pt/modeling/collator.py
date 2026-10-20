@@ -20,10 +20,12 @@ if TYPE_CHECKING:
 def get_collator(
     tokenizer: PreTrainedTokenizerFast,
     arch: Architecture,
+    *,
+    sequence_classification: bool = False,
 ) -> DataCollator:
     """Build the padding collator appropriate for the given architecture."""
     logger.debug("init data collator for '%s'", arch)
-    if arch == "encoder":
+    if sequence_classification or arch == "encoder":
         return DataCollatorWithPadding(
             tokenizer=tokenizer,
             pad_to_multiple_of=PAD_MULTIPLE,

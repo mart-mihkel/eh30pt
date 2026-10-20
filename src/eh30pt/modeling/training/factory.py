@@ -44,14 +44,13 @@ def get_trainer(
     report_to: str = "none",
     checkpoints: bool = False,
     callbacks: tuple[TrainerCallback, ...] = (),
-    constrain: bool = False,
+    sequence_classification: bool = False,
 ) -> Trainer:
     """Build a Trainer for the architecture, adding early stopping if requested."""
     spec = _build_spec(
         model,
         tokenizer=tokenizer,
         data=data,
-        arch=arch,
         collate_fn=collate_fn,
         metrics_fn=metrics_fn,
         output_dir=output_dir,
@@ -65,10 +64,11 @@ def get_trainer(
         checkpoints=checkpoints,
         patience=patience,
         callbacks=callbacks,
-        constrain=constrain,
     )
 
-    if arch == "encoder-decoder":
+    if sequence_classification:
+        trainer = _encoder_trainer(spec)
+    elif arch == "encoder-decoder":
         trainer = _seq2seq_trainer(spec)
     elif arch == "decoder":
         trainer = _decoder_trainer(spec)

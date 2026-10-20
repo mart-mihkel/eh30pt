@@ -60,16 +60,36 @@ def _small_test_split(monkeypatch: pytest.MonkeyPatch) -> None:
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
+        *,
+        sequence_classification: bool = False,
     ) -> DataSplits:
-        return truncate(real_obl(tokenizer, arch, n_shot, n_virtual))
+        return truncate(
+            real_obl(
+                tokenizer,
+                arch,
+                n_shot,
+                n_virtual,
+                sequence_classification=sequence_classification,
+            )
+        )
 
     def small_multinerd(
         tokenizer: PreTrainedTokenizerFast,
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
+        *,
+        sequence_classification: bool = False,
     ) -> DataSplits:
-        return truncate(real_multinerd(tokenizer, arch, n_shot, n_virtual))
+        return truncate(
+            real_multinerd(
+                tokenizer,
+                arch,
+                n_shot,
+                n_virtual,
+                sequence_classification=sequence_classification,
+            )
+        )
 
     monkeypatch.setattr(registry, "load_obl", small_obl)
     monkeypatch.setattr(registry, "load_multinerd", small_multinerd)

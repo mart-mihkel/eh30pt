@@ -46,9 +46,21 @@ def main(
     tokenizer = load_tokenizer(common.model)
     cap_tokenizer_length(tokenizer, config)
 
-    collate_fn = get_collator(tokenizer, arch)
+    classification = common.sequence_classification
+    collate_fn = get_collator(
+        tokenizer,
+        arch,
+        sequence_classification=classification,
+    )
     metrics_fn = MetricsAccumulator(
-        tokenizer, arch, get_positive_label(common.dataset, arch)
+        tokenizer,
+        arch,
+        get_positive_label(
+            common.dataset,
+            arch,
+            sequence_classification=classification,
+        ),
+        sequence_classification=classification,
     )
     splits = load_data(
         tokenizer,
@@ -58,6 +70,7 @@ def main(
         seed=common.seed,
         data_path=common.data_path,
         train_size=training.train_size,
+        sequence_classification=classification,
     )
 
     sys_prompt = common.system_prompt or get_sys_prompt(common.dataset, arch)
@@ -67,6 +80,7 @@ def main(
         arch,
         common.dataset,
         lora=lora,
+        sequence_classification=classification,
     )
 
     total = sum(p.numel() for p in model.parameters())
@@ -102,11 +116,12 @@ def main(
         "batch_size": training.batch_size,
         "learning_rate": training.learning_rate,
         "warmup_ratio": training.warmup_ratio,
-        "constrain": training.constrain,
         "system_prompt": sys_prompt,
         "total_parameters": total,
         "trainable_parameters": trainable,
     }
+    if classification:
+        config["sequence_classification"] = True
 
     with RunContext(mlflow, config) as ctx:
         registered_name = registry_name(
@@ -126,4 +141,5 @@ def main(
             metrics_fn=metrics_fn,
             registered_name=registered_name,
             training=training,
+            sequence_classification=classification,
         )
