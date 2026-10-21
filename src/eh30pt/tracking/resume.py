@@ -33,6 +33,7 @@ def _identity_view(config: RunConfig) -> RunConfig:
     view.pop("system_prompt", None)
     view.pop("total_parameters", None)
     view.pop("trainable_parameters", None)
+    view.pop("eval_steps", None)
 
     return cast("RunConfig", view)
 

@@ -59,6 +59,14 @@ def test_identity_view_ignores_volatile_drift(run_config: RunConfig) -> None:
     assert _identity_view(run_config) == _identity_view(cast("RunConfig", edited))
 
 
+def test_identity_view_ignores_eval_step_drift(run_config: RunConfig) -> None:
+    period = cast("RunConfig", {**run_config, "eval_steps": "epoch"})
+    steps = cast("RunConfig", {**run_config, "eval_steps": 500})
+
+    assert "eval_steps" not in _identity_view(period)
+    assert _identity_view(period) == _identity_view(steps)
+
+
 def test_build_run_name_uses_short_model_name_and_labels() -> None:
     """Shorten repo paths and append distinguishing labels."""
     assert build_run_name("org/t5gemma-2/", "qlora", "r16") == "t5gemma-2-qlora-r16"
