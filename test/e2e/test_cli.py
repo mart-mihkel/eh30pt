@@ -1,7 +1,10 @@
 """End to end CLI tests on tiny-random models with small data subsets."""
 
-from typing import TYPE_CHECKING, Final
+import json
+from pathlib import Path
+from typing import TYPE_CHECKING, Final, cast
 
+import mlflow
 import pytest
 import torch
 from click.testing import CliRunner
@@ -11,8 +14,6 @@ from test.conftest import models
 from test.e2e.conftest import single_run
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from click.testing import Result
 
 
@@ -184,7 +185,15 @@ def test_fine_tune_obl(
     assert result.exit_code == 0, result.output
 
     run = single_run(tracking_uri, experiment)
-    assert run.data.params["system_prompt"] == prompt
+    stored = Path(
+        mlflow.artifacts.download_artifacts(
+            run_id=run.info.run_id,
+            artifact_path="config.json",
+            tracking_uri=tracking_uri,
+        )
+    )
+    config = cast("dict[str, object]", json.loads(stored.read_text()))
+    assert config["system_prompt"] == prompt
     assert "test_f1" in run.data.metrics
 
     run_dir = tmp_path / "log" / run.info.run_id
