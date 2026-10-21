@@ -124,6 +124,20 @@ def test_medgemma_lora_targets_only_the_text_language_model() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "model_path",
+    [
+        "jhu-clsp/mmBERT-base",
+        "jhu-clsp/mmBERT-small",
+        "./models/mmBERT-base",
+    ],
+)
+def test_mmbert_lora_targets_modernbert_linears(model_path: str) -> None:
+    kwargs = _lora_kwargs(model_path)
+
+    assert kwargs["target_modules"] == ["Wqkv", "Wi", "Wo"]
+
+
 def test_lora_kwargs_leave_other_models_to_peft_defaults() -> None:
     assert _lora_kwargs("hf-internal-testing/tiny-random-gpt2") == {}
 

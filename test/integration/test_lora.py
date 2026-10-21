@@ -59,3 +59,32 @@ def test_medgemma_lora_adapters_cover_only_the_text_language_model() -> None:
     assert adapted
     assert all("language_model" in name for name in adapted)
     assert not any("vision_tower" in name for name in adapted)
+
+
+def test_mmbert_lora_adapters_cover_modernbert_linears() -> None:
+    from peft import get_peft_model
+    from transformers import AutoModelForSequenceClassification
+
+    base = AutoModelForSequenceClassification.from_pretrained(
+        "hf-internal-testing/tiny-random-ModernBertForSequenceClassification",
+    )
+    config = build_lora_config(
+        _lora_r,
+        32,
+        0.05,
+        "encoder",
+        lora_kwargs=_lora_kwargs("jhu-clsp/mmBERT-base"),
+    )
+    wrapped = get_peft_model(base, config)
+    adapted = [
+        name
+        for name, _module in wrapped.named_modules()
+        if name.endswith("lora_A.default")
+    ]
+    targets = {
+        name.removesuffix(".lora_A.default").rsplit(".", 1)[-1] for name in adapted
+    }
+
+    assert adapted
+    assert targets == {"Wqkv", "Wi", "Wo"}
+    assert not any(".head." in name for name in adapted)

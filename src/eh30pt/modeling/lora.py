@@ -37,10 +37,23 @@ def _medgemma_lora_kwargs() -> LoraKwargs:
     }
 
 
+def _mmbert_lora_kwargs() -> LoraKwargs:
+    """Return LoRA targets for mmBERT's ModernBERT attention and MLP linears."""
+    logger.debug("get lora args for mmbert")
+
+    return {
+        "target_modules": ["Wqkv", "Wi", "Wo"],
+    }
+
+
 def _lora_kwargs(model_path: str) -> LoraKwargs:
     """Return model-specific LoRA extras."""
-    if "medgemma-4b-it" in model_path:
+    path = model_path.lower()
+    if "medgemma" in path:
         return _medgemma_lora_kwargs()
+
+    if "mmbert" in path:
+        return _mmbert_lora_kwargs()
 
     return {}
 
