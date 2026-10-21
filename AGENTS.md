@@ -8,6 +8,7 @@ eh30pt (prompt tuning on Est-Health 30) is a single-package python project for f
 deploy/               # local label-studio init scripts
 docs/                 # documentation markdown files
 notebooks/            # exploratory marimo notebooks
+run/                  # experiment run scripts
 sql/                  # initdb seed scripts for the dev database
 src/eh30pt/           # the package, installed as `ehpt` command line app
   cli/                  # command line interface and script implementations
