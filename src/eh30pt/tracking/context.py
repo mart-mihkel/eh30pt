@@ -3,6 +3,7 @@
 import math
 import re
 import traceback
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -12,6 +13,7 @@ import mlflow
 import mlflow.transformers
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
+from transformers.integrations import MLflowCallback
 from transformers.trainer_utils import get_last_checkpoint
 
 from eh30pt.constants import LOGDIR
@@ -33,12 +35,17 @@ from eh30pt.types import EvalRecord
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Mapping
+    from collections.abc import Generator, Mapping
     from types import TracebackType
 
     from mlflow.entities.model_registry.prompt_version import PromptVersion
     from peft import PeftModel
-    from transformers import DataCollator, PreTrainedModel, PreTrainedTokenizerFast
+    from transformers import (
+        DataCollator,
+        PreTrainedModel,
+        PreTrainedTokenizerFast,
+        Trainer,
+    )
 
     from eh30pt.settings import TrainingSettings
     from eh30pt.types import (
@@ -104,6 +111,24 @@ def _steps_for_epochs(
     )
 
     return steps
+
+
+@contextmanager
+def _without_mlflow_callback(trainer: Trainer) -> Generator[None]:
+    """Detach the Trainer MLflow callback so test metrics are logged once."""
+    callbacks = [
+        callback
+        for callback in trainer.callback_handler.callbacks
+        if isinstance(callback, MLflowCallback)
+    ]
+    for callback in callbacks:
+        trainer.remove_callback(callback)
+
+    try:
+        yield
+    finally:
+        for callback in callbacks:
+            trainer.add_callback(callback)
 
 
 class RunContext:
@@ -580,7 +605,9 @@ class RunContext:
             logger.info("skipping checkpoint sync, model saving is disabled")
 
         logger.debug("starting test eval")
-        test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
+        with _without_mlflow_callback(trainer):
+            test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
+
         self.log_test_predictions(
             data=data,
             arch=arch,
@@ -639,7 +666,8 @@ class RunContext:
         )
 
         logger.debug("starting test eval")
-        test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
+        with _without_mlflow_callback(trainer):
+            test_metrics = trainer.evaluate(data.test, metric_key_prefix="test")
         self.log_metrics(dict(test_metrics))
         self.log_test_predictions(
             data=data,

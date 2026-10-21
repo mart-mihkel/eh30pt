@@ -969,6 +969,8 @@ def test_evaluate_and_log_saves_test_predictions(
         )
         run_id = ctx.run_id
 
+    assert len(mlflow_client.get_metric_history(run_id, "test_f1")) == 1
+
     with TemporaryDirectory(prefix="eh30pt-eval-preds-") as tmp:
         downloaded = mlflow.artifacts.download_artifacts(
             run_id=run_id,

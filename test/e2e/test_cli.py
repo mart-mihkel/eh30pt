@@ -196,6 +196,9 @@ def test_fine_tune_obl(
     assert config["system_prompt"] == prompt
     assert "test_f1" in run.data.metrics
 
+    client = mlflow.MlflowClient(tracking_uri=tracking_uri)
+    assert len(client.get_metric_history(run.info.run_id, "test_f1")) == 1
+
     run_dir = tmp_path / "log" / run.info.run_id
     assert run_dir.is_dir()
     assert any(
