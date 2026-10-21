@@ -8,6 +8,7 @@ requires-python = "~=3.14.7"
 dependencies = [
     "flash-linear-attention~=0.5.2",
     "pydantic-settings~=2.15.0",
+    "nvidia-ml-py~=13.615.71",
     "psycopg[binary]~=3.2",
     "transformers~=5.17.0",
     "bitsandbytes~=0.50.2",
