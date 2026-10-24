@@ -96,6 +96,7 @@ filterwarnings = [
     "ignore:.*inferred as AnyType.*:UserWarning",                # MLflow infers an Any type schema from its own ResponsesAgentRequest model
     "ignore:.*codecs.open.*is deprecated.*:DeprecationWarning",  # MLflow still uses codecs.open() internally, deprecated in Python 3.14.
     "ignore:.*use_reentrant.*:UserWarning",                      # PEFT enables gradient checkpointing without an explicit use_reentrant flag.
+    "ignore:.*return_outputs=True.*deprecated and will be removed in v2.0.0.*fused LM head.*:FutureWarning",  # TRL recomputes the logits that compute_metrics needs, and deprecates that whole path for v2.
 ]
 
 [tool.ruff.lint]
