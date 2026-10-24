@@ -113,4 +113,4 @@ def prepare_pt_model(
         **special_kwargs,
     )
 
-    return cast("PeftModel", get_peft_model(base, config))
+    return get_peft_model(base, config)

@@ -13,7 +13,7 @@ set dotenv-load
     uv run --no-sync prek install
 
 [arg('host', long, help='remote host and target dir')]
-[arg('commit', long, pattern='true|false', value='true', help='no dry run')]
+[arg('commit', long, short='c', pattern='true|false', value='true', help='no dry run')]
 [doc('upload tree to remote host')]
 [group('build')]
 rsync commit='false' host=env('RSYNC_HOST'):
