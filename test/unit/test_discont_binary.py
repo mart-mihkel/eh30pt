@@ -18,7 +18,19 @@ from eh30pt.datasets.registry import (
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerFast
 
+    from eh30pt.datasets.discont.binary import DiscontBinaryRow
+
 _dataset = "discont-binary/extract-labels"
+
+
+def test_total_counts_the_split_rows() -> None:
+    rows: list[DiscontBinaryRow] = [
+        {"id": 1, "text": "t", "phrase": "p", "drug": "d", "label": "jah"},
+        {"id": 2, "text": "t", "phrase": "p", "drug": "d", "label": "ei"},
+    ]
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    assert DiscontBinary(rows, tokenizer, "decoder").total() == len(rows)
 
 
 def test_registry_exposes_it_as_a_classifier() -> None:
@@ -49,7 +61,7 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
         "Other non-discontinuation",
     )
 
-    assert set(DiscontBinary.reason2label) == set(DiscontClassifier.label2margend)
+    assert set(DiscontBinary.reason2label) == set(DiscontClassifier.en2et)
     assert set(DiscontBinary.reason2label.values()) == {"jah", "ei"}
 
     for reason in stopping:
@@ -64,7 +76,7 @@ def test_few_shots_agree_with_the_folding() -> None:
     cls_shots = DiscontClassifier.few_shots
     bin_shots = DiscontBinary.few_shots
     margend2reason: dict[str, str] = {
-        margend: reason for reason, margend in DiscontClassifier.label2margend.items()
+        margend: reason for reason, margend in DiscontClassifier.en2et.items()
     }
 
     assert len(cls_shots) == len(bin_shots)

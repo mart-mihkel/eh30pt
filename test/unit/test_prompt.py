@@ -404,6 +404,13 @@ def test_mixin_base_methods_raise() -> None:
         mixin["train"]
 
     assert mixin.set_epoch(3) is None
+    assert mixin.total() is None
+
+
+def test_extract_total_is_unknown() -> None:
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    assert DiscontExtract(_no_rows, tokenizer, "decoder").total() is None
 
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:

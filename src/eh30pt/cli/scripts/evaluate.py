@@ -17,8 +17,8 @@ from eh30pt.openai.complete import CompletionClient
 from eh30pt.openai.stream import (
     CompletionPredictor,
     batched_concurrent,
-    log_invalid,
     log_summary,
+    maybe_log_invalid,
 )
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import (
@@ -164,7 +164,7 @@ async def main(
         )
 
         logger.info("starting eval loop")
-        with tqdm(desc="Evaluating") as bar:
+        with tqdm(desc="Evaluating", total=data.test.total()) as bar:
             n_seen, invalid = await _stream_evaluate(
                 predictor=predictor,
                 samples=data.test.samples(),
@@ -176,7 +176,7 @@ async def main(
                 step_offset=step_offset,
             )
 
-        log_invalid(invalid, n_seen)
+        maybe_log_invalid(invalid, n_seen)
 
         items = accumulator.finalize().items()
         metrics = {f"test_{key}": value for key, value in items}

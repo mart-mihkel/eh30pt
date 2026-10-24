@@ -23,6 +23,15 @@ project_title_option = click.option(
     help="Project title, inferred from the dataset when omitted",
 )
 
+project_id_option = click.option(
+    "--project",
+    "-p",
+    "project",
+    type=click.IntRange(min=1),
+    required=True,
+    help="Label Studio project id whose tasks to annotate",
+)
+
 project_ids_option = click.option(
     "--project",
     "-p",

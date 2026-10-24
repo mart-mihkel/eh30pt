@@ -138,6 +138,35 @@ def test_mmbert_lora_targets_modernbert_linears(model_path: str) -> None:
     assert kwargs["target_modules"] == ["Wqkv", "Wi", "Wo"]
 
 
+@pytest.mark.parametrize(
+    "model_path",
+    [
+        "Qwen/Qwen3.5-9B",
+        "Qwen/Qwen3.5-35B-A3B",
+        "./models/Qwen3_5-4B",
+    ],
+)
+def test_qwen35_lora_targets_hybrid_attention_and_mlp_linears(
+    model_path: str,
+) -> None:
+    kwargs = _lora_kwargs(model_path)
+
+    assert kwargs["target_modules"] == [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+        "in_proj_qkv",
+        "in_proj_z",
+        "in_proj_b",
+        "in_proj_a",
+        "out_proj",
+    ]
+
+
 def test_lora_kwargs_leave_other_models_to_peft_defaults() -> None:
     assert _lora_kwargs("hf-internal-testing/tiny-random-gpt2") == {}
 

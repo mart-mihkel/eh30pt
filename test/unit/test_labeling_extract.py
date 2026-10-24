@@ -8,7 +8,7 @@ import pytest
 
 from eh30pt.datasets.registry import get_task
 from eh30pt.labeling.tasks.extract import (
-    _assert_span_fields,
+    assert_span_fields,
     extraction_config,
     extraction_controls,
     extraction_labeling,
@@ -27,7 +27,7 @@ def test_every_extraction_dataset_is_exportable() -> None:
             continue
 
         try:
-            _assert_span_fields(name)
+            assert_span_fields(name)
         except NotImplementedError as exc:
             pytest.fail(f"extraction dataset '{name}' is not exportable: {exc}")
 

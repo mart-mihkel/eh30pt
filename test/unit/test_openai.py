@@ -7,8 +7,8 @@ import pytest
 from eh30pt.openai.stream import (
     append_prediction_window,
     batched_concurrent,
-    log_invalid,
     map_concurrent,
+    maybe_log_invalid,
 )
 from eh30pt.types import FewShot, GenerateRecord, Predictor
 
@@ -97,7 +97,7 @@ def test_batched_concurrent_windows_stream_in_order() -> None:
 def test_log_invalid_silent_when_clean(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    log_invalid(0, 10)
+    maybe_log_invalid(0, 10)
 
     assert "invalid responses" not in caplog.text
 
@@ -105,7 +105,7 @@ def test_log_invalid_silent_when_clean(
 def test_log_invalid_warns_with_counts(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    log_invalid(2, 10)
+    maybe_log_invalid(2, 10)
 
     assert "2/10 invalid responses" in caplog.text
 

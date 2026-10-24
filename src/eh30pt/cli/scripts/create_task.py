@@ -74,6 +74,18 @@ def read_dataset(settings: MlflowSettings, run: str) -> DatasetName:
     return dataset
 
 
+def read_model(settings: MlflowSettings, run: str) -> str:
+    """Return the base model the run was tracked with."""
+    client = MlflowClient(settings.tracking_uri)
+    model = _stored_identity(client, run).get("base_model")
+    if model is None:
+        msg = f"run '{run}' records no base model"
+        raise ValueError(msg)
+
+    logger.info("inferred model '%s' from run '%s'", model, run)
+    return model
+
+
 def run_labeling(
     *,
     mlflow_settings: MlflowSettings,
@@ -90,12 +102,13 @@ def run_labeling(
     if dataset is None:
         dataset = read_dataset(mlflow_settings, run)
 
+    model_name = read_model(mlflow_settings, run)
     logger.info("reading '%s' predictions of run '%s'", dataset, run)
 
     frame = read_shards(run)
     logger.info("read %d prediction rows", frame.height)
 
-    labeling = build_labeling(dataset, frame, run)
+    labeling = build_labeling(dataset, frame, model_name)
     logger.info("built %d tasks", len(labeling.tasks))
 
     return labeling

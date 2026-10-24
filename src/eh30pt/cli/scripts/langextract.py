@@ -22,7 +22,7 @@ from eh30pt.datasets.registry import (
 )
 from eh30pt.logging import logger
 from eh30pt.openai.complete import CompletionClient
-from eh30pt.openai.stream import log_invalid, log_summary, stream_predictions
+from eh30pt.openai.stream import log_summary, maybe_log_invalid, stream_predictions
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import (
@@ -260,7 +260,7 @@ async def main(
         batch: list[GenerateRecord] = []
 
         logger.info("starting langextract loop")
-        with tqdm(desc="Extracting") as bar:
+        with tqdm(desc="Extracting", total=data.test.total()) as bar:
             n_seen, invalid, n_shards = await stream_predictions(
                 data.test.samples(),
                 predictor,
@@ -273,7 +273,7 @@ async def main(
                 start_shard=start_shard,
             )
 
-        log_invalid(invalid, n_seen)
+        maybe_log_invalid(invalid, n_seen)
 
         if batch:
             n_shards = log_shard(

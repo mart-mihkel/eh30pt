@@ -88,3 +88,31 @@ def test_mmbert_lora_adapters_cover_modernbert_linears() -> None:
     assert adapted
     assert targets == {"Wqkv", "Wi", "Wo"}
     assert not any(".head." in name for name in adapted)
+
+
+def test_qwen35_lora_adapters_cover_full_and_linear_attention() -> None:
+    from peft import get_peft_model
+    from transformers import AutoModelForCausalLM
+
+    base = AutoModelForCausalLM.from_pretrained(
+        "hf-tiny-v2/tiny-random-Qwen3_5ForCausalLM",
+    )
+    config = build_lora_config(
+        _lora_r,
+        32,
+        0.05,
+        "decoder",
+        lora_kwargs=_lora_kwargs("Qwen/Qwen3.5-0.8B"),
+    )
+    wrapped = get_peft_model(base, config)
+    adapted = [
+        name.removeprefix("base_model.model.")
+        for name, _module in wrapped.named_modules()
+        if name.endswith("lora_A.default")
+    ]
+
+    assert "model.layers.0.self_attn.q_proj.lora_A.default" in adapted
+    assert "model.layers.1.linear_attn.in_proj_qkv.lora_A.default" in adapted
+    assert "model.layers.1.linear_attn.out_proj.lora_A.default" in adapted
+    assert "model.layers.0.mlp.down_proj.lora_A.default" in adapted
+    assert len(adapted) == 7 + 8

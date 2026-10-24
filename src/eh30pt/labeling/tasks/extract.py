@@ -51,8 +51,14 @@ def _locate_span(text: str, span: str) -> tuple[int, int] | None:
     return start, start + len(span)
 
 
-def _span_result(label: str, text: str, span: tuple[int, int]) -> SpanResult:
-    """Build a read-only span pre-annotation for a located substring."""
+def _span_result(
+    label: str,
+    text: str,
+    span: tuple[int, int],
+    *,
+    readonly: bool,
+) -> SpanResult:
+    """Build a span result for a substring located in `text`."""
     start, end = span
     val: SpanValue = {
         "start": start,
@@ -65,10 +71,31 @@ def _span_result(label: str, text: str, span: tuple[int, int]) -> SpanResult:
         "from_name": "span",
         "to_name": "text",
         "type": "labels",
-        "readonly": True,
+        "readonly": readonly,
         "hidden": False,
         "value": val,
     }
+
+
+def extraction_results(
+    text: str,
+    phrase: str,
+    reason: str,
+    drug: str,
+    *,
+    readonly: bool,
+) -> list[SpanResult] | None:
+    """Build phrase, reason and drug spans, or None when one is absent."""
+    fields = (("phrase", phrase), ("reason", reason), ("drug", drug))
+    results: list[SpanResult] = []
+    for label, value in fields:
+        span = _locate_span(text, value)
+        if span is None:
+            return None
+
+        results.append(_span_result(label, text, span, readonly=readonly))
+
+    return results
 
 
 def _decoded(frame: pl.DataFrame) -> pl.DataFrame:
@@ -216,6 +243,15 @@ def extraction_controls() -> tuple[str, ...]:
     return tuple(box.name for box in _boxes())
 
 
+def extraction_control(label: str) -> str | None:
+    """Return the choice control offering `label`, or None when absent."""
+    for box in _boxes():
+        if label in {choice.value for choice in box.choices}:
+            return box.name
+
+    return None
+
+
 def extraction_config() -> str:
     """Build the Label Studio interface for extraction labeling."""
     view = ET.Element("View")
@@ -259,26 +295,12 @@ def extraction_task(
     phrase: str,
     reason: str,
     drug: str,
-    run_id: str,
+    model_version: str,
 ) -> ExtractionTask | None:
     """Build a task with all three spans highlighted, or None without them."""
-    phrase_span = _locate_span(user, phrase)
-    if phrase_span is None:
+    results = extraction_results(user, phrase, reason, drug, readonly=True)
+    if results is None:
         return None
-
-    reason_span = _locate_span(user, reason)
-    if reason_span is None:
-        return None
-
-    drug_span = _locate_span(user, drug)
-    if drug_span is None:
-        return None
-
-    results = [
-        _span_result("phrase", user, phrase_span),
-        _span_result("reason", user, reason_span),
-        _span_result("drug", user, drug_span),
-    ]
 
     data: ExtractionData = {
         "text": user,
@@ -289,18 +311,12 @@ def extraction_task(
 
     return {
         "data": data,
-        "predictions": [{"result": results, "model_version": run_id}],
+        "predictions": [{"result": results, "model_version": model_version}],
     }
 
 
-def _assert_span_fields(dataset: DatasetName) -> None:
-    """
-    Raise when an extraction dataset does not match the exported span fields.
-
-    The span label config highlights a phrase, a reason and a drug, so only
-    a dataset extracting exactly those three fields can be exported as span
-    tasks.
-    """
+def assert_span_fields(dataset: DatasetName) -> None:
+    """Raise when an extraction dataset does not match the exported span fields."""
     exported: tuple[str, ...] = ("phrase", "reason", "drug")
     declared = get_extract_fields(dataset)
     if set(declared) != set(exported):
@@ -314,10 +330,10 @@ def _assert_span_fields(dataset: DatasetName) -> None:
 def extraction_labeling(
     dataset: DatasetName,
     df: pl.DataFrame,
-    run: str,
+    model_name: str,
 ) -> Labeling:
     """Build span tasks from extraction predictions, dropping unusable rows."""
-    _assert_span_fields(dataset)
+    assert_span_fields(dataset)
 
     tasks: list[Task] = []
     if df.height == 0:
@@ -340,7 +356,7 @@ def extraction_labeling(
     skipped = 0
     rows = df.select("user", "phrase", "reason", "drug")
     for user, phrase, reason, drug in rows.iter_rows():
-        task = extraction_task(user, phrase, reason, drug, run)
+        task = extraction_task(user, phrase, reason, drug, model_name)
         if task is None:
             skipped += 1
             continue

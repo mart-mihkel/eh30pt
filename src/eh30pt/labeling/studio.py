@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, NamedTuple, NotRequired, Self, TypedDict, cast
 
 import httpx
-from returns.result import safe
+from returns.result import Failure, Success, safe
 
 from eh30pt.logging import logger
 
@@ -12,7 +12,13 @@ if TYPE_CHECKING:
 
     from httpx._types import QueryParamTypes
 
-    from eh30pt.labeling.types import ChoiceValue, SpanValue, Task
+    from eh30pt.labeling.types import (
+        ChoiceResult,
+        ChoiceValue,
+        SpanResult,
+        SpanValue,
+        Task,
+    )
     from eh30pt.settings import LabelStudioSettings
 
 
@@ -31,7 +37,7 @@ class ImportedTasks(NamedTuple):
 
 
 class StudioResult(TypedDict):
-    """One entry of an annotation result."""
+    """One entry of an annotation result as the server reports it."""
 
     id: str
     from_name: str
@@ -48,12 +54,21 @@ class StudioAnnotation(TypedDict):
     completed_by: NotRequired[int | None]
 
 
+class StudioPrediction(TypedDict):
+    """One model prediction attached to a task."""
+
+    id: int
+    result: list[StudioResult]
+    model_version: NotRequired[str | None]
+
+
 class StudioTask(TypedDict):
     """One imported task as the server reports it."""
 
     id: int
     data: dict[str, str]
     annotations: list[StudioAnnotation]
+    predictions: NotRequired[list[StudioPrediction]]
 
 
 def _json(response: httpx.Response, what: str) -> object:
@@ -291,27 +306,36 @@ class StudioClient:
 
     @safe
     def tasks(self, project: int, *, page_size: int = 100) -> list[StudioTask]:
-        """Collect every task of a project with its annotations."""
+        """Collect every task of a project with its annotations and predictions."""
         collected = [
             StudioTask(
                 id=_number(page, "id", "a task"),
                 data=cast("dict[str, str]", page.get("data", {})),
                 annotations=cast("list[StudioAnnotation]", page.get("annotations", [])),
+                predictions=cast(
+                    "list[StudioPrediction]",
+                    page.get("predictions", []),
+                ),
             )
             for page in self._task_pages(project, page_size=page_size)
         ]
 
         logger.debug(
-            "collected %d tasks with %d annotations from project %d",
+            "collected %d tasks with %d annotations and %d predictions from project %d",
             len(collected),
             sum(len(task["annotations"]) for task in collected),
+            sum(len(task["predictions"]) for task in collected),
             project,
         )
 
         return collected
 
     @safe
-    def annotate(self, task: int, result: Sequence[StudioResult]) -> int:
+    def annotate(
+        self,
+        task: int,
+        result: Sequence[StudioResult | SpanResult | ChoiceResult],
+    ) -> int:
         """Attach one annotation to a task, returning its id."""
         payload = {"task": task, "result": list(result)}
         body = _object(
@@ -323,3 +347,45 @@ class StudioClient:
         logger.debug("annotated task %d as annotation %d", task, annotation)
 
         return annotation
+
+    @safe
+    def predict(
+        self,
+        task: int,
+        result: Sequence[StudioResult | SpanResult | ChoiceResult],
+        model_version: str,
+    ) -> int:
+        """Attach one model prediction to a task, returning its id."""
+        payload = {
+            "task": task,
+            "result": list(result),
+            "model_version": model_version,
+        }
+
+        body = _object(
+            self._request("POST", "/api/predictions/", payload=payload),
+            "the created prediction",
+        )
+
+        prediction = _number(body, "id", "the created prediction")
+        logger.debug(
+            "predicted task %d as prediction %d with model '%s'",
+            task,
+            prediction,
+            model_version,
+        )
+
+        return prediction
+
+
+def project_tasks(client: StudioClient, project: int) -> list[StudioTask]:
+    """Return every task of `project`, raising when the server refuses."""
+    match client.tasks(project):
+        case Success(tasks):
+            pass
+        case Failure(exc):
+            msg = f"could not read tasks of project {project}: {exc}"
+            raise RuntimeError(msg) from exc
+
+    logger.info("found %d tasks in project %d", len(tasks), project)
+    return tasks

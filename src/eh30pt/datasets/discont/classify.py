@@ -78,9 +78,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Muu sündmus ilma ravi lõpetamiseta": 8,
     }
 
-    label2margend: ClassVar[
-        Mapping[DiscontClassifierLabel, DiscontClassifierLabelEst]
-    ] = {
+    en2et: ClassVar[Mapping[DiscontClassifierLabel, DiscontClassifierLabelEst]] = {
         "Adverse reactions": "Kõrvaltoimed",
         "Treatment success": "Ravi edukas",
         "Treatment inefficacy": "Ravi ebaefektiivne",
@@ -92,6 +90,10 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         ),
         "Dosage change": "Annuse muutmine",
         "Other non-discontinuation": "Muu sündmus ilma ravi lõpetamiseta",
+    }
+
+    et2en: ClassVar[Mapping[DiscontClassifierLabelEst, DiscontClassifierLabel]] = {
+        margend: label for label, margend in en2et.items()
     }
 
     system_prompt = dedent(
@@ -123,7 +125,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
     )
 
     @staticmethod
-    def _format_user_prompt(text: str, phrase: str, drug: str) -> str:
+    def format_user_prompt(text: str, phrase: str, drug: str) -> str:
         """Format clinical text with its phrase and drug as a prompt."""
         return dedent(f"""
             Anamnees: {text}
@@ -133,7 +135,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
 
     few_shots: ClassVar[list[FewShot]] = [
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Patsient lõpetas enalapriili kasutamise, kuna ei talunud ravimit, tekkis kuiv köha ja lööve.",  # noqa: E501
                 "lõpetas enalapriili kasutamise, kuna ei talunud ravimit",
                 "enalapriil",
@@ -141,7 +143,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Kõrvaltoimed",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
                 "Vererõhk on püsivalt normis, lõpetas nebivolooli kasutamise",
                 "nebivolool",
@@ -149,7 +151,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Ravi edukas",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Valu ei leevenenud, ibuprofeen osutus ebaefektiivseks, ravi lõpetati",
                 "valu ei leevenenud, ibuprofeen osutus ebaefektiivseks",
                 "ibuprofeen",
@@ -157,7 +159,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Ravi ebaefektiivne",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Patsient soovib rasestuda, katkestab statiiniravi",
                 "soovib rasestuda, katkestab statiiniravi",
                 "statiin",
@@ -165,7 +167,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Vastunäidustus või ohtlik kooskasutamine",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Patsient viidi üle insuliinravile, metformiin lõpetati.",
                 "Patsient viidi üle insuliinravile, metformiin lõpetati.",
                 "metformiin",
@@ -173,7 +175,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Muu põhjus",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Metformiini kasutamisel tekkis iiveldus, aga ravi jätkub samas doosis",
                 "tekkis iiveldus, aga ravi jätkub",
                 "metformiin",
@@ -181,7 +183,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Kõrvaltoimed ilma lõpetamiseta",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Patsient jätkab ibuprofeeni kasutamist, kuigi valu ei leevenenud.",
                 "kuigi valu ei leevenenud",
                 "ibuprofeen",
@@ -189,7 +191,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Ravi ebaefektiivne ilma lõpetamiseta",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Kõrvaltoimete tõttu vähendasime statiini doosi",
                 "vähendasime statiini doosi",
                 "statiin",
@@ -197,7 +199,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             label="Annuse muutmine",
         ),
         FewShot(
-            user=_format_user_prompt(
+            user=format_user_prompt(
                 "Patsient jätkab enalapriilravi muutuseta, kaebusi ei ole.",
                 "patsient jätkab enalapriilravi muutuseta",
                 "enalapriil",
@@ -239,6 +241,10 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
                 id=row["id"],
             )
 
+    def total(self) -> int:
+        """Return the number of rows in the split."""
+        return len(self._rows)
+
     def tokenize(
         self,
         row: DiscontClassifierRow,
@@ -276,7 +282,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         if not phrase or not drug:
             return row["text"]
 
-        return cls._format_user_prompt(row["text"], phrase, drug)
+        return cls.format_user_prompt(row["text"], phrase, drug)
 
 
 def _rows(frame: pl.DataFrame) -> list[DiscontClassifierRow]:
@@ -287,7 +293,7 @@ def _rows(frame: pl.DataFrame) -> list[DiscontClassifierRow]:
             "text": row["text"],
             "phrase": row["phrase"],
             "drug": row["drug"],
-            "label": DiscontClassifier.label2margend[
+            "label": DiscontClassifier.en2et[
                 cast("DiscontClassifierLabel", row["label"])
             ],
         }

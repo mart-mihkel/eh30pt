@@ -302,6 +302,10 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
                 id=idx,
             )
 
+    def total(self) -> None:
+        """Return None because a row yields one sample per entity."""
+        return
+
     def tokenize(
         self,
         row: MultinerdRow,

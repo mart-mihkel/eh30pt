@@ -208,6 +208,10 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         for row in self._rows():
             yield FewShot(user=row["text"], label="", id=row["id"])
 
+    def total(self) -> None:
+        """Return None because rows stream from Est-Health in batches."""
+        return
+
     def tokenize(
         self,
         row: DiscontExtractRow,

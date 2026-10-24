@@ -189,6 +189,10 @@ class DiscontBinary(DatasetMixin, IterableDataset, TorchIterableDataset):
                 id=row["id"],
             )
 
+    def total(self) -> int:
+        """Return the number of rows in the split."""
+        return len(self._rows)
+
     def tokenize(
         self,
         row: DiscontBinaryRow,

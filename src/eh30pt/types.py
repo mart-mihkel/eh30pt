@@ -57,6 +57,7 @@ type Method = Literal[
     "qlora",
     "few-shot",
     "langextract",
+    "silver-labels",
 ]
 
 type DatasetTask = Literal[

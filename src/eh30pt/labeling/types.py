@@ -90,3 +90,10 @@ class Labeling(NamedTuple):
 
     tasks: list[Task]
     config: str
+
+
+class PredictionCounts(NamedTuple):
+    """Outcome of one silver prediction pass over the tasks."""
+
+    predicted: int
+    invalid: int

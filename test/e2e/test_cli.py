@@ -36,6 +36,7 @@ def test_help_lists_commands() -> None:
     assert "completion" in result.output
     assert "evaluate" in result.output
     assert "generate" in result.output
+    assert "silver-labels" in result.output
 
 
 def test_sequence_classification_flag_listed() -> None:

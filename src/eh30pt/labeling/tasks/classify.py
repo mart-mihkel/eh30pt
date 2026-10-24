@@ -35,7 +35,7 @@ def choice_config(labels: tuple[str, ...]) -> str:
     return ET.tostring(view, encoding="unicode")
 
 
-def choice_task(user: str, label: str, run_id: str) -> ChoiceTask:
+def choice_task(user: str, label: str, model_version: str) -> ChoiceTask:
     """Build a task with the predicted label preselected."""
     result: ChoiceResult = {
         "from_name": "label",
@@ -50,12 +50,14 @@ def choice_task(user: str, label: str, run_id: str) -> ChoiceTask:
 
     return {
         "data": data,
-        "predictions": [{"result": [result], "model_version": run_id}],
+        "predictions": [{"result": [result], "model_version": model_version}],
     }
 
 
 def classification_labeling(
-    dataset: DatasetName, frame: pl.DataFrame, run: str
+    dataset: DatasetName,
+    frame: pl.DataFrame,
+    model_name: str,
 ) -> Labeling:
     """Build choice tasks from classification predictions, dropping unknown labels."""
     labels = get_labels(dataset)
@@ -71,7 +73,7 @@ def classification_labeling(
             skipped += 1
             continue
 
-        tasks.append(choice_task(user, prediction, run))
+        tasks.append(choice_task(user, prediction, model_name))
 
     if skipped:
         logger.warning(

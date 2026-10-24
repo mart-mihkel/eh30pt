@@ -83,7 +83,7 @@ async def batched_concurrent[ItemT, ResultT](
         yield window, results
 
 
-def log_invalid(invalid: int, n_seen: int) -> None:
+def maybe_log_invalid(invalid: int, n_seen: int) -> None:
     """Warn when invalid responses were marked as invalid."""
     if invalid:
         logger.warning("%d/%d invalid responses", invalid, n_seen)

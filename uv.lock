@@ -854,7 +854,7 @@ requires-dist = [
     { name = "langextract", specifier = "~=1.7.0" },
     { name = "mlflow", specifier = "~=3.16.0" },
     { name = "ninja", marker = "extra == 'cuda'" },
-    { name = "nvidia-ml-py", specifier = ">=13.615.71" },
+    { name = "nvidia-ml-py", specifier = "~=13.615.71" },
     { name = "nvidia-ml-py", marker = "extra == 'cuda'" },
     { name = "openai", specifier = "~=3.10.0" },
     { name = "packaging", marker = "extra == 'cuda'" },

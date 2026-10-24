@@ -224,6 +224,10 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
                 id=idx,
             )
 
+    def total(self) -> int:
+        """Return the number of rows in the split."""
+        return len(self._data)
+
     def tokenize(
         self,
         row: OblRow,

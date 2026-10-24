@@ -46,6 +46,28 @@ def _mmbert_lora_kwargs() -> LoraKwargs:
     }
 
 
+def _qwen35_lora_kwargs() -> LoraKwargs:
+    """Return LoRA targets for Qwen3.5's attention and MLP linears."""
+    logger.debug("get lora args for qwen3.5")
+
+    return {
+        "target_modules": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+            "in_proj_qkv",
+            "in_proj_z",
+            "in_proj_b",
+            "in_proj_a",
+            "out_proj",
+        ],
+    }
+
+
 def _lora_kwargs(model_path: str) -> LoraKwargs:
     """Return model-specific LoRA extras."""
     path = model_path.lower()
@@ -54,6 +76,9 @@ def _lora_kwargs(model_path: str) -> LoraKwargs:
 
     if "mmbert" in path:
         return _mmbert_lora_kwargs()
+
+    if "qwen3.5" in path or "qwen3_5" in path:
+        return _qwen35_lora_kwargs()
 
     return {}
 

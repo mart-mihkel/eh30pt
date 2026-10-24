@@ -10,8 +10,8 @@ from eh30pt.logging import logger
 from eh30pt.openai.complete import CompletionClient
 from eh30pt.openai.stream import (
     CompletionPredictor,
-    log_invalid,
     log_summary,
+    maybe_log_invalid,
     stream_predictions,
 )
 from eh30pt.settings import MlflowSettings
@@ -98,7 +98,7 @@ async def main(
         batch: list[GenerateRecord] = []
 
         logger.info("starting generate loop")
-        with tqdm(desc="Generating") as bar:
+        with tqdm(desc="Generating", total=data.test.total()) as bar:
             n_seen, invalid, n_shards = await stream_predictions(
                 data.test.samples(),
                 predictor,
@@ -111,7 +111,7 @@ async def main(
                 start_shard=start_shard,
             )
 
-        log_invalid(invalid, n_seen)
+        maybe_log_invalid(invalid, n_seen)
 
         if batch:
             n_shards = log_shard(

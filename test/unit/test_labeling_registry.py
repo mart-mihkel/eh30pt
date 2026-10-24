@@ -6,7 +6,11 @@ import polars as pl
 import pytest
 
 from eh30pt.datasets.registry import get_labels
-from eh30pt.labeling.registry import build_labeling, export_frame, label_controls
+from eh30pt.labeling.registry import (
+    build_labeling,
+    export_frame,
+    label_controls,
+)
 from eh30pt.labeling.tasks.classify import choice_config
 from eh30pt.labeling.tasks.extract import extraction_config, extraction_controls
 

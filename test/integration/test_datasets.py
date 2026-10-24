@@ -206,6 +206,7 @@ def test_load_data_train_size_limits_train_split(
     full_count = sum(1 for _ in full.train.samples())
 
     assert full_count > _limited_train_size
+    assert full.train.total() == full_count
 
     limited = load_data(
         gpt2_tokenizer, "oblique", "decoder", train_size=_limited_train_size
@@ -213,6 +214,8 @@ def test_load_data_train_size_limits_train_split(
 
     assert sum(1 for _ in limited.train.samples()) == _limited_train_size
     assert len(list(limited.train)) == _limited_train_size
+    assert limited.train.total() == _limited_train_size
+    assert limited.test.total() == sum(1 for _ in full.test.samples())
     assert sum(1 for _ in limited.eval.samples()) == sum(1 for _ in full.eval.samples())
     assert sum(1 for _ in limited.test.samples()) == sum(1 for _ in full.test.samples())
 

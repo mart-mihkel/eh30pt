@@ -56,6 +56,15 @@ class _LimitedTrain(DatasetMixin[Any], HFIterableDataset, TorchIterableDataset):
         samples = base.samples() if isinstance(base, DatasetMixin) else iter(())
         yield from islice(samples, self._limit)
 
+    def total(self) -> int:
+        """Return the number of samples the limit yields."""
+        base = self._base
+        if not isinstance(base, DatasetMixin):
+            return self._limit
+
+        total = base.total()
+        return self._limit if total is None else min(total, self._limit)
+
     def tokenize(
         self,
         row: Any,  # noqa: ANN401

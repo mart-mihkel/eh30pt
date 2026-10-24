@@ -20,6 +20,7 @@ from eh30pt.cli.options.common import (
 from eh30pt.cli.options.labeling import (
     data_path_option,
     label_studio_url_option,
+    project_id_option,
     project_ids_option,
     project_title_option,
 )
@@ -108,8 +109,14 @@ if TYPE_CHECKING:
                     "commands": ["fine-tune", "prompt-tune", "qlora", "few-shot"],
                 },
                 {
-                    "name": "Llama",
-                    "commands": ["completion", "evaluate", "generate", "langextract"],
+                    "name": "OpenAI",
+                    "commands": [
+                        "completion",
+                        "evaluate",
+                        "generate",
+                        "langextract",
+                        "silver-labels",
+                    ],
                 },
                 {
                     "name": "Label-Studio",
@@ -814,6 +821,70 @@ def generate(
             dataset=dataset,
             n_shot=n_shot,
             stream=stream,
+            mlflow=mlflow,
+            seed=seed,
+        ),
+    )
+
+
+@app.command("silver-labels", help="Generate model predictions for Label Studio tasks")
+@dataset_option
+@provider_option
+@n_shot_option
+@system_prompt_option
+@concurrency_option
+@project_id_option
+@label_studio_url_option
+@run_name_option
+@run_id_option
+@experiment_option
+@tracking_uri_option
+@log_level_option
+@seed_option
+def silver_labels(
+    *,
+    dataset: DatasetName,
+    provider: Provider,
+    n_shot: int,
+    system_prompt: str | None,
+    concurrency: int,
+    project: int,
+    label_studio_url: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_experiment: str,
+    mlflow_tracking_uri: str | None,
+    log_level: LogLevel,
+    seed: int | None,
+) -> None:
+    """Attach model predictions to existing Label Studio tasks."""
+    from eh30pt.cli.scripts.silver_labels import main
+    from eh30pt.datasets.registry import get_response_schema
+    from eh30pt.settings import LabelStudioSettings
+
+    logger.setLevel(log_level.upper())
+    if seed is None:
+        logger.warning("randomness is not fixed")
+
+    fmt = get_response_schema(dataset)
+    studio = LabelStudioSettings(url=label_studio_url)
+    server = ServerSettings(provider=provider, format=fmt)
+    mlflow = MlflowSettings(
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
+        experiment=mlflow_experiment,
+        run_name=mlflow_run_name,
+        run_id=mlflow_run_id,
+    )
+
+    asyncio.run(
+        main(
+            system_prompt=system_prompt,
+            server=server,
+            studio=studio,
+            dataset=dataset,
+            project=project,
+            n_shot=n_shot,
+            concurrency=concurrency,
             mlflow=mlflow,
             seed=seed,
         ),

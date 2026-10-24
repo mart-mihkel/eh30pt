@@ -1,13 +1,28 @@
 """Tests for folding Label Studio annotations into reason classifier labels."""
 
-from typing import Final
+from typing import TYPE_CHECKING, Final, cast
 
 import polars as pl
 
 from eh30pt.datasets.discont.classify import DiscontClassifier
 from eh30pt.labeling.export.extract import ExtractionFrameSchema, stratify
 
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerFast
+
+    from eh30pt.datasets.discont.classify import DiscontClassifierRow
+
 _labels: Final = 9
+
+
+def test_total_counts_the_split_rows() -> None:
+    rows: list[DiscontClassifierRow] = [
+        {"id": 1, "text": "t", "phrase": "p", "drug": "d", "label": "Muu põhjus"},
+        {"id": 2, "text": "t", "phrase": "p", "drug": "d", "label": "Muu põhjus"},
+    ]
+    tokenizer = cast("PreTrainedTokenizerFast", None)
+
+    assert DiscontClassifier(rows, tokenizer, "decoder").total() == len(rows)
 
 
 def test_labels_cover_reasons_and_phrase_flags() -> None:
@@ -22,10 +37,10 @@ def test_extraction_frame_schema_matches_classifier_labels() -> None:
     meta = {"Incomplete phrase", "Incorrect phrase"}
 
     assert set(check.statistics["allowed_values"]) - meta == set(
-        DiscontClassifier.label2margend
+        DiscontClassifier.en2et
     )
     assert set(DiscontClassifier.id2label.values()) == set(
-        DiscontClassifier.label2margend.values()
+        DiscontClassifier.en2et.values()
     )
 
 

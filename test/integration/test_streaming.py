@@ -26,7 +26,7 @@ from eh30pt.tracking.shards import log_shard
 from eh30pt.types import FewShot, GenerateRecord, Predictor
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
     from langextract.core.types import JsonSchema
@@ -34,7 +34,8 @@ if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
     from returns.result import Result
 
-    from eh30pt.labeling.types import ChoiceValue, SpanValue
+    from eh30pt.labeling.studio import StudioTask
+    from eh30pt.labeling.types import ChoiceResult, ChoiceValue, SpanResult, SpanValue
     from eh30pt.types import ExtractShot, RunConfig
 
 
@@ -120,6 +121,202 @@ def test_completion_predictor_returns_content_on_success() -> None:
     result = asyncio.run(predictor.predict(sample))
 
     assert result == sample.user
+
+
+def test_silver_labels_predict_existing_label_studio_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+    mlflow_client: MlflowClient,
+) -> None:
+    import eh30pt.cli.scripts.silver_labels as silver_labels_mod
+    from eh30pt.labeling.studio import StudioClient
+    from eh30pt.settings import LabelStudioSettings, ServerSettings
+
+    shot = DiscontExtract.extract_shots[0]
+    project_id = 7
+    task_id = 11
+    predicted_task_id = 12
+    tasks: list[StudioTask] = [
+        {"id": task_id, "data": {"text": shot.user}, "annotations": []},
+        {
+            "id": predicted_task_id,
+            "data": {"text": shot.user},
+            "annotations": [],
+            "predictions": [
+                {"id": 1, "result": [], "model_version": "test-model"},
+            ],
+        },
+    ]
+
+    prompts: list[list[ChatCompletionMessageParam]] = []
+    predictions: list[tuple[int, list[SpanResult], str]] = []
+
+    async def model(_self: object) -> Success[str]:
+        return Success("test-model")
+
+    async def complete(
+        _self: object,
+        conversation: list[ChatCompletionMessageParam],
+    ) -> Success[str]:
+        prompts.append(conversation)
+        return Success(json.dumps(shot.extractions))
+
+    def read_tasks(
+        _self: object,
+        project: int,
+        *,
+        page_size: int = 100,
+    ) -> Success[list[StudioTask]]:
+        _ = page_size
+        assert project == project_id
+        return Success(tasks)
+
+    def predict(
+        _self: object,
+        task: int,
+        result: Sequence[SpanResult],
+        model_version: str,
+    ) -> Success[int]:
+        predictions.append((task, list(result), model_version))
+        return Success(1)
+
+    monkeypatch.setattr(silver_labels_mod.CompletionClient, "model", model)
+    monkeypatch.setattr(silver_labels_mod.CompletionClient, "complete", complete)
+    monkeypatch.setattr(StudioClient, "tasks", read_tasks)
+    monkeypatch.setattr(StudioClient, "predict", predict)
+
+    mlflow = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="silver-exp",
+    )
+
+    asyncio.run(
+        silver_labels_mod.main(
+            dataset="discont-extract/trigger",
+            system_prompt=None,
+            n_shot=0,
+            concurrency=1,
+            studio=LabelStudioSettings(url="http://label-studio"),
+            server=ServerSettings(),
+            project=project_id,
+            mlflow=mlflow,
+            seed=0,
+        )
+    )
+
+    assert mlflow.run_id is not None
+    run = mlflow_client.get_run(mlflow.run_id)
+    assert run.data.params["method"] == "silver-labels"
+    assert run.data.params["base_model"] == "test-model"
+
+    assert len(prompts) == len(tasks)
+    assert all(prompt[-1]["content"] == shot.user for prompt in prompts)
+    assert len(predictions) == len(tasks)
+
+    assert {task for task, _, _ in predictions} == {task_id, predicted_task_id}
+    for _, results, model_version in predictions:
+        assert model_version == "test-model"
+        assert [result["value"]["labels"] for result in results] == [
+            ["phrase"],
+            ["reason"],
+            ["drug"],
+        ]
+
+
+def test_silver_labels_classify_existing_extraction_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+    mlflow_client: MlflowClient,
+) -> None:
+    import eh30pt.cli.scripts.silver_labels as silver_labels_mod
+    from eh30pt.labeling.studio import StudioClient
+    from eh30pt.settings import LabelStudioSettings, ServerSettings
+
+    project_id = 9
+    task_id = 21
+    data = {
+        "text": "Patsient lõpetas enalapriili, tekkis köha.",
+        "phrase": "lõpetas enalapriili",
+        "reason": "tekkis köha",
+        "drug": "enalapriil",
+    }
+    tasks: list[StudioTask] = [
+        {"id": task_id, "data": data, "annotations": []},
+    ]
+
+    prompts: list[list[ChatCompletionMessageParam]] = []
+    predictions: list[tuple[int, list[ChoiceResult], str]] = []
+
+    async def model(_self: object) -> Success[str]:
+        return Success("test-model")
+
+    async def complete(
+        _self: object,
+        conversation: list[ChatCompletionMessageParam],
+    ) -> Success[str]:
+        prompts.append(conversation)
+        return Success("Kõrvaltoimed")
+
+    def read_tasks(
+        _self: object,
+        project: int,
+        *,
+        page_size: int = 100,
+    ) -> Success[list[StudioTask]]:
+        _ = page_size
+        assert project == project_id
+        return Success(tasks)
+
+    def predict(
+        _self: object,
+        task: int,
+        result: Sequence[ChoiceResult],
+        model_version: str,
+    ) -> Success[int]:
+        predictions.append((task, list(result), model_version))
+        return Success(1)
+
+    monkeypatch.setattr(silver_labels_mod.CompletionClient, "model", model)
+    monkeypatch.setattr(silver_labels_mod.CompletionClient, "complete", complete)
+    monkeypatch.setattr(StudioClient, "tasks", read_tasks)
+    monkeypatch.setattr(StudioClient, "predict", predict)
+
+    mlflow = MlflowSettings(
+        tracking_uri=mlflow_client.tracking_uri,
+        experiment="silver-exp",
+    )
+
+    asyncio.run(
+        silver_labels_mod.main(
+            dataset="discont-classifier/extract-labels",
+            system_prompt=None,
+            n_shot=0,
+            concurrency=1,
+            studio=LabelStudioSettings(url="http://label-studio"),
+            server=ServerSettings(),
+            project=project_id,
+            mlflow=mlflow,
+            seed=0,
+        )
+    )
+
+    assert mlflow.run_id is not None
+    run = mlflow_client.get_run(mlflow.run_id)
+    assert run.data.params["method"] == "silver-labels"
+    assert run.data.params["dataset"] == "discont-classifier/extract-labels"
+    assert run.data.params["base_model"] == "test-model"
+
+    assert len(prompts) == len(tasks)
+    assert prompts[0][-1]["content"] == (
+        "Anamnees: Patsient lõpetas enalapriili, tekkis köha.\n"
+        "Fraas: lõpetas enalapriili\n"
+        "Ravim: enalapriil"
+    )
+
+    assert len(predictions) == len(tasks)
+    task, results, model_version = predictions[0]
+    assert task == task_id
+    assert model_version == "test-model"
+    assert [result["from_name"] for result in results] == ["discont"]
+    assert results[0]["value"] == {"choices": ["Adverse reactions"]}
 
 
 def test_completion_script_logs_success_and_failure(
@@ -508,7 +705,7 @@ def test_run_labeling_builds_span_tasks(
                     },
                 },
             ],
-            "model_version": run_id,
+            "model_version": run_config["base_model"],
         }
     ]
 
@@ -608,7 +805,7 @@ def test_run_labeling_builds_choice_tasks_for_classification_dataset(
                         "value": {"choices": [shots[0].label]},
                     }
                 ],
-                "model_version": run_id,
+                "model_version": run_config["base_model"],
             }
         ],
     }
@@ -675,7 +872,7 @@ def test_run_labeling_reads_struct_predictions(
     start = user.index(phrase)
     span = cast("SpanValue", tasks[0]["predictions"][0]["result"][0]["value"])
     assert (span["start"], span["end"]) == (start, start + len(phrase))
-    assert tasks[0]["predictions"][0]["model_version"] == run_id
+    assert tasks[0]["predictions"][0]["model_version"] == run_config["base_model"]
 
 
 def test_run_labeling_rejects_non_extraction_predictions(
@@ -821,6 +1018,26 @@ def test_run_labeling_without_dataset_in_run_raises(
                 tracking_uri=mlflow_client.tracking_uri,
                 run_id=run_id,
             ),
+        )
+
+
+def test_run_labeling_without_model_in_run_raises(
+    mlflow_client: MlflowClient,
+) -> None:
+    from eh30pt.cli.scripts.create_task import run_labeling
+
+    _ = mlflow_client
+    mlflow.set_experiment("export-no-model-exp")
+    with mlflow.start_run() as run:
+        run_id = run.info.run_id
+
+    with pytest.raises(ValueError, match="records no base model"):
+        run_labeling(
+            mlflow_settings=MlflowSettings(
+                tracking_uri=mlflow_client.tracking_uri,
+                run_id=run_id,
+            ),
+            dataset="discont-extract/trigger",
         )
 
 

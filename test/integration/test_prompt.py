@@ -416,6 +416,15 @@ def test_samples_multinerd_expands_entities(
         assert sample.id is not None
 
 
+def test_total_multinerd_is_unknown(
+    nerd_data: Dataset,
+    bert_tokenizer: PreTrainedTokenizerFast,
+) -> None:
+    ds = Multinerd(nerd_data, bert_tokenizer, "decoder")
+
+    assert ds.total() is None
+
+
 def test_set_epoch_ignored(
     oblique_data: Dataset,
     bert_tokenizer: PreTrainedTokenizerFast,
@@ -501,7 +510,7 @@ def test_load_classifier_reads_exported_labels_without_a_server(
 ) -> None:
     """Splits stream from an export-labels parquet, never touching the API."""
     n_tasks = 10
-    export_labels = tuple(DiscontClassifier.label2margend)
+    export_labels = tuple(DiscontClassifier.en2et)
     real_shots = _Extract.extract_shots
     fallback_drug = next(
         s.extractions["drug"] for s in real_shots if s.extractions["drug"]
@@ -550,7 +559,7 @@ def test_load_classifier_reads_exported_labels_without_a_server(
 
     assert len(samples) == n_tasks
     assert {sample.label for sample in samples} == {
-        DiscontClassifier.label2margend[export_labels[i % len(export_labels)]]
+        DiscontClassifier.en2et[export_labels[i % len(export_labels)]]
         for i in range(n_tasks)
     }
     assert sorted(

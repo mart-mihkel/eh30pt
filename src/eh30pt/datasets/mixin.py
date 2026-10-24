@@ -73,6 +73,10 @@ class DatasetMixin[RowType]:
         """Yield decoder prompt and label pairs for the split."""
         raise NotImplementedError
 
+    def total(self) -> int | None:
+        """Return the number of samples the split yields, or None when unknown."""
+        return None
+
     def set_epoch(self, epoch: int) -> None:
         """Ignore the epoch counter, rows stream in split order."""
         del epoch

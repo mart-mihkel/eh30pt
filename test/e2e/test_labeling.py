@@ -140,7 +140,7 @@ def test_export_labels_writes_annotations_to_parquet(
 
     labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
-    labels = tuple(DiscontClassifier.label2margend)
+    labels = tuple(DiscontClassifier.en2et)
     controls = extraction_controls()
 
     with StudioClient(studio) as client:
@@ -193,7 +193,7 @@ def test_export_labels_combines_projects_into_one_frame(
 
     labeling = extraction_labeling("discont-extract/trigger", preds, "run-1")
     output = tmp_path / "labels.parquet"
-    labels = tuple(DiscontClassifier.label2margend)
+    labels = tuple(DiscontClassifier.en2et)
     controls = extraction_controls()
 
     _needed = 2
