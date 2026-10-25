@@ -38,15 +38,15 @@ def preds() -> pl.DataFrame:
     )
 
 
+@pytest.fixture(scope="module")
+def vcr_config() -> dict[str, object]:
+    return {"filter_headers": ["authorization"]}
+
+
 @pytest.fixture
 def studio() -> LabelStudioSettings:
-    """Return settings for a live server, xfailing when none is reachable."""
-    settings = LabelStudioSettings()
-    with StudioClient(settings) as client:
-        if isinstance(client.projects(), Failure):
-            pytest.xfail(f"label studio at '{settings.url}' is unreachable")
-
-    return settings
+    """Return connection settings for the recorded Label Studio API."""
+    return LabelStudioSettings()
 
 
 @pytest.fixture
@@ -61,6 +61,7 @@ def project(studio: LabelStudioSettings, preds: pl.DataFrame) -> Iterator[Projec
         client.delete(created.id).unwrap()
 
 
+@pytest.mark.vcr
 def test_create_project_imports_tasks_with_pre_annotations(
     studio: LabelStudioSettings,
     project: ProjectRef,
@@ -85,6 +86,7 @@ def test_create_project_imports_tasks_with_pre_annotations(
     )
 
 
+@pytest.mark.vcr
 def test_create_task_creates_a_separate_project_per_call(
     studio: LabelStudioSettings,
     preds: pl.DataFrame,
@@ -109,6 +111,7 @@ def test_create_task_creates_a_separate_project_per_call(
                 client.delete(project.id).unwrap()
 
 
+@pytest.mark.vcr
 def test_validate_rejects_a_malformed_label_config(
     studio: LabelStudioSettings,
     project: ProjectRef,
@@ -117,6 +120,7 @@ def test_validate_rejects_a_malformed_label_config(
         assert isinstance(client.validate(project.id, "<View><Text"), Failure)
 
 
+@pytest.mark.vcr
 def test_delete_removes_the_project(
     studio: LabelStudioSettings, preds: pl.DataFrame
 ) -> None:
@@ -130,6 +134,7 @@ def test_delete_removes_the_project(
         assert created.id not in {project.id for project in client.projects().unwrap()}
 
 
+@pytest.mark.vcr
 def test_export_labels_writes_annotations_to_parquet(
     studio: LabelStudioSettings,
     project: ProjectRef,
@@ -183,6 +188,7 @@ def test_export_labels_writes_annotations_to_parquet(
     )
 
 
+@pytest.mark.vcr
 def test_export_labels_combines_projects_into_one_frame(
     studio: LabelStudioSettings,
     project: ProjectRef,

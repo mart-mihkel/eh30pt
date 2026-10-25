@@ -1,0 +1,942 @@
+interactions:
+- request:
+    body: '{"title":"eh30pt-e2e","label_config":"<View>\n  <Text name=\"text\" value=\"$text\"
+      />\n  <Style>\n        .eh30pt-title {\n            border: 1px solid transparent;\n            border-radius:
+      3px;\n            padding: 2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3313'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/
+  response:
+    body:
+      string: '{"id":1,"title":"eh30pt-e2e","description":"","label_config":"<View>\n  <Text
+        name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title {\n            border:
+        1px solid transparent;\n            border-radius: 3px;\n            padding:
+        2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+        .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+        style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Drug discontinuation\"
+        />\n      </View>\n      <Choices name=\"discont\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Treatment success\" hint=\"Treatment
+        stopped because it worked, was completed, or the patient improved enough.\"
+        />\n        <Choice value=\"Treatment inefficacy\" hint=\"Treatment stopped
+        because it was seen as ineffective.\" />\n        <Choice value=\"Contraindication/unsafe
+        co-usage\" hint=\"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate.\" />\n        <Choice value=\"Adverse
+        reactions\" hint=\"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications.\" />\n        <Choice
+        value=\"Other\" hint=\"Treatment stopped for other or unknown reasons.\" />\n      </Choices>\n    </View>\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Not discontinuation\"
+        />\n      </View>\n      <Choices name=\"other\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Adverse reaction without discontinuation\"
+        hint=\"Adverse side effects, allergic reactions, or negative interactions
+        where treatment continued or was not the reason it stopped.\" />\n        <Choice
+        value=\"Treatment inefficacy without discontinuation\" hint=\"Treatment was
+        seen as ineffective but was not stopped because of it.\" />\n        <Choice
+        value=\"Dosage change\" hint=\"Dose was increased or decreased. No justification
+        or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+        hint=\"An event that is neither a discontinuation nor any of the reasons listed
+        here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+        style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+        value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+        choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+        phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious.\" />\n        <Choice
+        value=\"Incorrect phrase\" hint=\"Extracted phrase is noise or a false positive;
+        any real description is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+        style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+        value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\"
+        background=\"#a9c6ff\" />\n      <Label value=\"drug\" background=\"#a8e6a3\"
+        />\n    </Labels>\n  </View>\n</View>","expert_instruction":"","show_instruction":false,"show_skip_button":true,"enable_empty_annotation":true,"show_annotation_history":false,"organization":1,"color":"#FFFFFF","maximum_annotations":1,"is_published":false,"model_version":"","is_draft":false,"created_by":{"id":1,"first_name":"","last_name":"","email":"ls@ls.ls","avatar":null},"created_at":"2026-10-25T13:28:25.775703Z","min_annotations_to_start_training":0,"start_training_on_annotation_update":false,"show_collab_predictions":true,"num_tasks_with_annotations":null,"task_number":null,"useful_annotation_number":null,"ground_truth_number":null,"skipped_annotations_number":null,"total_annotations_number":null,"total_predictions_number":null,"sampling":"Sequential
+        sampling","show_ground_truth_first":false,"annotator_evaluation_enabled":false,"show_overlap_first":false,"overlap_cohort_percentage":100,"task_data_login":null,"task_data_password":null,"control_weights":{"discont":{"overall":1.0,"type":"Choices","labels":{"Treatment
+        success":1.0,"Treatment inefficacy":1.0,"Contraindication/unsafe co-usage":1.0,"Adverse
+        reactions":1.0,"Other":1.0}},"other":{"overall":1.0,"type":"Choices","labels":{"Adverse
+        reaction without discontinuation":1.0,"Treatment inefficacy without discontinuation":1.0,"Dosage
+        change":1.0,"Other non-discontinuation":1.0}},"meta":{"overall":1.0,"type":"Choices","labels":{"Incomplete
+        phrase":1.0,"Incorrect phrase":1.0}},"span":{"overall":1.0,"type":"Labels","labels":{"phrase":1.0,"reason":1.0,"drug":1.0}}},"parsed_label_config":{"discont":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Treatment
+        success","Treatment inefficacy","Contraindication/unsafe co-usage","Adverse
+        reactions","Other"],"labels_attrs":{"Treatment success":{"value":"Treatment
+        success","hint":"Treatment stopped because it worked, was completed, or the
+        patient improved enough."},"Treatment inefficacy":{"value":"Treatment inefficacy","hint":"Treatment
+        stopped because it was seen as ineffective."},"Contraindication/unsafe co-usage":{"value":"Contraindication/unsafe
+        co-usage","hint":"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate."},"Adverse reactions":{"value":"Adverse
+        reactions","hint":"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications."},"Other":{"value":"Other","hint":"Treatment
+        stopped for other or unknown reasons."}}},"other":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Adverse
+        reaction without discontinuation","Treatment inefficacy without discontinuation","Dosage
+        change","Other non-discontinuation"],"labels_attrs":{"Adverse reaction without
+        discontinuation":{"value":"Adverse reaction without discontinuation","hint":"Adverse
+        side effects, allergic reactions, or negative interactions where treatment
+        continued or was not the reason it stopped."},"Treatment inefficacy without
+        discontinuation":{"value":"Treatment inefficacy without discontinuation","hint":"Treatment
+        was seen as ineffective but was not stopped because of it."},"Dosage change":{"value":"Dosage
+        change","hint":"Dose was increased or decreased. No justification or cause
+        is needed."},"Other non-discontinuation":{"value":"Other non-discontinuation","hint":"An
+        event that is neither a discontinuation nor any of the reasons listed here."}}},"meta":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Incomplete
+        phrase","Incorrect phrase"],"labels_attrs":{"Incomplete phrase":{"value":"Incomplete
+        phrase","hint":"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious."},"Incorrect phrase":{"value":"Incorrect
+        phrase","hint":"Extracted phrase is noise or a false positive; any real description
+        is elsewhere. Use only when obvious."}}},"span":{"type":"Labels","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["phrase","reason","drug"],"labels_attrs":{"phrase":{"value":"phrase","background":"#ffe08a"},"reason":{"value":"reason","background":"#a9c6ff"},"drug":{"value":"drug","background":"#a8e6a3"}}}},"evaluate_predictions_automatically":false,"config_has_control_tags":true,"skip_queue":"REQUEUE_FOR_OTHERS","reveal_preannotations_interactively":false,"pinned_at":null,"finished_task_number":null,"queue_total":0,"queue_done":0,"config_suitable_for_bulk_annotation":false,"state":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '7866'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:25 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJkOTUxNjczNS1iMTRmLTQxZjktOGE4MC1mODM2NDFhMDU3OGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:3l-uzaaAX-7WaOb6_4h3GNaezOJOLD-eYC3cpJHJGQw;
+        expires=Sun, 08 Nov 2026 13:28:25 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"label_config":"<View>\n  <Text name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title
+      {\n            border: 1px solid transparent;\n            border-radius: 3px;\n            padding:
+      2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3292'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/1/validate
+  response:
+    body:
+      string: '{"config_essential_data_has_changed":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '42'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:25 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiI5OTMzZTQwMC1mZDJhLTQ0N2QtODhiNy03Y2FkOGY2MDNhZTQiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:YRj58N4IPuBeR52GJynQrebLggp2_7estdaLI9W4140;
+        expires=Sun, 08 Nov 2026 13:28:25 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "[{\"data\":{\"text\":\"katkestas Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"phrase\":\"katkestas
+      Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"reason\":\"verer\xF5hk normaliseerus\",\"drug\":\"Nebilet\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":54,\"text\":\"katkestas
+      Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":32,\"end\":54,\"text\":\"verer\xF5hk
+      normaliseerus\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":10,\"end\":17,\"text\":\"Nebilet\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]},{\"data\":{\"text\":\"tekkis
+      k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"phrase\":\"tekkis k\xF6ha, enalapriil
+      \xE4ra j\xE4eti\",\"reason\":\"tekkis k\xF6ha\",\"drug\":\"enalapriil\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":33,\"text\":\"tekkis
+      k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"tekkis
+      k\xF6ha\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":13,\"end\":23,\"text\":\"enalapriil\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]},{\"data\":{\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"phrase\":\"diclopramist s\xFCdamepl\xF5ksumine,
+      j\xE4tab \xE4ra\",\"reason\":\"diclopramist s\xFCdamepl\xF5ksumine\",\"drug\":\"diclopramis\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":40,\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":29,\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"diclopramis\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]}]"
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2211'
+      content-type:
+      - application/json
+      cookie:
+      - sessionid=eyJ1aWQiOiI5OTMzZTQwMC1mZDJhLTQ0N2QtODhiNy03Y2FkOGY2MDNhZTQiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:YRj58N4IPuBeR52GJynQrebLggp2_7estdaLI9W4140
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/1/import
+  response:
+    body:
+      string: '{"task_count":3,"annotation_count":0,"prediction_count":3,"duration":0.018882274627685547,"file_upload_ids":[],"could_be_tasks_list":false,"found_formats":[],"data_columns":[]}'
+    headers:
+      allow:
+      - POST, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '176'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:25 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiI5OTMzZTQwMC1mZDJhLTQ0N2QtODhiNy03Y2FkOGY2MDNhZTQiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:YRj58N4IPuBeR52GJynQrebLggp2_7estdaLI9W4140;
+        expires=Sun, 08 Nov 2026 13:28:25 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: GET
+    uri: http://localhost:8080/api/tasks/?project=1&page=1&page_size=100&fields=all
+  response:
+    body:
+      string: "{\"total_annotations\":0,\"total_predictions\":3,\"total\":3,\"tasks\":[{\"id\":1,\"predictions\":[{\"id\":1,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":54,\"text\":\"katkestas
+        Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":32,\"end\":54,\"text\":\"verer\xF5hk
+        normaliseerus\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":10,\"end\":17,\"text\":\"Nebilet\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:25.849097Z\",\"updated_at\":\"2026-10-25T13:28:25.849102Z\",\"model\":null,\"model_run\":null,\"task\":1,\"project\":1}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":1,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 54, text: katkestas Nebileti tarvitamise, verer\\\\u00f5hk normaliseerus,
+        labels: [phrase]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {start: 32, end: 54, text: verer\\\\u00f5hk normaliseerus,
+        labels: [reason]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden:\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"katkestas
+        Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"phrase\":\"katkestas Nebileti
+        tarvitamise, verer\xF5hk normaliseerus\",\"reason\":\"verer\xF5hk normaliseerus\",\"drug\":\"Nebilet\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:25.848077Z\",\"updated_at\":\"2026-10-25T13:28:25.848085Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":1,\"comment_authors\":[]},{\"id\":2,\"predictions\":[{\"id\":2,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":33,\"text\":\"tekkis
+        k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"tekkis
+        k\xF6ha\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":13,\"end\":23,\"text\":\"enalapriil\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:25.849117Z\",\"updated_at\":\"2026-10-25T13:28:25.849120Z\",\"model\":null,\"model_run\":null,\"task\":2,\"project\":1}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":2,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 33, text: tekkis k\\\\u00f6ha, enalapriil \\\\u00e4ra j\\\\u00e4eti,
+        labels: [phrase]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {start: 0, end: 11, text: tekkis k\\\\u00f6ha,
+        labels: [reason]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {star\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"tekkis
+        k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"phrase\":\"tekkis k\xF6ha, enalapriil
+        \xE4ra j\xE4eti\",\"reason\":\"tekkis k\xF6ha\",\"drug\":\"enalapriil\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:25.848106Z\",\"updated_at\":\"2026-10-25T13:28:25.848110Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":1,\"comment_authors\":[]},{\"id\":3,\"predictions\":[{\"id\":3,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":40,\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":29,\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"diclopramis\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:25.849133Z\",\"updated_at\":\"2026-10-25T13:28:25.849135Z\",\"model\":null,\"model_run\":null,\"task\":3,\"project\":1}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":3,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 40, text: diclopramist s\\\\u00fcdamepl\\\\u00f5ksumine, j\\\\u00e4tab
+        \\\\u00e4ra, labels: [phrase]}}, {from_name: span, to_name: text, type: labels,
+        readonly: true, hidden: false, value: {start: 0, end: 29, text: diclopramist
+        s\\\\u00fcdamepl\\\\u00f5ksumine, labels: [reason]}}, {from_name: span, to_name:
+        text, type: labels, readonly: tru\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"phrase\":\"diclopramist s\xFCdamepl\xF5ksumine,
+        j\xE4tab \xE4ra\",\"reason\":\"diclopramist s\xFCdamepl\xF5ksumine\",\"drug\":\"diclopramis\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:25.848126Z\",\"updated_at\":\"2026-10-25T13:28:25.848128Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":1,\"comment_authors\":[]}]}"
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '6141'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:25 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJjOWY4Y2FjMC05N2JjLTRhYTUtYWY0Ny1hNTk4YzAwYzJmNTYiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:tepsUt8rqd88R5NshJnt5rKfmoU2R6J-cw1kbUh-BTg;
+        expires=Sun, 08 Nov 2026 13:28:25 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      cookie:
+      - sessionid=eyJ1aWQiOiJkOTUxNjczNS1iMTRmLTQxZjktOGE4MC1mODM2NDFhMDU3OGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:3l-uzaaAX-7WaOb6_4h3GNaezOJOLD-eYC3cpJHJGQw
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: DELETE
+    uri: http://localhost:8080/api/projects/1
+  response:
+    body:
+      string: ''
+    headers:
+      allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '0'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:25 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJkOTUxNjczNS1iMTRmLTQxZjktOGE4MC1mODM2NDFhMDU3OGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGv:3l-uzaaAX-7WaOb6_4h3GNaezOJOLD-eYC3cpJHJGQw;
+        expires=Sun, 08 Nov 2026 13:28:25 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: '{"title":"eh30pt-e2e","label_config":"<View>\n  <Text name=\"text\" value=\"$text\"
+      />\n  <Style>\n        .eh30pt-title {\n            border: 1px solid transparent;\n            border-radius:
+      3px;\n            padding: 2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3313'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/
+  response:
+    body:
+      string: '{"id":9,"title":"eh30pt-e2e","description":"","label_config":"<View>\n  <Text
+        name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title {\n            border:
+        1px solid transparent;\n            border-radius: 3px;\n            padding:
+        2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+        .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+        style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Drug discontinuation\"
+        />\n      </View>\n      <Choices name=\"discont\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Treatment success\" hint=\"Treatment
+        stopped because it worked, was completed, or the patient improved enough.\"
+        />\n        <Choice value=\"Treatment inefficacy\" hint=\"Treatment stopped
+        because it was seen as ineffective.\" />\n        <Choice value=\"Contraindication/unsafe
+        co-usage\" hint=\"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate.\" />\n        <Choice value=\"Adverse
+        reactions\" hint=\"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications.\" />\n        <Choice
+        value=\"Other\" hint=\"Treatment stopped for other or unknown reasons.\" />\n      </Choices>\n    </View>\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Not discontinuation\"
+        />\n      </View>\n      <Choices name=\"other\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Adverse reaction without discontinuation\"
+        hint=\"Adverse side effects, allergic reactions, or negative interactions
+        where treatment continued or was not the reason it stopped.\" />\n        <Choice
+        value=\"Treatment inefficacy without discontinuation\" hint=\"Treatment was
+        seen as ineffective but was not stopped because of it.\" />\n        <Choice
+        value=\"Dosage change\" hint=\"Dose was increased or decreased. No justification
+        or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+        hint=\"An event that is neither a discontinuation nor any of the reasons listed
+        here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+        style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+        value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+        choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+        phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious.\" />\n        <Choice
+        value=\"Incorrect phrase\" hint=\"Extracted phrase is noise or a false positive;
+        any real description is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+        style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+        value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\"
+        background=\"#a9c6ff\" />\n      <Label value=\"drug\" background=\"#a8e6a3\"
+        />\n    </Labels>\n  </View>\n</View>","expert_instruction":"","show_instruction":false,"show_skip_button":true,"enable_empty_annotation":true,"show_annotation_history":false,"organization":1,"color":"#FFFFFF","maximum_annotations":1,"is_published":false,"model_version":"","is_draft":false,"created_by":{"id":1,"first_name":"","last_name":"","email":"ls@ls.ls","avatar":null},"created_at":"2026-10-25T13:28:48.389547Z","min_annotations_to_start_training":0,"start_training_on_annotation_update":false,"show_collab_predictions":true,"num_tasks_with_annotations":null,"task_number":null,"useful_annotation_number":null,"ground_truth_number":null,"skipped_annotations_number":null,"total_annotations_number":null,"total_predictions_number":null,"sampling":"Sequential
+        sampling","show_ground_truth_first":false,"annotator_evaluation_enabled":false,"show_overlap_first":false,"overlap_cohort_percentage":100,"task_data_login":null,"task_data_password":null,"control_weights":{"discont":{"overall":1.0,"type":"Choices","labels":{"Treatment
+        success":1.0,"Treatment inefficacy":1.0,"Contraindication/unsafe co-usage":1.0,"Adverse
+        reactions":1.0,"Other":1.0}},"other":{"overall":1.0,"type":"Choices","labels":{"Adverse
+        reaction without discontinuation":1.0,"Treatment inefficacy without discontinuation":1.0,"Dosage
+        change":1.0,"Other non-discontinuation":1.0}},"meta":{"overall":1.0,"type":"Choices","labels":{"Incomplete
+        phrase":1.0,"Incorrect phrase":1.0}},"span":{"overall":1.0,"type":"Labels","labels":{"phrase":1.0,"reason":1.0,"drug":1.0}}},"parsed_label_config":{"discont":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Treatment
+        success","Treatment inefficacy","Contraindication/unsafe co-usage","Adverse
+        reactions","Other"],"labels_attrs":{"Treatment success":{"value":"Treatment
+        success","hint":"Treatment stopped because it worked, was completed, or the
+        patient improved enough."},"Treatment inefficacy":{"value":"Treatment inefficacy","hint":"Treatment
+        stopped because it was seen as ineffective."},"Contraindication/unsafe co-usage":{"value":"Contraindication/unsafe
+        co-usage","hint":"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate."},"Adverse reactions":{"value":"Adverse
+        reactions","hint":"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications."},"Other":{"value":"Other","hint":"Treatment
+        stopped for other or unknown reasons."}}},"other":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Adverse
+        reaction without discontinuation","Treatment inefficacy without discontinuation","Dosage
+        change","Other non-discontinuation"],"labels_attrs":{"Adverse reaction without
+        discontinuation":{"value":"Adverse reaction without discontinuation","hint":"Adverse
+        side effects, allergic reactions, or negative interactions where treatment
+        continued or was not the reason it stopped."},"Treatment inefficacy without
+        discontinuation":{"value":"Treatment inefficacy without discontinuation","hint":"Treatment
+        was seen as ineffective but was not stopped because of it."},"Dosage change":{"value":"Dosage
+        change","hint":"Dose was increased or decreased. No justification or cause
+        is needed."},"Other non-discontinuation":{"value":"Other non-discontinuation","hint":"An
+        event that is neither a discontinuation nor any of the reasons listed here."}}},"meta":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Incomplete
+        phrase","Incorrect phrase"],"labels_attrs":{"Incomplete phrase":{"value":"Incomplete
+        phrase","hint":"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious."},"Incorrect phrase":{"value":"Incorrect
+        phrase","hint":"Extracted phrase is noise or a false positive; any real description
+        is elsewhere. Use only when obvious."}}},"span":{"type":"Labels","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["phrase","reason","drug"],"labels_attrs":{"phrase":{"value":"phrase","background":"#ffe08a"},"reason":{"value":"reason","background":"#a9c6ff"},"drug":{"value":"drug","background":"#a8e6a3"}}}},"evaluate_predictions_automatically":false,"config_has_control_tags":true,"skip_queue":"REQUEUE_FOR_OTHERS","reveal_preannotations_interactively":false,"pinned_at":null,"finished_task_number":null,"queue_total":0,"queue_done":0,"config_suitable_for_bulk_annotation":false,"state":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '7866'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJlNTYwMmM4MS0zMzFlLTQyN2YtYjlkMi00OTA1YjFiN2Y4OTkiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:c5xVdgZeRInIGVJGgvaP1Qy0fP3yjs30apYcLfLoUlo;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"label_config":"<View>\n  <Text name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title
+      {\n            border: 1px solid transparent;\n            border-radius: 3px;\n            padding:
+      2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3292'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/9/validate
+  response:
+    body:
+      string: '{"config_essential_data_has_changed":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '42'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJkMDIxNTAyNy1kOTMzLTRkZGQtOGQ2ZC1kMGQwN2FiMDRmNTIiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:LXO_ub8t3GajB7kqIyF88Z2a2SEHjQYE8hUW9oreuao;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "[{\"data\":{\"text\":\"katkestas Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"phrase\":\"katkestas
+      Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"reason\":\"verer\xF5hk normaliseerus\",\"drug\":\"Nebilet\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":54,\"text\":\"katkestas
+      Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":32,\"end\":54,\"text\":\"verer\xF5hk
+      normaliseerus\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":10,\"end\":17,\"text\":\"Nebilet\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]},{\"data\":{\"text\":\"tekkis
+      k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"phrase\":\"tekkis k\xF6ha, enalapriil
+      \xE4ra j\xE4eti\",\"reason\":\"tekkis k\xF6ha\",\"drug\":\"enalapriil\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":33,\"text\":\"tekkis
+      k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"tekkis
+      k\xF6ha\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":13,\"end\":23,\"text\":\"enalapriil\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]},{\"data\":{\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"phrase\":\"diclopramist s\xFCdamepl\xF5ksumine,
+      j\xE4tab \xE4ra\",\"reason\":\"diclopramist s\xFCdamepl\xF5ksumine\",\"drug\":\"diclopramis\"},\"predictions\":[{\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":40,\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":29,\"text\":\"diclopramist
+      s\xFCdamepl\xF5ksumine\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"diclopramis\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\"}]}]"
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2211'
+      content-type:
+      - application/json
+      cookie:
+      - sessionid=eyJ1aWQiOiJkMDIxNTAyNy1kOTMzLTRkZGQtOGQ2ZC1kMGQwN2FiMDRmNTIiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:LXO_ub8t3GajB7kqIyF88Z2a2SEHjQYE8hUW9oreuao
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/9/import
+  response:
+    body:
+      string: '{"task_count":3,"annotation_count":0,"prediction_count":3,"duration":0.01650238037109375,"file_upload_ids":[],"could_be_tasks_list":false,"found_formats":[],"data_columns":[]}'
+    headers:
+      allow:
+      - POST, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '175'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJkMDIxNTAyNy1kOTMzLTRkZGQtOGQ2ZC1kMGQwN2FiMDRmNTIiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:LXO_ub8t3GajB7kqIyF88Z2a2SEHjQYE8hUW9oreuao;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: GET
+    uri: http://localhost:8080/api/tasks/?project=9&page=1&page_size=100&fields=all
+  response:
+    body:
+      string: "{\"total_annotations\":0,\"total_predictions\":3,\"total\":3,\"tasks\":[{\"id\":1,\"predictions\":[{\"id\":10,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":54,\"text\":\"katkestas
+        Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":32,\"end\":54,\"text\":\"verer\xF5hk
+        normaliseerus\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":10,\"end\":17,\"text\":\"Nebilet\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:48.442969Z\",\"updated_at\":\"2026-10-25T13:28:48.442975Z\",\"model\":null,\"model_run\":null,\"task\":1,\"project\":9}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":1,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 54, text: katkestas Nebileti tarvitamise, verer\\\\u00f5hk normaliseerus,
+        labels: [phrase]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {start: 32, end: 54, text: verer\\\\u00f5hk normaliseerus,
+        labels: [reason]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden:\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"katkestas
+        Nebileti tarvitamise, verer\xF5hk normaliseerus\",\"phrase\":\"katkestas Nebileti
+        tarvitamise, verer\xF5hk normaliseerus\",\"reason\":\"verer\xF5hk normaliseerus\",\"drug\":\"Nebilet\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:48.441966Z\",\"updated_at\":\"2026-10-25T13:28:48.441975Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":9,\"comment_authors\":[]},{\"id\":2,\"predictions\":[{\"id\":11,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":33,\"text\":\"tekkis
+        k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"tekkis
+        k\xF6ha\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":13,\"end\":23,\"text\":\"enalapriil\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:48.442992Z\",\"updated_at\":\"2026-10-25T13:28:48.442995Z\",\"model\":null,\"model_run\":null,\"task\":2,\"project\":9}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":2,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 33, text: tekkis k\\\\u00f6ha, enalapriil \\\\u00e4ra j\\\\u00e4eti,
+        labels: [phrase]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {start: 0, end: 11, text: tekkis k\\\\u00f6ha,
+        labels: [reason]}}, {from_name: span, to_name: text, type: labels, readonly:
+        true, hidden: false, value: {star\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"tekkis
+        k\xF6ha, enalapriil \xE4ra j\xE4eti\",\"phrase\":\"tekkis k\xF6ha, enalapriil
+        \xE4ra j\xE4eti\",\"reason\":\"tekkis k\xF6ha\",\"drug\":\"enalapriil\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:48.441999Z\",\"updated_at\":\"2026-10-25T13:28:48.442003Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":9,\"comment_authors\":[]},{\"id\":3,\"predictions\":[{\"id\":12,\"result\":[{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":40,\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"labels\":[\"phrase\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":29,\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine\",\"labels\":[\"reason\"]}},{\"from_name\":\"span\",\"to_name\":\"text\",\"type\":\"labels\",\"readonly\":true,\"hidden\":false,\"value\":{\"start\":0,\"end\":11,\"text\":\"diclopramis\",\"labels\":[\"drug\"]}}],\"model_version\":\"run-1\",\"created_ago\":\"0\_minutes\",\"score\":null,\"cluster\":null,\"neighbors\":null,\"mislabeling\":0.0,\"created_at\":\"2026-10-25T13:28:48.443009Z\",\"updated_at\":\"2026-10-25T13:28:48.443012Z\",\"model\":null,\"model_run\":null,\"task\":3,\"project\":9}],\"annotations\":[],\"drafts\":[],\"annotators\":[],\"inner_id\":3,\"cancelled_annotations\":0,\"total_annotations\":0,\"total_predictions\":1,\"completed_at\":null,\"annotations_results\":\"\",\"predictions_results\":\"[{from_name:
+        span, to_name: text, type: labels, readonly: true, hidden: false, value: {start:
+        0, end: 40, text: diclopramist s\\\\u00fcdamepl\\\\u00f5ksumine, j\\\\u00e4tab
+        \\\\u00e4ra, labels: [phrase]}}, {from_name: span, to_name: text, type: labels,
+        readonly: true, hidden: false, value: {start: 0, end: 29, text: diclopramist
+        s\\\\u00fcdamepl\\\\u00f5ksumine, labels: [reason]}}, {from_name: span, to_name:
+        text, type: labels, readonly: tru\",\"predictions_score\":null,\"file_upload\":null,\"storage_filename\":null,\"annotations_ids\":\"\",\"predictions_model_versions\":\"run-1\",\"avg_lead_time\":null,\"draft_exists\":false,\"updated_by\":[],\"data\":{\"text\":\"diclopramist
+        s\xFCdamepl\xF5ksumine, j\xE4tab \xE4ra\",\"phrase\":\"diclopramist s\xFCdamepl\xF5ksumine,
+        j\xE4tab \xE4ra\",\"reason\":\"diclopramist s\xFCdamepl\xF5ksumine\",\"drug\":\"diclopramis\"},\"meta\":{},\"created_at\":\"2026-10-25T13:28:48.442022Z\",\"updated_at\":\"2026-10-25T13:28:48.442025Z\",\"is_labeled\":false,\"overlap\":1,\"comment_count\":0,\"unresolved_comment_count\":0,\"last_comment_updated_at\":null,\"project\":9,\"comment_authors\":[]}]}"
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '6144'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJiZDc0ODBlZi01ODNjLTQzNGEtYjc5MC00Yjc5MzgxZWFiODQiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:XqaroxC6Z24GQpuBbd7AOFbGgkuunhVbMfUcV6jXpiI;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      cookie:
+      - sessionid=eyJ1aWQiOiJlNTYwMmM4MS0zMzFlLTQyN2YtYjlkMi00OTA1YjFiN2Y4OTkiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:c5xVdgZeRInIGVJGgvaP1Qy0fP3yjs30apYcLfLoUlo
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: DELETE
+    uri: http://localhost:8080/api/projects/9
+  response:
+    body:
+      string: ''
+    headers:
+      allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '0'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJlNTYwMmM4MS0zMzFlLTQyN2YtYjlkMi00OTA1YjFiN2Y4OTkiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:c5xVdgZeRInIGVJGgvaP1Qy0fP3yjs30apYcLfLoUlo;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 204
+      message: No Content
+version: 1

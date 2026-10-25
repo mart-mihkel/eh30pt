@@ -93,7 +93,6 @@ def test_completion_dataset_prints_label(
 
 
 @pytest.mark.vcr
-@pytest.mark.slow
 def test_evaluate_reports_metrics(tracking_uri: str) -> None:
     experiment: Final = "e2e-llama-evaluate-multinerd"
     result = _invoke(

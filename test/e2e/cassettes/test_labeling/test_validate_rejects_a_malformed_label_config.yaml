@@ -1,0 +1,560 @@
+interactions:
+- request:
+    body: '{"title":"eh30pt-e2e","label_config":"<View>\n  <Text name=\"text\" value=\"$text\"
+      />\n  <Style>\n        .eh30pt-title {\n            border: 1px solid transparent;\n            border-radius:
+      3px;\n            padding: 2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3313'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/
+  response:
+    body:
+      string: '{"id":4,"title":"eh30pt-e2e","description":"","label_config":"<View>\n  <Text
+        name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title {\n            border:
+        1px solid transparent;\n            border-radius: 3px;\n            padding:
+        2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+        .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+        style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Drug discontinuation\"
+        />\n      </View>\n      <Choices name=\"discont\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Treatment success\" hint=\"Treatment
+        stopped because it worked, was completed, or the patient improved enough.\"
+        />\n        <Choice value=\"Treatment inefficacy\" hint=\"Treatment stopped
+        because it was seen as ineffective.\" />\n        <Choice value=\"Contraindication/unsafe
+        co-usage\" hint=\"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate.\" />\n        <Choice value=\"Adverse
+        reactions\" hint=\"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications.\" />\n        <Choice
+        value=\"Other\" hint=\"Treatment stopped for other or unknown reasons.\" />\n      </Choices>\n    </View>\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Not discontinuation\"
+        />\n      </View>\n      <Choices name=\"other\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Adverse reaction without discontinuation\"
+        hint=\"Adverse side effects, allergic reactions, or negative interactions
+        where treatment continued or was not the reason it stopped.\" />\n        <Choice
+        value=\"Treatment inefficacy without discontinuation\" hint=\"Treatment was
+        seen as ineffective but was not stopped because of it.\" />\n        <Choice
+        value=\"Dosage change\" hint=\"Dose was increased or decreased. No justification
+        or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+        hint=\"An event that is neither a discontinuation nor any of the reasons listed
+        here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+        style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+        value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+        choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+        phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious.\" />\n        <Choice
+        value=\"Incorrect phrase\" hint=\"Extracted phrase is noise or a false positive;
+        any real description is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+        style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+        value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\"
+        background=\"#a9c6ff\" />\n      <Label value=\"drug\" background=\"#a8e6a3\"
+        />\n    </Labels>\n  </View>\n</View>","expert_instruction":"","show_instruction":false,"show_skip_button":true,"enable_empty_annotation":true,"show_annotation_history":false,"organization":1,"color":"#FFFFFF","maximum_annotations":1,"is_published":false,"model_version":"","is_draft":false,"created_by":{"id":1,"first_name":"","last_name":"","email":"ls@ls.ls","avatar":null},"created_at":"2026-10-25T13:28:26.163771Z","min_annotations_to_start_training":0,"start_training_on_annotation_update":false,"show_collab_predictions":true,"num_tasks_with_annotations":null,"task_number":null,"useful_annotation_number":null,"ground_truth_number":null,"skipped_annotations_number":null,"total_annotations_number":null,"total_predictions_number":null,"sampling":"Sequential
+        sampling","show_ground_truth_first":false,"annotator_evaluation_enabled":false,"show_overlap_first":false,"overlap_cohort_percentage":100,"task_data_login":null,"task_data_password":null,"control_weights":{"discont":{"overall":1.0,"type":"Choices","labels":{"Treatment
+        success":1.0,"Treatment inefficacy":1.0,"Contraindication/unsafe co-usage":1.0,"Adverse
+        reactions":1.0,"Other":1.0}},"other":{"overall":1.0,"type":"Choices","labels":{"Adverse
+        reaction without discontinuation":1.0,"Treatment inefficacy without discontinuation":1.0,"Dosage
+        change":1.0,"Other non-discontinuation":1.0}},"meta":{"overall":1.0,"type":"Choices","labels":{"Incomplete
+        phrase":1.0,"Incorrect phrase":1.0}},"span":{"overall":1.0,"type":"Labels","labels":{"phrase":1.0,"reason":1.0,"drug":1.0}}},"parsed_label_config":{"discont":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Treatment
+        success","Treatment inefficacy","Contraindication/unsafe co-usage","Adverse
+        reactions","Other"],"labels_attrs":{"Treatment success":{"value":"Treatment
+        success","hint":"Treatment stopped because it worked, was completed, or the
+        patient improved enough."},"Treatment inefficacy":{"value":"Treatment inefficacy","hint":"Treatment
+        stopped because it was seen as ineffective."},"Contraindication/unsafe co-usage":{"value":"Contraindication/unsafe
+        co-usage","hint":"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate."},"Adverse reactions":{"value":"Adverse
+        reactions","hint":"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications."},"Other":{"value":"Other","hint":"Treatment
+        stopped for other or unknown reasons."}}},"other":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Adverse
+        reaction without discontinuation","Treatment inefficacy without discontinuation","Dosage
+        change","Other non-discontinuation"],"labels_attrs":{"Adverse reaction without
+        discontinuation":{"value":"Adverse reaction without discontinuation","hint":"Adverse
+        side effects, allergic reactions, or negative interactions where treatment
+        continued or was not the reason it stopped."},"Treatment inefficacy without
+        discontinuation":{"value":"Treatment inefficacy without discontinuation","hint":"Treatment
+        was seen as ineffective but was not stopped because of it."},"Dosage change":{"value":"Dosage
+        change","hint":"Dose was increased or decreased. No justification or cause
+        is needed."},"Other non-discontinuation":{"value":"Other non-discontinuation","hint":"An
+        event that is neither a discontinuation nor any of the reasons listed here."}}},"meta":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Incomplete
+        phrase","Incorrect phrase"],"labels_attrs":{"Incomplete phrase":{"value":"Incomplete
+        phrase","hint":"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious."},"Incorrect phrase":{"value":"Incorrect
+        phrase","hint":"Extracted phrase is noise or a false positive; any real description
+        is elsewhere. Use only when obvious."}}},"span":{"type":"Labels","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["phrase","reason","drug"],"labels_attrs":{"phrase":{"value":"phrase","background":"#ffe08a"},"reason":{"value":"reason","background":"#a9c6ff"},"drug":{"value":"drug","background":"#a8e6a3"}}}},"evaluate_predictions_automatically":false,"config_has_control_tags":true,"skip_queue":"REQUEUE_FOR_OTHERS","reveal_preannotations_interactively":false,"pinned_at":null,"finished_task_number":null,"queue_total":0,"queue_done":0,"config_suitable_for_bulk_annotation":false,"state":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '7866'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:26 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJjZTU5OTczNC0xYjQ4LTRmYjktODY4OS02Nzg3NzRjMWRkNGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGw:D7zivXZWTW5FMwuv186bTG_tLUf3-Y2bgqxgjDuV5BM;
+        expires=Sun, 08 Nov 2026 13:28:26 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"label_config":"<View><Text"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '30'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/4/validate
+  response:
+    body:
+      string: '{"id":"05e8e4fa-3057-4715-9136-38edf68d5d5f","status_code":400,"version":"1.23.0","detail":"Couldn''t
+        find end of Start Tag Text line 1, line 1, column 12 (<string>, line 1)","exc_info":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '190'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:26 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJmNmEyNTExNy05YzE4LTQxNTYtOTdkNC0xYzc3ODQzNGEzZDMiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGw:fW3jLQvLLfEatO0C5V-D_9A3Gae3z1V0G3TZh38NMiY;
+        expires=Sun, 08 Nov 2026 13:28:26 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 400
+      message: Bad Request
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      cookie:
+      - sessionid=eyJ1aWQiOiJjZTU5OTczNC0xYjQ4LTRmYjktODY4OS02Nzg3NzRjMWRkNGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGw:D7zivXZWTW5FMwuv186bTG_tLUf3-Y2bgqxgjDuV5BM
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: DELETE
+    uri: http://localhost:8080/api/projects/4
+  response:
+    body:
+      string: ''
+    headers:
+      allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '0'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:26 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiJjZTU5OTczNC0xYjQ4LTRmYjktODY4OS02Nzg3NzRjMWRkNGUiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyGw:D7zivXZWTW5FMwuv186bTG_tLUf3-Y2bgqxgjDuV5BM;
+        expires=Sun, 08 Nov 2026 13:28:26 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: '{"title":"eh30pt-e2e","label_config":"<View>\n  <Text name=\"text\" value=\"$text\"
+      />\n  <Style>\n        .eh30pt-title {\n            border: 1px solid transparent;\n            border-radius:
+      3px;\n            padding: 2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+      .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+      style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+      className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Drug discontinuation\" />\n      </View>\n      <Choices name=\"discont\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Treatment
+      success\" hint=\"Treatment stopped because it worked, was completed, or the
+      patient improved enough.\" />\n        <Choice value=\"Treatment inefficacy\"
+      hint=\"Treatment stopped because it was seen as ineffective.\" />\n        <Choice
+      value=\"Contraindication/unsafe co-usage\" hint=\"Treatment stopped because
+      a condition or risk factor made continuing it unsafe or inappropriate.\" />\n        <Choice
+      value=\"Adverse reactions\" hint=\"Treatment stopped because of adverse side
+      effects, allergic reactions, or negative interactions with other medications.\"
+      />\n        <Choice value=\"Other\" hint=\"Treatment stopped for other or unknown
+      reasons.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Not discontinuation\" />\n      </View>\n      <Choices name=\"other\"
+      toName=\"text\" choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Adverse
+      reaction without discontinuation\" hint=\"Adverse side effects, allergic reactions,
+      or negative interactions where treatment continued or was not the reason it
+      stopped.\" />\n        <Choice value=\"Treatment inefficacy without discontinuation\"
+      hint=\"Treatment was seen as ineffective but was not stopped because of it.\"
+      />\n        <Choice value=\"Dosage change\" hint=\"Dose was increased or decreased.
+      No justification or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+      hint=\"An event that is neither a discontinuation nor any of the reasons listed
+      here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+      style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+      value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+      choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+      phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+      annotate the expanded phrase. Use only when obvious.\" />\n        <Choice value=\"Incorrect
+      phrase\" hint=\"Extracted phrase is noise or a false positive; any real description
+      is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+      style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+      value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\" background=\"#a9c6ff\"
+      />\n      <Label value=\"drug\" background=\"#a8e6a3\" />\n    </Labels>\n  </View>\n</View>"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3313'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/
+  response:
+    body:
+      string: '{"id":12,"title":"eh30pt-e2e","description":"","label_config":"<View>\n  <Text
+        name=\"text\" value=\"$text\" />\n  <Style>\n        .eh30pt-title {\n            border:
+        1px solid transparent;\n            border-radius: 3px;\n            padding:
+        2px 8px;\n            margin-bottom: 4px;\n        }\n\n        .eh30pt-box:has(input:checked)
+        .eh30pt-title {\n            border-color: #1f9d55;\n        }\n    </Style>\n  <View
+        style=\"display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start\">\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Drug discontinuation\"
+        />\n      </View>\n      <Choices name=\"discont\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Treatment success\" hint=\"Treatment
+        stopped because it worked, was completed, or the patient improved enough.\"
+        />\n        <Choice value=\"Treatment inefficacy\" hint=\"Treatment stopped
+        because it was seen as ineffective.\" />\n        <Choice value=\"Contraindication/unsafe
+        co-usage\" hint=\"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate.\" />\n        <Choice value=\"Adverse
+        reactions\" hint=\"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications.\" />\n        <Choice
+        value=\"Other\" hint=\"Treatment stopped for other or unknown reasons.\" />\n      </Choices>\n    </View>\n    <View
+        className=\"eh30pt-box\" style=\"flex: 1; min-width: 240px\">\n      <View
+        className=\"eh30pt-title\">\n        <Header value=\"Not discontinuation\"
+        />\n      </View>\n      <Choices name=\"other\" toName=\"text\" choice=\"multiple\"
+        showInLine=\"false\">\n        <Choice value=\"Adverse reaction without discontinuation\"
+        hint=\"Adverse side effects, allergic reactions, or negative interactions
+        where treatment continued or was not the reason it stopped.\" />\n        <Choice
+        value=\"Treatment inefficacy without discontinuation\" hint=\"Treatment was
+        seen as ineffective but was not stopped because of it.\" />\n        <Choice
+        value=\"Dosage change\" hint=\"Dose was increased or decreased. No justification
+        or cause is needed.\" />\n        <Choice value=\"Other non-discontinuation\"
+        hint=\"An event that is neither a discontinuation nor any of the reasons listed
+        here.\" />\n      </Choices>\n    </View>\n    <View className=\"eh30pt-box\"
+        style=\"flex: 1; min-width: 240px\">\n      <View className=\"eh30pt-title\">\n        <Header
+        value=\"Meta\" />\n      </View>\n      <Choices name=\"meta\" toName=\"text\"
+        choice=\"multiple\" showInLine=\"false\">\n        <Choice value=\"Incomplete
+        phrase\" hint=\"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious.\" />\n        <Choice
+        value=\"Incorrect phrase\" hint=\"Extracted phrase is noise or a false positive;
+        any real description is elsewhere. Use only when obvious.\" />\n      </Choices>\n    </View>\n  </View>\n  <View
+        style=\"display: none\">\n    <Labels name=\"span\" toName=\"text\">\n      <Label
+        value=\"phrase\" background=\"#ffe08a\" />\n      <Label value=\"reason\"
+        background=\"#a9c6ff\" />\n      <Label value=\"drug\" background=\"#a8e6a3\"
+        />\n    </Labels>\n  </View>\n</View>","expert_instruction":"","show_instruction":false,"show_skip_button":true,"enable_empty_annotation":true,"show_annotation_history":false,"organization":1,"color":"#FFFFFF","maximum_annotations":1,"is_published":false,"model_version":"","is_draft":false,"created_by":{"id":1,"first_name":"","last_name":"","email":"ls@ls.ls","avatar":null},"created_at":"2026-10-25T13:28:48.775584Z","min_annotations_to_start_training":0,"start_training_on_annotation_update":false,"show_collab_predictions":true,"num_tasks_with_annotations":null,"task_number":null,"useful_annotation_number":null,"ground_truth_number":null,"skipped_annotations_number":null,"total_annotations_number":null,"total_predictions_number":null,"sampling":"Sequential
+        sampling","show_ground_truth_first":false,"annotator_evaluation_enabled":false,"show_overlap_first":false,"overlap_cohort_percentage":100,"task_data_login":null,"task_data_password":null,"control_weights":{"discont":{"overall":1.0,"type":"Choices","labels":{"Treatment
+        success":1.0,"Treatment inefficacy":1.0,"Contraindication/unsafe co-usage":1.0,"Adverse
+        reactions":1.0,"Other":1.0}},"other":{"overall":1.0,"type":"Choices","labels":{"Adverse
+        reaction without discontinuation":1.0,"Treatment inefficacy without discontinuation":1.0,"Dosage
+        change":1.0,"Other non-discontinuation":1.0}},"meta":{"overall":1.0,"type":"Choices","labels":{"Incomplete
+        phrase":1.0,"Incorrect phrase":1.0}},"span":{"overall":1.0,"type":"Labels","labels":{"phrase":1.0,"reason":1.0,"drug":1.0}}},"parsed_label_config":{"discont":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Treatment
+        success","Treatment inefficacy","Contraindication/unsafe co-usage","Adverse
+        reactions","Other"],"labels_attrs":{"Treatment success":{"value":"Treatment
+        success","hint":"Treatment stopped because it worked, was completed, or the
+        patient improved enough."},"Treatment inefficacy":{"value":"Treatment inefficacy","hint":"Treatment
+        stopped because it was seen as ineffective."},"Contraindication/unsafe co-usage":{"value":"Contraindication/unsafe
+        co-usage","hint":"Treatment stopped because a condition or risk factor made
+        continuing it unsafe or inappropriate."},"Adverse reactions":{"value":"Adverse
+        reactions","hint":"Treatment stopped because of adverse side effects, allergic
+        reactions, or negative interactions with other medications."},"Other":{"value":"Other","hint":"Treatment
+        stopped for other or unknown reasons."}}},"other":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Adverse
+        reaction without discontinuation","Treatment inefficacy without discontinuation","Dosage
+        change","Other non-discontinuation"],"labels_attrs":{"Adverse reaction without
+        discontinuation":{"value":"Adverse reaction without discontinuation","hint":"Adverse
+        side effects, allergic reactions, or negative interactions where treatment
+        continued or was not the reason it stopped."},"Treatment inefficacy without
+        discontinuation":{"value":"Treatment inefficacy without discontinuation","hint":"Treatment
+        was seen as ineffective but was not stopped because of it."},"Dosage change":{"value":"Dosage
+        change","hint":"Dose was increased or decreased. No justification or cause
+        is needed."},"Other non-discontinuation":{"value":"Other non-discontinuation","hint":"An
+        event that is neither a discontinuation nor any of the reasons listed here."}}},"meta":{"type":"Choices","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["Incomplete
+        phrase","Incorrect phrase"],"labels_attrs":{"Incomplete phrase":{"value":"Incomplete
+        phrase","hint":"Phrase too short to decide alone but decidable when expanded;
+        annotate the expanded phrase. Use only when obvious."},"Incorrect phrase":{"value":"Incorrect
+        phrase","hint":"Extracted phrase is noise or a false positive; any real description
+        is elsewhere. Use only when obvious."}}},"span":{"type":"Labels","to_name":["text"],"inputs":[{"type":"Text","valueType":null,"value":"text"}],"labels":["phrase","reason","drug"],"labels_attrs":{"phrase":{"value":"phrase","background":"#ffe08a"},"reason":{"value":"reason","background":"#a9c6ff"},"drug":{"value":"drug","background":"#a8e6a3"}}}},"evaluate_predictions_automatically":false,"config_has_control_tags":true,"skip_queue":"REQUEUE_FOR_OTHERS","reveal_preannotations_interactively":false,"pinned_at":null,"finished_task_number":null,"queue_total":0,"queue_done":0,"config_suitable_for_bulk_annotation":false,"state":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '7867'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiIyMzdkMTRhNC0wMmIzLTQ5YjQtODc2My05YjNkNWI2MzM2NzAiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:iP1BcHeVK0HsfWAN8BrGk7ag6jNGpzdSBjTMXSSHmsQ;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"label_config":"<View><Text"}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '30'
+      content-type:
+      - application/json
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:8080/api/projects/12/validate
+  response:
+    body:
+      string: '{"id":"e85dd484-b8b0-4418-869a-3c58a2654470","status_code":400,"version":"1.23.0","detail":"Couldn''t
+        find end of Start Tag Text line 1, line 1, column 12 (<string>, line 1)","exc_info":null}'
+    headers:
+      allow:
+      - GET, POST, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '190'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      content-type:
+      - application/json
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiI2ODE4ZmZjYy1kMTRlLTQ2YWEtYWExNC03NDdkMTc5Nzc4ZGIiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:apX6ejsS47CSEM9bIq0m-2UD4gE5HqwdPvTx_1rT4tc;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 400
+      message: Bad Request
+- request:
+    body: ''
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      cookie:
+      - sessionid=eyJ1aWQiOiIyMzdkMTRhNC0wMmIzLTQ5YjQtODc2My05YjNkNWI2MzM2NzAiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:iP1BcHeVK0HsfWAN8BrGk7ag6jNGpzdSBjTMXSSHmsQ
+      host:
+      - localhost:8080
+      user-agent:
+      - python-httpx/0.28.1
+    method: DELETE
+    uri: http://localhost:8080/api/projects/12
+  response:
+    body:
+      string: ''
+    headers:
+      allow:
+      - GET, PUT, PATCH, DELETE, HEAD, OPTIONS
+      content-language:
+      - en-us
+      content-length:
+      - '0'
+      content-security-policy-report-only:
+      - 'img-src ''self'' ''report-sample'' data: https://*.google-analytics.com https://*.googletagmanager.com
+        https://*.google.com; connect-src ''self'' ''report-sample'' https://*.google-analytics.com
+        https://*.analytics.google.com https://analytics.google.com https://*.googletagmanager.com
+        https://*.g.doubleclick.net https://*.ingest.sentry.io; script-src ''self''
+        ''report-sample'' ''unsafe-inline'' blob: browser.sentry-cdn.com https://*.googletagmanager.com;
+        style-src ''self'' ''report-sample'' ''unsafe-inline''; default-src ''self''
+        ''report-sample'''
+      cross-origin-opener-policy:
+      - same-origin
+      date:
+      - Sun, 25 Oct 2026 13:28:48 GMT
+      referrer-policy:
+      - same-origin
+      server:
+      - WSGIServer/0.2 CPython/3.13.15
+      set-cookie:
+      - sessionid=eyJ1aWQiOiIyMzdkMTRhNC0wMmIzLTQ5YjQtODc2My05YjNkNWI2MzM2NzAiLCJvcmdhbml6YXRpb25fcGsiOjF9:1xKyHI:iP1BcHeVK0HsfWAN8BrGk7ag6jNGpzdSBjTMXSSHmsQ;
+        expires=Sun, 08 Nov 2026 13:28:48 GMT; HttpOnly; Max-Age=1209600; Path=/;
+        SameSite=Lax
+      vary:
+      - Accept-Language, Cookie, origin
+      x-content-type-options:
+      - nosniff
+    status:
+      code: 204
+      message: No Content
+version: 1
