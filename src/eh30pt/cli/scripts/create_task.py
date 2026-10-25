@@ -18,7 +18,6 @@ from eh30pt.types import DatasetName
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from eh30pt.labeling.studio import ProjectRef
     from eh30pt.labeling.types import Labeling
     from eh30pt.settings import LabelStudioSettings
 
@@ -120,7 +119,7 @@ def main(
     mlflow_settings: MlflowSettings,
     dataset: DatasetName | None = None,
     title: str | None = None,
-) -> ProjectRef:
+) -> None:
     """Create a Label Studio project holding the run's tasks and config."""
     if dataset is None:
         run = mlflow_settings.run_id
@@ -165,4 +164,8 @@ def main(
         project.id,
     )
 
-    return project
+    logger.info(
+        "label studio project %d is ready at '%s'",
+        project.id,
+        settings.url,
+    )

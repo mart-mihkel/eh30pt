@@ -115,12 +115,15 @@ if TYPE_CHECKING:
                         "evaluate",
                         "generate",
                         "langextract",
-                        "silver-labels",
                     ],
                 },
                 {
                     "name": "Label-Studio",
-                    "commands": ["create-task", "export-labels"],
+                    "commands": [
+                        "create-task",
+                        "export-labels",
+                        "silver-labels",
+                    ],
                 },
                 {"name": "Meta", "commands": ["slurm"]},
             ]
@@ -695,14 +698,14 @@ def completion(
     fmt = get_response_schema(dataset) if dataset is not None else None
     server = ServerSettings(provider=provider, format=fmt)
 
-    asyncio.run(
-        main(
-            user_prompt=user_prompt,
-            system_prompt=system_prompt,
-            server=server,
-            seed=seed,
-        )
+    coroutine = main(
+        user_prompt=user_prompt,
+        system_prompt=system_prompt,
+        server=server,
+        seed=seed,
     )
+
+    asyncio.run(coroutine)
 
 
 @app.command("evaluate", help="Run few-shot test evaluation on a server")
@@ -753,17 +756,17 @@ def evaluate(
 
     stream = StreamSettings(log_interval=log_interval, concurrency=concurrency)
 
-    asyncio.run(
-        main(
-            system_prompt=system_prompt,
-            server=server,
-            dataset=dataset,
-            n_shot=n_shot,
-            stream=stream,
-            mlflow=mlflow,
-            seed=seed,
-        ),
+    coroutine = main(
+        system_prompt=system_prompt,
+        server=server,
+        dataset=dataset,
+        n_shot=n_shot,
+        stream=stream,
+        mlflow=mlflow,
+        seed=seed,
     )
+
+    asyncio.run(coroutine)
 
 
 @app.command("generate", help="Generate predictions on a server")
@@ -814,17 +817,17 @@ def generate(
 
     stream = StreamSettings(shard_size=shard_size, concurrency=concurrency)
 
-    asyncio.run(
-        main(
-            system_prompt=system_prompt,
-            server=server,
-            dataset=dataset,
-            n_shot=n_shot,
-            stream=stream,
-            mlflow=mlflow,
-            seed=seed,
-        ),
+    coroutine = main(
+        system_prompt=system_prompt,
+        server=server,
+        dataset=dataset,
+        n_shot=n_shot,
+        stream=stream,
+        mlflow=mlflow,
+        seed=seed,
     )
+
+    asyncio.run(coroutine)
 
 
 @app.command("silver-labels", help="Generate model predictions for Label Studio tasks")
@@ -876,19 +879,19 @@ def silver_labels(
         run_id=mlflow_run_id,
     )
 
-    asyncio.run(
-        main(
-            system_prompt=system_prompt,
-            server=server,
-            studio=studio,
-            dataset=dataset,
-            project=project,
-            n_shot=n_shot,
-            concurrency=concurrency,
-            mlflow=mlflow,
-            seed=seed,
-        ),
+    coroutine = main(
+        system_prompt=system_prompt,
+        server=server,
+        studio=studio,
+        dataset=dataset,
+        project=project,
+        n_shot=n_shot,
+        concurrency=concurrency,
+        mlflow=mlflow,
+        seed=seed,
     )
+
+    asyncio.run(coroutine)
 
 
 @app.command("langextract", help="Generate predictions with langextract on a server")
@@ -936,17 +939,17 @@ def langextract(
 
     stream = StreamSettings(shard_size=shard_size, concurrency=concurrency)
 
-    asyncio.run(
-        main(
-            system_prompt=system_prompt,
-            server=server,
-            dataset=dataset,
-            n_shot=n_shot,
-            stream=stream,
-            mlflow=mlflow,
-            seed=seed,
-        ),
+    coroutine = main(
+        system_prompt=system_prompt,
+        server=server,
+        dataset=dataset,
+        n_shot=n_shot,
+        stream=stream,
+        mlflow=mlflow,
+        seed=seed,
     )
+
+    asyncio.run(coroutine)
 
 
 @app.command("create-task", help="Create a Label Studio project from prediction shards")
@@ -977,16 +980,7 @@ def create_task(
         run_id=mlflow_run_id,
     )
 
-    project = main(
-        settings=studio,
-        mlflow_settings=mlflow,
-        dataset=dataset,
-        title=title,
-    )
-
-    logger.info(
-        "label studio project %d is ready at '%s'", project.id, label_studio_url
-    )
+    main(settings=studio, mlflow_settings=mlflow, dataset=dataset, title=title)
 
 
 @app.command(
