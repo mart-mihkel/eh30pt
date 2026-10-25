@@ -117,17 +117,15 @@ def learning_rate_option(default: float) -> Callable[[FC], FC]:
     )
 
 
-def warmup_ratio_option(default: float) -> Callable[[FC], FC]:
-    """Build the optimizer warmup ratio option with a per-command default."""
-    return click.option(
-        "--warmup-ratio",
-        "-wr",
-        "warmup_ratio",
-        type=click.FloatRange(min=0),
-        default=default,
-        show_default=True,
-        help="Fraction of steps for lr warmup",
-    )
+warmup_ratio_option = click.option(
+    "--warmup-ratio",
+    "-wr",
+    "warmup_ratio",
+    type=click.FloatRange(min=0),
+    default=0,
+    show_default=True,
+    help="Fraction of steps for lr warmup",
+)
 
 
 prefix_init_option = click.option(

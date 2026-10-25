@@ -258,7 +258,7 @@ def log_accelerator() -> None:
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(5e-5)
-@warmup_ratio_option(0)
+@warmup_ratio_option
 @patience_option
 @tolerance_option
 @arch_option
@@ -354,7 +354,7 @@ def fine_tune(
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(1e-2)
-@warmup_ratio_option(0)
+@warmup_ratio_option
 @patience_option
 @tolerance_option
 @arch_option
@@ -453,7 +453,7 @@ def prompt_tune(
 @eval_steps_option
 @batch_size_option
 @learning_rate_option(2e-4)
-@warmup_ratio_option(0)
+@warmup_ratio_option
 @patience_option
 @tolerance_option
 @arch_option
