@@ -30,7 +30,7 @@ def test_dataset_name_rejects_an_unknown_dataset() -> None:
 
 @pytest.mark.parametrize(
     "dataset",
-    ["discont-extract/trigger", "discont-classifier/extract-labels"],
+    ["discont-extract/trigger", "discont-classify/extract-labels"],
 )
 def test_structured_server_uses_the_dataset_response_schema(
     dataset: DatasetName,

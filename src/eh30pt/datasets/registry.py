@@ -96,7 +96,7 @@ def _is_discont(dataset: DatasetName) -> bool:
 
 
 def _is_classifier(dataset: DatasetName) -> bool:
-    return dataset.startswith(("discont-classifier", "discont-binary/extract-labels"))
+    return dataset.startswith(("discont-classify", "discont-binary/extract-labels"))
 
 
 def _is_extract(dataset: DatasetName) -> bool:
@@ -152,7 +152,7 @@ def get_labels(dataset: DatasetName) -> tuple[str, ...]:
     if dataset == "oblique":
         return tuple(Obl.id2label.values())
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset == "discont-classify/extract-labels":
         return tuple(DiscontClassifier.id2label.values())
 
     if dataset == "discont-binary/extract-labels":
@@ -174,7 +174,7 @@ def get_sys_prompt(dataset: DatasetName, arch: Architecture | None = None) -> st
     if dataset == "oblique":
         return Obl.system_prompt_for(arch)
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset == "discont-classify/extract-labels":
         return DiscontClassifier.system_prompt_for(arch)
 
     if dataset == "discont-binary/extract-labels":
@@ -201,7 +201,7 @@ def get_positive_label(
     if dataset == "oblique":
         return Obl.positive_label_for(label_arch)
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset == "discont-classify/extract-labels":
         return DiscontClassifier.positive_label_for(label_arch)
 
     if dataset == "discont-binary/extract-labels":
@@ -222,7 +222,7 @@ def get_response_schema(dataset: DatasetName) -> ResponseFormatJSONSchema:
     if dataset == "oblique":
         return Obl.response_format()
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset == "discont-classify/extract-labels":
         return DiscontClassifier.response_format()
 
     if dataset == "discont-binary/extract-labels":
@@ -239,7 +239,7 @@ def get_few_shots(dataset: DatasetName, n_shot: int) -> list[FewShot]:
     """Return the first `n_shot` hardcoded examples for `dataset`."""
     if dataset == "multinerd":
         shots = Multinerd.few_shots
-    elif dataset == "discont-classifier/extract-labels":
+    elif dataset == "discont-classify/extract-labels":
         shots = DiscontClassifier.few_shots
     elif dataset == "discont-binary/extract-labels":
         shots = DiscontBinary.few_shots
@@ -311,7 +311,7 @@ def _load_classifier_splits(
     if seed is None:
         logger.warning("no split seed, carving discont splits with seed 0")
 
-    if dataset == "discont-classifier/extract-labels":
+    if dataset == "discont-classify/extract-labels":
         return load_discont_classifier(
             tokenizer,
             arch,

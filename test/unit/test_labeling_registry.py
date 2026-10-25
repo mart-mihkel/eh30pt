@@ -22,19 +22,19 @@ def test_build_labeling_dispatches_on_task_type() -> None:
     frame = pl.DataFrame()
 
     extraction = build_labeling("discont-extract/trigger", frame, "run-1")
-    classification = build_labeling("discont-classifier/extract-labels", frame, "run-1")
+    classification = build_labeling("discont-classify/extract-labels", frame, "run-1")
 
     assert extraction.tasks == []
     assert extraction.config == extraction_config()
     assert classification.tasks == []
     assert classification.config == choice_config(
-        get_labels("discont-classifier/extract-labels")
+        get_labels("discont-classify/extract-labels")
     )
 
 
 def test_label_controls_dispatches_on_task_type() -> None:
     assert label_controls("discont-extract/trigger") == extraction_controls()
-    assert label_controls("discont-classifier/extract-labels") == ("label",)
+    assert label_controls("discont-classify/extract-labels") == ("label",)
 
 
 def test_export_frame_dispatches_on_task_type() -> None:

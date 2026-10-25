@@ -118,8 +118,8 @@ def test_dataset_input_names_match_datasets() -> None:
     assert dataset_input("multinerd").name == "multinerd"
     assert dataset_input("oblique").name == "oblique"
     assert (
-        dataset_input("discont-classifier/extract-labels").name
-        == "discont-classifier/extract-labels"
+        dataset_input("discont-classify/extract-labels").name
+        == "discont-classify/extract-labels"
     )
     assert dataset_input("discont-extract/trigger").name == "discont-extract/trigger"
 
@@ -128,7 +128,7 @@ def test_dataset_input_sources_point_at_origins() -> None:
     assert isinstance(dataset_input("multinerd").source, HuggingFaceDatasetSource)
     assert isinstance(dataset_input("oblique").source, HTTPDatasetSource)
     assert isinstance(
-        dataset_input("discont-classifier/extract-labels").source, CodeDatasetSource
+        dataset_input("discont-classify/extract-labels").source, CodeDatasetSource
     )
     assert isinstance(
         dataset_input("discont-extract/trigger").source, CodeDatasetSource

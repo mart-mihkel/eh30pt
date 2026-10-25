@@ -107,7 +107,7 @@ def shots() -> list[FewShot]:
 def classifier_rows(database: None) -> list[DiscontClassifierRow]:
     """Return classifier rows built from seeded DB text and registry labels."""
     _ = database
-    labels = _get_labels("discont-classifier/extract-labels")
+    labels = _get_labels("discont-classify/extract-labels")
     engine = _create_engine(_PostgresSettings().connection_url)
     try:
         with _Session(engine) as session:

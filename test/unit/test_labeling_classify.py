@@ -23,7 +23,7 @@ def test_choice_config_offers_dataset_labels() -> None:
 
 
 def test_choice_config_is_not_a_span_config() -> None:
-    config = choice_config(get_labels("discont-classifier/extract-labels"))
+    config = choice_config(get_labels("discont-classify/extract-labels"))
 
     assert 'value="phrase" background="#ffe08a"' not in config
     assert '<View style="display: none">' not in config
@@ -71,7 +71,7 @@ def test_classification_labeling_skips_foreign_predictions() -> None:
 
 def test_classification_labeling_without_shards_is_empty() -> None:
     labeling = classification_labeling(
-        "discont-classifier/extract-labels", pl.DataFrame(), "run-1"
+        "discont-classify/extract-labels", pl.DataFrame(), "run-1"
     )
 
     assert labeling.tasks == []

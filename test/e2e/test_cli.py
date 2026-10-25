@@ -106,7 +106,7 @@ def test_rejects_unknown_provider() -> None:
 
 
 def test_rejects_classifier_without_projects() -> None:
-    result = _invoke(["generate", "--dataset", "discont-classifier/extract-labels"])
+    result = _invoke(["generate", "--dataset", "discont-classify/extract-labels"])
 
     assert result.exit_code != 0
 

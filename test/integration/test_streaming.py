@@ -286,7 +286,7 @@ def test_silver_labels_classify_existing_extraction_tasks(
 
     asyncio.run(
         silver_labels_mod.main(
-            dataset="discont-classifier/extract-labels",
+            dataset="discont-classify/extract-labels",
             system_prompt=None,
             n_shot=0,
             concurrency=1,
@@ -301,7 +301,7 @@ def test_silver_labels_classify_existing_extraction_tasks(
     assert mlflow.run_id is not None
     run = mlflow_client.get_run(mlflow.run_id)
     assert run.data.params["method"] == "silver-labels"
-    assert run.data.params["dataset"] == "discont-classifier/extract-labels"
+    assert run.data.params["dataset"] == "discont-classify/extract-labels"
     assert run.data.params["base_model"] == "test-model"
 
     assert len(prompts) == len(tasks)
@@ -893,7 +893,7 @@ def test_run_labeling_rejects_non_extraction_predictions(
             GenerateRecord(
                 id=0,
                 user=sample.user,
-                prediction=get_labels("discont-classifier/extract-labels")[0],
+                prediction=get_labels("discont-classify/extract-labels")[0],
             )
         ]
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)

@@ -41,7 +41,7 @@ type Architecture = Literal[
 type DatasetName = Literal[
     "multinerd",
     "oblique",
-    "discont-classifier/extract-labels",
+    "discont-classify/extract-labels",
     "discont-binary/extract-labels",
     "discont-extract/trigger",
     "discont-extract/observed",

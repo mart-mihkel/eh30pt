@@ -114,12 +114,12 @@ def test_registry() -> None:
 
     assert get_labels("multinerd")[:3] == ("PER", "ORG", "LOC")
     assert len(get_labels("multinerd")) == _multinerd_labels
-    assert len(get_labels("discont-classifier/extract-labels")) == _classifier_labels
+    assert len(get_labels("discont-classify/extract-labels")) == _classifier_labels
 
     assert get_sys_prompt("oblique") == Obl.system_prompt
     assert get_sys_prompt("multinerd") == Multinerd.system_prompt
     assert (
-        get_sys_prompt("discont-classifier/extract-labels")
+        get_sys_prompt("discont-classify/extract-labels")
         == DiscontClassifier.system_prompt
     )
     assert get_sys_prompt("discont-extract/trigger") == DiscontExtract.system_prompt
@@ -147,7 +147,7 @@ def test_get_positive_label_only_for_binary_datasets() -> None:
 
     assert get_positive_label("oblique", "decoder") is None
     assert get_positive_label("multinerd", "encoder") is None
-    assert get_positive_label("discont-classifier/extract-labels", "decoder") is None
+    assert get_positive_label("discont-classify/extract-labels", "decoder") is None
     assert get_positive_label("discont-extract/trigger", "decoder") is None
 
     with pytest.raises(ValueError, match="invalid dataset"):
@@ -159,7 +159,7 @@ def test_get_positive_label_only_for_binary_datasets() -> None:
     [
         "multinerd",
         "oblique",
-        "discont-classifier/extract-labels",
+        "discont-classify/extract-labels",
         "discont-binary/extract-labels",
         "discont-extract/trigger",
     ],
@@ -203,7 +203,7 @@ def test_get_task_marks_extraction_dataset() -> None:
 
     assert get_task("multinerd") == "classification"
     assert get_task("oblique") == "classification"
-    assert get_task("discont-classifier/extract-labels") == "classification"
+    assert get_task("discont-classify/extract-labels") == "classification"
     assert get_task("discont-extract/trigger") == "extraction"
 
     with pytest.raises(ValueError, match="invalid dataset"):
@@ -257,7 +257,7 @@ def test_response_schemas_serialize_to_json() -> None:
     datasets: list[DatasetName] = [
         "multinerd",
         "oblique",
-        "discont-classifier/extract-labels",
+        "discont-classify/extract-labels",
         "discont-extract/trigger",
     ]
 
@@ -292,7 +292,7 @@ def test_load_data_requires_a_data_path_for_the_classifier() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
     with pytest.raises(ValueError, match="needs a labels file"):
-        load_data(tokenizer, "discont-classifier/extract-labels", "decoder")
+        load_data(tokenizer, "discont-classify/extract-labels", "decoder")
 
 
 def test_load_data_streams_the_test_split_only() -> None:
@@ -344,12 +344,12 @@ def test_get_few_shots_rejects_invalid_dataset() -> None:
 def test_get_few_shots_covers_datasets() -> None:
     _n_shots: Final = 2
 
-    assert len(get_few_shots("discont-classifier/extract-labels", _n_shots)) == _n_shots
+    assert len(get_few_shots("discont-classify/extract-labels", _n_shots)) == _n_shots
     assert len(get_few_shots("multinerd", _n_shots)) == _n_shots
 
     with pytest.raises(ValueError, match="only 9 defined"):
         get_few_shots(
-            "discont-classifier/extract-labels",
+            "discont-classify/extract-labels",
             len(DiscontClassifier.few_shots) + 1,
         )
 
@@ -360,7 +360,7 @@ def test_dataset_sources_cover_discont_tables() -> None:
     from eh30pt.tracking.datasets import dataset_input, dataset_source
 
     assert isinstance(
-        dataset_source("discont-classifier/extract-labels"), CodeDatasetSource
+        dataset_source("discont-classify/extract-labels"), CodeDatasetSource
     )
     assert isinstance(dataset_source("discont-extract/trigger"), CodeDatasetSource)
     assert dataset_input("oblique").profile is None

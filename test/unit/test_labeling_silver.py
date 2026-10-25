@@ -81,9 +81,9 @@ def test_classification_sample_prompts_with_the_extracted_fields() -> None:
 
 
 def test_classification_controls_map_each_label_to_its_box() -> None:
-    controls = classification_controls("discont-classifier/extract-labels")
+    controls = classification_controls("discont-classify/extract-labels")
 
-    assert set(controls) == set(get_labels("discont-classifier/extract-labels"))
+    assert set(controls) == set(get_labels("discont-classify/extract-labels"))
     assert controls["Kõrvaltoimed"] == ("discont", "Adverse reactions")
     assert controls["Muu põhjus"] == ("discont", "Other")
     assert controls["Annuse muutmine"] == ("other", "Dosage change")
@@ -99,7 +99,7 @@ def test_classification_controls_reject_datasets_outside_the_interface() -> None
 
 
 def test_classification_choice_selects_the_box_of_the_label() -> None:
-    controls = classification_controls("discont-classifier/extract-labels")
+    controls = classification_controls("discont-classify/extract-labels")
 
     result = classification_choice(" Ravi edukas\n", controls)
 
@@ -117,6 +117,6 @@ def test_classification_choice_selects_the_box_of_the_label() -> None:
 def test_classification_choice_rejects_outputs_that_are_not_labels(
     prediction: object,
 ) -> None:
-    controls = classification_controls("discont-classifier/extract-labels")
+    controls = classification_controls("discont-classify/extract-labels")
 
     assert classification_choice(prediction, controls) is None

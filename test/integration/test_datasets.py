@@ -123,7 +123,7 @@ def test_discont_splits_iterate_tokenized_rows(
     from eh30pt.datasets.registry import get_labels
 
     real_shot = DiscontExtract.extract_shots[0]
-    real_label = get_labels("discont-classifier/extract-labels")[0]
+    real_label = get_labels("discont-classify/extract-labels")[0]
     classifier = DiscontClassifier(
         [
             {
