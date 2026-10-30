@@ -9,6 +9,7 @@ from peft import TaskType
 from torch.nn import Linear
 
 from eh30pt.modeling.loader import (
+    _attention_implementation,
     _freeze,
     load_model,
 )
@@ -160,6 +161,21 @@ def test_qwen35_lora_targets_hybrid_attention_and_mlp_linears(
 
 def test_lora_kwargs_leave_other_models_to_peft_defaults() -> None:
     assert _lora_kwargs("hf-internal-testing/tiny-random-gpt2") == {}
+
+
+@pytest.mark.parametrize(
+    ("model_path", "expected"),
+    [
+        ("google/medgemma-4b-it", "eager"),
+        ("/models/MedGemma-4b-it", "eager"),
+        ("google/gemma-3-4b-it", None),
+    ],
+)
+def test_medgemma_defaults_to_eager_attention(
+    model_path: str,
+    expected: str | None,
+) -> None:
+    assert _attention_implementation(model_path) == expected
 
 
 @pytest.mark.parametrize("arch", ["encoder", "decoder", "encoder-decoder"])

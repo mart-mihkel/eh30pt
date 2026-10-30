@@ -53,6 +53,7 @@ def load_model(
         device_map = "auto"
         logger.debug("using full precision")
 
+    attn = _attention_implementation(model_path)
     skip_freeze = None
     if sequence_classification:
         labels = get_labels(dataset)
@@ -69,6 +70,7 @@ def load_model(
             device_map=device_map,
             dtype=dtype,
             quantization_config=quantization_config,
+            attn_implementation=attn,
         )
 
         skip_freeze = loading_info["missing_keys"]
@@ -79,6 +81,7 @@ def load_model(
             device_map=device_map,
             dtype=dtype,
             quantization_config=quantization_config,
+            attn_implementation=attn,
         )
     elif arch == "encoder-decoder":
         logger.debug("loading model for sequence to sequence", model_path)
@@ -87,6 +90,7 @@ def load_model(
             device_map=device_map,
             dtype=dtype,
             quantization_config=quantization_config,
+            attn_implementation=attn,
         )
 
     if have_mps:
@@ -106,6 +110,11 @@ def load_model(
         _freeze(model, skip_freeze)
 
     return model
+
+
+def _attention_implementation(model_path: str) -> str | None:
+    """Use eager attention for MedGemma and the Transformers default otherwise."""
+    return "eager" if "medgemma" in model_path.lower() else None
 
 
 def _freeze(model: Module, skip: set[str] | None = None) -> None:
