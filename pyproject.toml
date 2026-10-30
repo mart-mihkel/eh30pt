@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-settings~=2.15.0",
     "nvidia-ml-py~=13.615.71",
     "psycopg[binary]~=3.2",
-    "transformers~=5.20.2",
+    "transformers~=5.17.0",
     "bitsandbytes~=0.50.2",
     "scikit-learn~=1.9.1",
     "langextract~=1.7.0",
@@ -19,7 +19,7 @@ dependencies = [
     "sqlalchemy~=2.0.0",
     "pydantic~=2.13.5",
     "tiktoken~=0.14.0",
-    "datasets~=5.1.0",
+    "datasets~=5.0.1",
     "pandera~=0.34.1",
     "returns~=0.29.0",
     "estnltk~=1.7.5",
@@ -30,8 +30,8 @@ dependencies = [
     "httpx~=0.28.1",
     "rich~=15.0.0",
     "tqdm~=4.70.1",
-    "peft~=0.21.2",
-    "trl~=1.16.0",
+    "peft~=0.20.0",
+    "trl~=1.13.0",
 ]
 
 [dependency-groups]

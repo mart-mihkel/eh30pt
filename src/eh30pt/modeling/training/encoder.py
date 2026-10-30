@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 def _encoder_trainer(spec: _Spec) -> Trainer:
     """Build the classification Trainer."""
     logger.debug("using regular trainer")
+
     args = TrainingArguments(
         run_name=spec.run_name,
         report_to=spec.report_to,

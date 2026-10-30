@@ -40,7 +40,7 @@ concurrency_option = click.option(
     "-c",
     "concurrency",
     type=click.IntRange(min=1),
-    default=8,
+    default=2,
     show_default=True,
     help="Concurrent server requests",
 )
