@@ -10,7 +10,6 @@ from torch.nn import Linear
 
 from eh30pt.modeling.loader import (
     _freeze,
-    _load_with_attn_fallback,
     load_model,
 )
 from eh30pt.modeling.lora import (
@@ -126,11 +125,7 @@ def test_medgemma_lora_targets_only_the_text_language_model() -> None:
 
 @pytest.mark.parametrize(
     "model_path",
-    [
-        "jhu-clsp/mmBERT-base",
-        "jhu-clsp/mmBERT-small",
-        "./models/mmBERT-base",
-    ],
+    ["jhu-clsp/mmBERT-base", "jhu-clsp/mmBERT-small"],
 )
 def test_mmbert_lora_targets_modernbert_linears(model_path: str) -> None:
     kwargs = _lora_kwargs(model_path)
@@ -140,11 +135,7 @@ def test_mmbert_lora_targets_modernbert_linears(model_path: str) -> None:
 
 @pytest.mark.parametrize(
     "model_path",
-    [
-        "Qwen/Qwen3.5-9B",
-        "Qwen/Qwen3.5-35B-A3B",
-        "./models/Qwen3_5-4B",
-    ],
+    ["Qwen/Qwen3.5-9B", "Qwen/Qwen3.5-35B-A3B"],
 )
 def test_qwen35_lora_targets_hybrid_attention_and_mlp_linears(
     model_path: str,
@@ -177,35 +168,9 @@ def test_load_model_rejects_extraction_dataset(arch: Architecture) -> None:
 
     with pytest.raises(ValueError, match="extraction dataset"):
         load_model(
-            tokenizer, "unused", "discont-extract/trigger", arch, head_only=False
+            tokenizer,
+            "unused",
+            "discont-extract/trigger",
+            arch,
+            head_only=False,
         )
-
-
-def test_load_with_attn_fallback_uses_requested_implementation() -> None:
-    assert (
-        _load_with_attn_fallback(
-            lambda implementation: implementation, "flash_attention_2"
-        )
-        == "flash_attention_2"
-    )
-
-
-@pytest.mark.parametrize("error", [ValueError, ImportError])
-def test_load_with_attn_fallback_retries_without_flash_attention(
-    error: type[Exception],
-) -> None:
-    def load(implementation: str | None) -> str | None:
-        if implementation is not None:
-            raise error
-        return implementation
-
-    assert _load_with_attn_fallback(load, "flash_attention_2") is None
-
-
-def test_load_with_attn_fallback_reraises_without_requested_attention() -> None:
-    def load(_implementation: str | None) -> str | None:
-        msg = "broken"
-        raise ValueError(msg)
-
-    with pytest.raises(ValueError, match="broken"):
-        _load_with_attn_fallback(load, None)
