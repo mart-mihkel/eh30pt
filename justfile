@@ -35,7 +35,7 @@ rsync commit='false' host=env('RSYNC_HOST'):
 
 [doc('serve marimo')]
 [group('dev')]
-marimo *args='--watch':
+@marimo *args='--watch':
     uv run --no-sync marimo edit {{ args }}
 
 [doc('run pre-commit')]
