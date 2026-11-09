@@ -56,6 +56,7 @@ type Method = Literal[
     "prompt-tune",
     "qlora",
     "few-shot",
+    "systemone",
     "langextract",
     "silver-labels",
 ]

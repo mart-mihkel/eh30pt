@@ -20,7 +20,8 @@ from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
 from eh30pt.modeling.metrics import StreamingClassificationMetrics
 from eh30pt.openai.complete import CompletionClient
 from eh30pt.openai.stream import CompletionPredictor
-from eh30pt.settings import MlflowSettings
+from eh30pt.openai.systemone import SystemOnePredictor
+from eh30pt.settings import MlflowSettings, ServerSettings
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.shards import log_shard
 from eh30pt.types import FewShot, GenerateRecord, Predictor
@@ -37,6 +38,21 @@ if TYPE_CHECKING:
     from eh30pt.labeling.studio import StudioTask
     from eh30pt.labeling.types import ChoiceResult, ChoiceValue, SpanResult, SpanValue
     from eh30pt.types import ExtractShot, RunConfig
+
+
+@pytest.mark.vcr(match_on=["method", "scheme", "host", "port", "path", "query", "body"])
+def test_systemone_predictor_posts_choice_question() -> None:
+    predictor = SystemOnePredictor(
+        ServerSettings(port=9932),
+        "Choose the category of the customer message.",
+        ("billing", "shipping"),
+        [FewShot("My package is late.", "shipping")],
+    )
+
+    prediction = asyncio.run(
+        predictor.predict(FewShot("I was charged twice.", "billing"))
+    )
+    assert prediction in ("billing", "shipping")
 
 
 @pytest.fixture

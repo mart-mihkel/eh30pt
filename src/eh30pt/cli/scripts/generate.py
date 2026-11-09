@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING, cast
 
 from tqdm import tqdm
 
-from eh30pt.datasets.registry import get_sys_prompt, load_data
+from eh30pt.datasets.registry import (
+    assert_classification,
+    get_labels,
+    get_sys_prompt,
+    load_data,
+)
 from eh30pt.logging import logger
 from eh30pt.openai.complete import CompletionClient
 from eh30pt.openai.stream import (
@@ -14,6 +19,7 @@ from eh30pt.openai.stream import (
     maybe_log_invalid,
     stream_predictions,
 )
+from eh30pt.openai.systemone import SystemOnePredictor
 from eh30pt.settings import MlflowSettings
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import (
@@ -27,9 +33,11 @@ if TYPE_CHECKING:
     from eh30pt.settings import ServerSettings, StreamSettings
     from eh30pt.types import (
         DatasetName,
+        FewShot,
         FewShotRunConfig,
         GenerateRecord,
         Method,
+        Predictor,
     )
 
 
@@ -42,8 +50,12 @@ async def main(
     stream: StreamSettings,
     mlflow: MlflowSettings,
     seed: int | None,
+    systemone: bool = False,
 ) -> None:
     """Generate predictions on the server and log them as sharded artifacts."""
+    if systemone:
+        assert_classification(dataset, "System One requires classification labels")
+
     tokenizer = cast("PreTrainedTokenizerFast", None)
     data = load_data(
         tokenizer,
@@ -59,7 +71,7 @@ async def main(
     client = CompletionClient(server, seed)
     model = (await client.model()).unwrap()
 
-    method: Method = "few-shot"
+    method: Method = "systemone" if systemone else "few-shot"
     if mlflow.run_name is None:
         mlflow.run_name = build_run_name(model, method, f"{n_shot}-shot")
 
@@ -79,12 +91,14 @@ async def main(
         "system_prompt": system_prompt,
     }
 
-    conv = client.build_conversation(
-        system=system_prompt,
-        examples=data.test.few_shots,
-    )
-
-    predictor = CompletionPredictor(client=client, conversation=conv)
+    predictor: Predictor[FewShot, str | None]
+    examples = data.test.few_shots
+    if systemone:
+        labs = get_labels(dataset)
+        predictor = SystemOnePredictor(server, system_prompt, labs, examples)
+    else:
+        conv = client.build_conversation(system=system_prompt, examples=examples)
+        predictor = CompletionPredictor(client=client, conversation=conv)
 
     with TemporaryDirectory() as tmp, RunContext(mlflow, config) as ctx:
         ctx.log_prompt_version(dataset, "decoder", system_prompt)

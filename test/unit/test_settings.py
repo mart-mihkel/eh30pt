@@ -186,6 +186,19 @@ def test_server_resolves_provider_default() -> None:
     assert ServerSettings(provider="vllm").base_url == "http://localhost:8000"
 
 
+def test_server_port_override() -> None:
+    assert ServerSettings(provider="llama").base_url == "http://localhost:9931"
+    assert (
+        ServerSettings(provider="llama", port=9999).base_url == "http://localhost:9999"
+    )
+    assert (
+        ServerSettings(provider="vllm", port=9999).base_url == "http://localhost:9999"
+    )
+
+    with pytest.raises(ValidationError, match="port"):
+        ServerSettings(port=65536)
+
+
 def test_server_rejects_invalid_provider() -> None:
     settings = ServerSettings(provider="llama")
     settings.provider = "unknown"  # ty: ignore[invalid-assignment]

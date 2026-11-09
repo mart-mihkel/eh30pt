@@ -55,6 +55,24 @@ def test_rejects_unknown_dataset() -> None:
     assert result.exit_code != 0
 
 
+@pytest.mark.parametrize("command", ["evaluate", "generate"])
+def test_systemone_flag_rejects_vllm(command: str) -> None:
+    result = _invoke([command, "-d", "oblique", "--provider", "vllm", "--systemone"])
+    assert result.exit_code != 0
+    assert "System One requires llama" in result.output
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["completion", "evaluate", "generate", "silver-labels", "langextract"],
+)
+@pytest.mark.parametrize("port", ["0", "65536"])
+def test_server_commands_reject_invalid_port(command: str, port: str) -> None:
+    result = _invoke([command, "--port", port])
+    assert result.exit_code != 0
+    assert "--port" in result.output
+
+
 @pytest.mark.vcr
 def test_completion_prints_completion(caplog: pytest.LogCaptureFixture) -> None:
     result = _invoke(
@@ -90,6 +108,78 @@ def test_completion_dataset_prints_label(
     match = re.search(r"completion: (\w+)", caplog.text)
     assert match is not None
     assert match.group(1) in get_labels("multinerd")
+
+
+@pytest.mark.vcr
+def test_systemone_evaluate_reports_metrics(
+    tracking_uri: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    experiment = "e2e-systemone-evaluate-oblique"
+    result = _invoke(
+        [
+            "evaluate",
+            "--dataset",
+            "oblique",
+            "--systemone",
+            "--port",
+            "9932",
+            "--concurrency",
+            "1",
+            "--seed",
+            "7",
+            "--mlflow-experiment",
+            experiment,
+            "--mlflow-tracking-uri",
+            tracking_uri,
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "systemone"
+    assert run.data.params["dataset"] == "oblique"
+    assert 0.0 <= run.data.metrics["test_accuracy"] <= 1.0
+    assert "invalid responses" not in caplog.text
+
+
+@pytest.mark.vcr
+def test_systemone_generate_saves_predictions(tracking_uri: str) -> None:
+    experiment = "e2e-systemone-generate-oblique"
+    result = _invoke(
+        [
+            "generate",
+            "--dataset",
+            "oblique",
+            "--n-shot",
+            "1",
+            "--systemone",
+            "--port",
+            "9932",
+            "--concurrency",
+            "1",
+            "--seed",
+            "7",
+            "--mlflow-experiment",
+            experiment,
+            "--mlflow-tracking-uri",
+            tracking_uri,
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "systemone"
+    shards = MlflowClient(tracking_uri).list_artifacts(run.info.run_id, "predictions")
+    assert len(shards) == 1
+    downloaded = mlflow.artifacts.download_artifacts(
+        run_id=run.info.run_id,
+        artifact_path=shards[0].path,
+        tracking_uri=tracking_uri,
+    )
+    predictions = pl.read_parquet(downloaded)["prediction"].to_list()
+    assert predictions
+    assert set(predictions) <= set(get_labels("oblique"))
 
 
 @pytest.mark.vcr

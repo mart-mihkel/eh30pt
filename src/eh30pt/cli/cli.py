@@ -40,9 +40,11 @@ from eh30pt.cli.options.server import (
     completion_dataset_option,
     concurrency_option,
     log_interval_option,
+    port_option,
     prompt_argument,
     provider_option,
     shard_size_option,
+    systemone_option,
 )
 from eh30pt.cli.options.slurm import (
     dry_run_option,
@@ -173,6 +175,8 @@ if TYPE_CHECKING:
                     "name": "Server",
                     "options": [
                         "--provider",
+                        "--port",
+                        "--systemone",
                         "--concurrency",
                         "--shard-size",
                         "--log-interval",
@@ -667,6 +671,7 @@ def slurm(
 @prompt_argument
 @system_prompt_option
 @provider_option
+@port_option
 @completion_dataset_option
 @log_level_option
 @seed_option
@@ -675,6 +680,7 @@ def completion(
     user_prompt: str,
     system_prompt: str | None,
     provider: Provider,
+    port: int | None,
     dataset: DatasetName | None,
     log_level: LogLevel,
     seed: int | None,
@@ -696,7 +702,7 @@ def completion(
         raise click.BadParameter(msg, param_hint="--system")
 
     fmt = get_response_schema(dataset) if dataset is not None else None
-    server = ServerSettings(provider=provider, format=fmt)
+    server = ServerSettings(provider=provider, format=fmt, port=port)
 
     coroutine = main(
         user_prompt=user_prompt,
@@ -711,6 +717,8 @@ def completion(
 @app.command("evaluate", help="Run few-shot test evaluation on a server")
 @dataset_option
 @provider_option
+@port_option
+@systemone_option
 @n_shot_option
 @system_prompt_option
 @concurrency_option
@@ -735,17 +743,27 @@ def evaluate(
     log_level: LogLevel,
     log_interval: int,
     seed: int | None,
+    systemone: bool,
+    port: int | None,
 ) -> None:
     """Run few-shot test evaluation on a server."""
     from eh30pt.cli.scripts.evaluate import main
     from eh30pt.datasets.registry import get_response_schema
+
+    if systemone and provider != "llama":
+        msg = "System One requires llama"
+        raise click.BadParameter(msg, param_hint="--provider")
 
     logger.setLevel(log_level.upper())
     if seed is None:
         logger.warning("randomness is not fixed")
 
     fmt = get_response_schema(dataset)
-    server = ServerSettings(provider=provider, format=fmt)
+    server = ServerSettings(
+        provider=provider,
+        format=fmt,
+        port=port if port is not None else (9932 if systemone else None),
+    )
 
     mlflow = MlflowSettings(
         tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
@@ -764,6 +782,7 @@ def evaluate(
         stream=stream,
         mlflow=mlflow,
         seed=seed,
+        systemone=systemone,
     )
 
     asyncio.run(coroutine)
@@ -772,6 +791,8 @@ def evaluate(
 @app.command("generate", help="Generate predictions on a server")
 @dataset_option
 @provider_option
+@port_option
+@systemone_option
 @n_shot_option
 @system_prompt_option
 @concurrency_option
@@ -796,17 +817,27 @@ def generate(
     log_level: LogLevel,
     shard_size: int,
     seed: int | None,
+    systemone: bool,
+    port: int | None,
 ) -> None:
     """Generate predictions on a server and log them as an MLflow artifact."""
     from eh30pt.cli.scripts.generate import main
     from eh30pt.datasets.registry import get_response_schema
+
+    if systemone and provider != "llama":
+        msg = "System One requires llama"
+        raise click.BadParameter(msg, param_hint="--provider")
 
     logger.setLevel(log_level.upper())
     if seed is None:
         logger.warning("randomness is not fixed")
 
     fmt = get_response_schema(dataset)
-    server = ServerSettings(provider=provider, format=fmt)
+    server = ServerSettings(
+        provider=provider,
+        format=fmt,
+        port=port if port is not None else (9932 if systemone else None),
+    )
 
     mlflow = MlflowSettings(
         tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
@@ -825,6 +856,7 @@ def generate(
         stream=stream,
         mlflow=mlflow,
         seed=seed,
+        systemone=systemone,
     )
 
     asyncio.run(coroutine)
@@ -833,6 +865,7 @@ def generate(
 @app.command("silver-labels", help="Generate model predictions for Label Studio tasks")
 @dataset_option
 @provider_option
+@port_option
 @n_shot_option
 @system_prompt_option
 @concurrency_option
@@ -853,6 +886,7 @@ def silver_labels(
     concurrency: int,
     project: int,
     label_studio_url: str,
+    port: int | None,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
@@ -871,7 +905,7 @@ def silver_labels(
 
     fmt = get_response_schema(dataset)
     studio = LabelStudioSettings(url=label_studio_url)
-    server = ServerSettings(provider=provider, format=fmt)
+    server = ServerSettings(provider=provider, format=fmt, port=port)
     mlflow = MlflowSettings(
         tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,
@@ -897,6 +931,7 @@ def silver_labels(
 @app.command("langextract", help="Generate predictions with langextract on a server")
 @dataset_option
 @provider_option
+@port_option
 @lang_extract_n_shot_option
 @system_prompt_option
 @run_name_option
@@ -921,6 +956,7 @@ def langextract(
     shard_size: int,
     concurrency: int,
     seed: int | None,
+    port: int | None,
 ) -> None:
     """Generate predictions with langextract and log them as an artifact."""
     from eh30pt.cli.scripts.langextract import main
@@ -929,7 +965,7 @@ def langextract(
     if seed is None:
         logger.warning("randomness is not fixed")
 
-    server = ServerSettings(provider=provider)
+    server = ServerSettings(provider=provider, port=port)
     mlflow = MlflowSettings(
         tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,

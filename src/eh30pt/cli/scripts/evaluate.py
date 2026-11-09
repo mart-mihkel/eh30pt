@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from eh30pt.datasets.registry import (
     assert_classification,
+    get_labels,
     get_positive_label,
     get_sys_prompt,
     load_data,
@@ -20,6 +21,7 @@ from eh30pt.openai.stream import (
     log_summary,
     maybe_log_invalid,
 )
+from eh30pt.openai.systemone import SystemOnePredictor
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import (
     build_run_name,
@@ -108,6 +110,7 @@ async def main(
     stream: StreamSettings,
     mlflow: MlflowSettings,
     seed: int | None,
+    systemone: bool = False,
 ) -> None:
     """Run few-shot test evaluation on the server."""
     assert_classification(dataset, "metrics need labels")
@@ -127,7 +130,7 @@ async def main(
     client = CompletionClient(server, seed)
     model = (await client.model()).unwrap()
 
-    method: Method = "few-shot"
+    method: Method = "systemone" if systemone else "few-shot"
     if mlflow.run_name is None:
         mlflow.run_name = build_run_name(model, method, f"{n_shot}-shot")
 
@@ -147,8 +150,14 @@ async def main(
         "system_prompt": system_prompt,
     }
 
-    conv = client.build_conversation(system=system_prompt, examples=data.test.few_shots)
-    predictor = CompletionPredictor(client=client, conversation=conv)
+    predictor: Predictor[FewShot, str | None]
+    examples = data.test.few_shots
+    if systemone:
+        labs = get_labels(dataset)
+        predictor = SystemOnePredictor(server, system_prompt, labs, examples)
+    else:
+        conv = client.build_conversation(system=system_prompt, examples=examples)
+        predictor = CompletionPredictor(client=client, conversation=conv)
 
     with RunContext(mlflow, config) as ctx:
         ctx.log_prompt_version(dataset, "decoder", system_prompt)

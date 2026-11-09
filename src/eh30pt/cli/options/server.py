@@ -8,6 +8,19 @@ from eh30pt.types import DatasetName
 
 prompt_argument = click.argument("user_prompt", type=str)
 
+port_option = click.option(
+    "--port",
+    type=click.IntRange(min=1, max=65535),
+    default=None,
+    help="Local port: 9931 for llama, 9932 for System One, 8000 for vLLM by default",
+)
+
+systemone_option = click.option(
+    "--systemone",
+    is_flag=True,
+    help="Use llama.cpp's System One decision endpoint for classification",
+)
+
 completion_dataset_option = click.option(
     "--dataset",
     "-d",

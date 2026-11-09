@@ -1,0 +1,39 @@
+interactions:
+- request:
+    body: '{"state":"My package is late.\nshipping\n\nI was charged twice.","questions":{"label":{"type":"choice","instructions":"Choose
+      the category of the customer message.","criteria":{"billing":null,"shipping":null}}}}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '211'
+      content-type:
+      - application/json
+      host:
+      - localhost:9932
+      user-agent:
+      - python-httpx/0.28.1
+    method: POST
+    uri: http://localhost:9932/v1/systemone
+  response:
+    body:
+      string: '{"model":"ggml-org/Julia-1-GGUF:Q8_0","answers":{"label":{"type":"choice","choice":"shipping","probabilities":{"billing":6.037967613351226e-05,"shipping":0.9999396203238665},"confidence":0.999879240647733}},"usage":{"input_tokens":32,"output_tokens":0}}'
+    headers:
+      access-control-allow-origin:
+      - ''
+      content-length:
+      - '253'
+      content-type:
+      - application/json; charset=utf-8
+      keep-alive:
+      - timeout=5, max=100
+      server:
+      - llama.cpp
+    status:
+      code: 200
+      message: OK
+version: 1

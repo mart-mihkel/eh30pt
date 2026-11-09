@@ -123,18 +123,20 @@ class ServerSettings(BaseSettings):
     api_key: str = "no-auth"
     timeout: int = Field(default=300, ge=0)
     format: ResponseFormatJSONSchema | None = None
+    port: int | None = Field(default=None, ge=1, le=65535)
 
     @property
     def base_url(self) -> str:
-        """Return the explicit base URL, falling back to the provider default."""
+        """Return the local server URL for the selected provider and port."""
         if self.provider == "vllm":
-            return "http://localhost:8000"
+            port = self.port or 8000
+        elif self.provider == "llama":
+            port = self.port or 9931
+        else:
+            msg = f"invalid provider {self.provider}"
+            raise ValueError(msg)
 
-        if self.provider == "llama":
-            return "http://localhost:9931"
-
-        msg = f"invalid provider {self.provider}"
-        raise ValueError(msg)
+        return f"http://localhost:{port}"
 
 
 class CommonSettings(BaseModel):

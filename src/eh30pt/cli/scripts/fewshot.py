@@ -46,14 +46,17 @@ def main(
         arch,
         sequence_classification=classification,
     )
+
+    pos = get_positive_label(
+        common.dataset,
+        arch,
+        sequence_classification=classification,
+    )
+
     metrics_fn = MetricsAccumulator(
         tokenizer,
         arch,
-        get_positive_label(
-            common.dataset,
-            arch,
-            sequence_classification=classification,
-        ),
+        pos,
         sequence_classification=classification,
     )
 
