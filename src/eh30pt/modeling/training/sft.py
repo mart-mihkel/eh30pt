@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING, cast
 
+from datasets import Dataset
+from tqdm import tqdm
 from trl import SFTConfig, SFTTrainer
 
 from eh30pt.logging import logger
@@ -9,7 +11,6 @@ from eh30pt.modeling.training.callbacks import use_rich_logging
 from eh30pt.modeling.training.spec import _no_epoch_cap
 
 if TYPE_CHECKING:
-    from datasets.iterable_dataset import IterableDataset as HFIterableDataset
     from peft import PeftModel
     from transformers import PreTrainedModel, Trainer
 
@@ -49,12 +50,32 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         loss_type="nll",
     )
 
+    train_dataset = (
+        Dataset.from_list(
+            [
+                dict(spec.train_dataset[index])
+                for index in tqdm(
+                    range(len(spec.train_dataset)), desc="Tokenizing train"
+                )
+            ]
+        )
+        if spec.train_dataset is not None
+        else None
+    )
+
+    eval_dataset = Dataset.from_list(
+        [
+            dict(spec.eval_dataset[index])
+            for index in tqdm(range(len(spec.eval_dataset)), desc="Tokenizing eval")
+        ]
+    )
+
     trainer = SFTTrainer(
         model=cast("PreTrainedModel | PeftModel", spec.model),
         args=args,
         data_collator=spec.collate_fn,
-        train_dataset=cast("HFIterableDataset | None", spec.train_dataset),
-        eval_dataset=cast("HFIterableDataset", spec.eval_dataset),
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         processing_class=spec.tokenizer,
         compute_metrics=spec.metrics_fn,
         callbacks=spec.callbacks,

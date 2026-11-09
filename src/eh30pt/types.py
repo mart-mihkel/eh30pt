@@ -19,9 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from pathlib import Path
 
-    from torch.utils.data import IterableDataset as TorchIterableDataset
     from transformers import EvalPrediction
-    from ty_extensions import Intersection
 
     from eh30pt.datasets.mixin import DatasetMixin
 
@@ -57,7 +55,6 @@ type Method = Literal[
     "qlora",
     "few-shot",
     "systemone",
-    "langextract",
     "silver-labels",
 ]
 
@@ -167,19 +164,22 @@ class FewShotRunConfig(RunConfig):
     """Run configuration for few-shot evaluation."""
 
 
+class TokenizedSample(TypedDict):
+    """Tokenized model input with its label and truncation status."""
+
+    input_ids: list[int]
+    attention_mask: NotRequired[list[int]]
+    token_type_ids: NotRequired[list[int]]
+    labels: int | list[int]
+    truncated: bool
+
+
 class FewShot(NamedTuple):
     """User prompt paired with its gold label and optional dataset row id."""
 
     user: str
     label: str
     id: int | None = None
-
-
-class ExtractShot(NamedTuple):
-    """Example extraction pairing input text with field spans."""
-
-    user: str
-    extractions: dict[str, str]
 
 
 class GenerateRecord(NamedTuple):
@@ -202,9 +202,9 @@ class EvalRecord(NamedTuple):
 class DataSplits(NamedTuple):
     """Per-split streaming datasets for training."""
 
-    train: Intersection[TorchIterableDataset, DatasetMixin]
-    eval: Intersection[TorchIterableDataset, DatasetMixin]
-    test: Intersection[TorchIterableDataset, DatasetMixin]
+    train: DatasetMixin
+    eval: DatasetMixin
+    test: DatasetMixin
 
 
 class ArtifactLogger(Protocol):

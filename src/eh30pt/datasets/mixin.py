@@ -2,25 +2,26 @@
 
 from typing import TYPE_CHECKING, ClassVar, cast
 
+from torch.utils.data import Dataset
+
 from eh30pt.constants import PAD_MULTIPLE, SENTINEL_TOKEN, UNSET_MAX_LENGTH
+from eh30pt.types import TokenizedSample
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
-    from typing import NoReturn
 
     from openai.types.shared_params import ResponseFormatJSONSchema
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, DatasetTask, ExtractShot, FewShot
+    from eh30pt.types import Architecture, DatasetTask, FewShot
 
 
-class DatasetMixin[RowType]:
+class DatasetMixin[RowType](Dataset[TokenizedSample]):
     """Streaming dataset with prompt encoding helpers."""
 
     id2label: ClassVar[Mapping[int, str]]
     label2id: ClassVar[Mapping[str, int]]
-    few_shots: ClassVar[list[FewShot]]
-    extract_shots: ClassVar[list[ExtractShot]] = []
+    examples: ClassVar[list[FewShot]]
     system_prompt: ClassVar[str]
     encoder_system_prompt: ClassVar[str]
     task: ClassVar[DatasetTask] = "classification"
@@ -73,19 +74,22 @@ class DatasetMixin[RowType]:
         """Yield decoder prompt and label pairs for the split."""
         raise NotImplementedError
 
-    def total(self) -> int | None:
-        """Return the number of samples the split yields, or None when unknown."""
-        return None
+    def total(self) -> int:
+        """Return the number of samples in the split."""
+        return len(self)
 
-    def set_epoch(self, epoch: int) -> None:
-        """Ignore the epoch counter, rows stream in split order."""
-        del epoch
+    def __len__(self) -> int:
+        """Return the number of samples in the split."""
+        raise NotImplementedError
 
-    def __getitem__(self, *args: str | int, **kwargs: str | int) -> NoReturn:
-        """Forbid indexing, rows only stream in split order."""
-        del args, kwargs
-        msg = "streaming datasets do not support indexing, iterate instead"
-        raise TypeError(msg)
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Return a tokenized sample by index."""
+        raise NotImplementedError
+
+    def __iter__(self) -> Iterator[TokenizedSample]:
+        """Iterate over tokenized samples in index order."""
+        for index in range(len(self)):
+            yield self[index]
 
     def _format_few_shot_legacy(self, few_shots: list[FewShot]) -> str:
         if not few_shots:

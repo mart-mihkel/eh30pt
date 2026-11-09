@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import json
 from typing import TYPE_CHECKING, Final, cast
 
 import polars as pl
@@ -32,7 +32,6 @@ from eh30pt.settings import PostgresSettings as _PostgresSettings
 from eh30pt.types import Architecture, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
     from transformers import PreTrainedTokenizerFast
@@ -111,23 +110,24 @@ def classifier_rows(database: None) -> list[DiscontClassifierRow]:
     engine = _create_engine(_PostgresSettings().connection_url)
     try:
         with _Session(engine) as session:
-            events = list(_select_trigger(session, page_size=100, limit=20))
+            events = _select_trigger(session, limit=20)
     finally:
         engine.dispose()
     texts = [event.text for event in events if event.text][:_n_fixture_rows]
     assert len(texts) == _n_fixture_rows
     valid = [
-        shot
-        for shot in _Extract.extract_shots
-        if shot.extractions["phrase"] and shot.extractions["drug"]
+        fields
+        for shot in _Extract.examples
+        if (fields := cast("dict[str, str]", json.loads(shot.label)))["phrase"]
+        and fields["drug"]
     ][:_n_fixture_rows]
     assert len(valid) == _n_fixture_rows
     return [
         {
             "id": events[idx].id,
             "text": texts[idx],
-            "phrase": valid[idx].extractions["phrase"],
-            "drug": valid[idx].extractions["drug"],
+            "phrase": valid[idx]["phrase"],
+            "drug": valid[idx]["drug"],
             "label": labels[idx],
         }
         for idx in range(_n_fixture_rows)
@@ -416,32 +416,23 @@ def test_samples_multinerd_expands_entities(
         assert sample.id is not None
 
 
-def test_total_multinerd_is_unknown(
+def test_total_multinerd_counts_entities(
     nerd_data: Dataset,
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     ds = Multinerd(nerd_data, bert_tokenizer, "decoder")
 
-    assert ds.total() is None
+    assert ds.total() == len(list(ds.samples()))
 
 
-def test_set_epoch_ignored(
+def test_getitem_tokenizes_row(
     oblique_data: Dataset,
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
     ds = Obl(oblique_data, bert_tokenizer, "decoder")
 
-    assert ds.set_epoch(3) is None
-
-
-def test_getitem_forbidden(
-    oblique_data: Dataset,
-    bert_tokenizer: PreTrainedTokenizerFast,
-) -> None:
-    ds = Obl(oblique_data, bert_tokenizer, "decoder")
-
-    with pytest.raises(TypeError, match="indexing"):
-        ds[0]
+    assert ds[0] == next(iter(ds))
+    assert len(ds) == ds.total()
 
 
 def test_classifier_reiterates_its_rows(
@@ -467,42 +458,32 @@ def test_classifier_reiterates_its_rows(
     assert [sample.user for sample in second] == [sample.user for sample in first]
 
 
-def test_extract_streams_rows_lazily(
+def test_extract_rows_are_indexable(
     bert_tokenizer: PreTrainedTokenizerFast,
 ) -> None:
-    real: list[DiscontExtractRow] = [
-        {"id": idx, "text": shot.user}
-        for idx, shot in enumerate(_Extract.extract_shots[:2])
+    rows: list[DiscontExtractRow] = [
+        {"id": idx, "text": shot.user} for idx, shot in enumerate(_Extract.examples[:2])
     ]
-    calls: list[int] = []
+    ds = DiscontExtract(rows, bert_tokenizer, "decoder")
 
-    def _rows() -> Iterator[DiscontExtractRow]:
-        calls.append(1)
-
-        yield from real
-
-    ds = DiscontExtract(_rows, bert_tokenizer, "decoder")
-
-    assert calls == []
-
-    first = list(ds.samples())
-
-    assert calls == [1]
-    assert first == [FewShot(user=row["text"], label="", id=row["id"]) for row in real]
-
-    second = list(ds.samples())
-
-    assert calls == [1, 1]
-    assert [sample.user for sample in second] == [row["text"] for row in real]
+    assert len(ds) == len(rows)
+    assert list(ds.samples()) == [
+        FewShot(user=row["text"], label="", id=row["id"]) for row in rows
+    ]
+    assert ds[0] == next(iter(ds))
 
 
-def test_load_discont_extract_opens_no_connection(
+def test_load_discont_extract_loads_rows(
     bert_tokenizer: PreTrainedTokenizerFast,
+    database: None,
 ) -> None:
+    _ = database
     splits = load_discont_extract(bert_tokenizer, "decoder", source="trigger")
 
     assert list(splits.train.samples()) == []
     assert list(splits.eval.samples()) == []
+    assert len(splits.test) > 0
+    assert len(splits.test) == len(list(splits.test.samples()))
 
 
 def test_load_classifier_reads_exported_labels_without_a_server(
@@ -511,10 +492,9 @@ def test_load_classifier_reads_exported_labels_without_a_server(
     """Splits stream from an export-labels parquet, never touching the API."""
     n_tasks = 10
     export_labels = tuple(DiscontClassifier.en2et)
-    real_shots = _Extract.extract_shots
-    fallback_drug = next(
-        s.extractions["drug"] for s in real_shots if s.extractions["drug"]
-    )
+    real_shots = _Extract.examples
+    fields = [cast("dict[str, str]", json.loads(shot.label)) for shot in real_shots]
+    fallback_drug = next(field["drug"] for field in fields if field["drug"])
     labels = tmp_path / "labels.parquet"
     df = ExtractionFrameSchema.validate(
         pl.DataFrame(
@@ -527,18 +507,15 @@ def test_load_classifier_reads_exported_labels_without_a_server(
                 "from_name": "choices",
                 "text": [real_shots[i % len(real_shots)].user for i in range(n_tasks)],
                 "phrase": [
-                    real_shots[i % len(real_shots)].extractions["phrase"]
+                    fields[i % len(fields)]["phrase"]
                     or real_shots[i % len(real_shots)].user
                     for i in range(n_tasks)
                 ],
                 "drug": [
-                    real_shots[i % len(real_shots)].extractions["drug"] or fallback_drug
+                    fields[i % len(fields)]["drug"] or fallback_drug
                     for i in range(n_tasks)
                 ],
-                "reason": [
-                    real_shots[i % len(real_shots)].extractions["reason"]
-                    for i in range(n_tasks)
-                ],
+                "reason": [fields[i % len(fields)]["reason"] for i in range(n_tasks)],
                 "label": [
                     export_labels[i % len(export_labels)] for i in range(n_tasks)
                 ],

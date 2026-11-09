@@ -41,7 +41,7 @@ def test_registry_exposes_it_as_a_classifier() -> None:
         "enum": ["jah", "ei"],
     }
 
-    assert get_few_shots(_dataset, 3) == DiscontBinary.few_shots[:3]
+    assert get_few_shots(_dataset, 3) == DiscontBinary.examples[:3]
 
 
 def test_every_studio_reason_folds_onto_a_label() -> None:
@@ -73,8 +73,8 @@ def test_every_studio_reason_folds_onto_a_label() -> None:
 
 def test_few_shots_agree_with_the_folding() -> None:
     """Every few-shot example must match what its reason folds onto."""
-    cls_shots = DiscontClassifier.few_shots
-    bin_shots = DiscontBinary.few_shots
+    cls_shots = DiscontClassifier.examples
+    bin_shots = DiscontBinary.examples
     margend2reason: dict[str, str] = {
         margend: reason for reason, margend in DiscontClassifier.en2et.items()
     }

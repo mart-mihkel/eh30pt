@@ -13,7 +13,6 @@ dependencies = [
     "transformers~=5.17.0",
     "bitsandbytes~=0.50.2",
     "scikit-learn~=1.9.1",
-    "langextract~=1.7.0",
     "accelerate~=1.15.0",
     "rich-click~=1.9.0",
     "sqlalchemy~=2.0.0",

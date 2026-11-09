@@ -9,9 +9,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from torch.nn import Module
-    from torch.utils.data import IterableDataset as TorchIterableDataset
     from transformers import DataCollator, PreTrainedTokenizerFast, TrainerCallback
 
+    from eh30pt.datasets.mixin import DatasetMixin
     from eh30pt.types import ComputeMetricsFn, DataSplits, EvalSteps
 
 
@@ -23,8 +23,8 @@ class _Spec(NamedTuple):
 
     model: Module
     tokenizer: PreTrainedTokenizerFast
-    train_dataset: TorchIterableDataset | None
-    eval_dataset: TorchIterableDataset
+    train_dataset: DatasetMixin | None
+    eval_dataset: DatasetMixin
     collate_fn: DataCollator
     metrics_fn: Callable
     output_dir: str

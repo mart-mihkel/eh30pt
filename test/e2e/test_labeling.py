@@ -26,14 +26,11 @@ if TYPE_CHECKING:
 @pytest.fixture
 def preds() -> pl.DataFrame:
     """Build prediction rows from the extraction dataset's own examples."""
-    shots = DiscontExtract.extract_shots
+    shots = DiscontExtract.examples
     return pl.DataFrame(
         {
             "user": [shot.user for shot in shots],
-            "prediction": [
-                json.dumps(shot.extractions, ensure_ascii=False, sort_keys=True)
-                for shot in shots
-            ],
+            "prediction": [shot.label for shot in shots],
         }
     )
 
@@ -82,7 +79,7 @@ def test_create_project_imports_tasks_with_pre_annotations(
     assert len(tasks) == len(labeling.tasks)
     assert tasks[0]["data"] == labeling.tasks[0]["data"]
     assert (
-        tasks[0]["data"]["drug"] == DiscontExtract.extract_shots[0].extractions["drug"]
+        tasks[0]["data"]["drug"] == json.loads(DiscontExtract.examples[0].label)["drug"]
     )
 
 
@@ -184,7 +181,7 @@ def test_export_labels_writes_annotations_to_parquet(
     assert df["label"].to_list() == [labels[0]]
     assert (
         df["drug"].to_list()
-        == [DiscontExtract.extract_shots[0].extractions["drug"]] * _rows
+        == [json.loads(DiscontExtract.examples[0].label)["drug"]] * _rows
     )
 
 

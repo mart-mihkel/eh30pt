@@ -119,13 +119,6 @@ def test_slurm_rejects_non_training_command() -> None:
     assert "cannot submit" in result.output
 
 
-def test_completion_requires_system_prompt() -> None:
-    result = CliRunner().invoke(app, ["completion", "hello"])
-
-    assert result.exit_code != 0
-    assert "system prompt is required" in result.output
-
-
 def test_slurm_dry_run_writes_script(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

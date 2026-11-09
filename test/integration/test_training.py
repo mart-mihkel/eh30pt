@@ -188,6 +188,38 @@ def test_build_spec_saves_without_eval_when_requested(
     assert spec.save_strategy == "epoch"
 
 
+def test_decoder_trainer_trains_on_loaded_splits(
+    oblique_splits: DataSplits,
+    oblique_gpt2_model: PreTrainedModel,
+    gpt2_tokenizer: PreTrainedTokenizerFast,
+    tmp_path: Path,
+) -> None:
+    from datasets import Dataset
+
+    from eh30pt.modeling.training.sft import _decoder_trainer
+
+    def metrics(_pred: object, *, compute_result: bool = True) -> dict[str, float]:
+        return {"accuracy": 1.0} if compute_result else {}
+
+    spec = _build_spec(
+        model=oblique_gpt2_model,
+        tokenizer=gpt2_tokenizer,
+        data=oblique_splits,
+        collate_fn=get_collator(gpt2_tokenizer, "decoder"),
+        metrics_fn=metrics,
+        output_dir=tmp_path,
+        eval_steps=0,
+        train_steps=1,
+        batch_size=1,
+    )
+    trainer = _decoder_trainer(spec)
+    assert isinstance(trainer.train_dataset, Dataset)
+    assert isinstance(trainer.eval_dataset, Dataset)
+    assert len(trainer.train_dataset) == len(oblique_splits.train)
+    trainer.args.dataloader_pin_memory = False
+    assert trainer.train().global_step == 1
+
+
 def test_get_trainer_builds_per_architecture(
     oblique_splits: DataSplits,
     oblique_gpt2_model: PreTrainedModel,

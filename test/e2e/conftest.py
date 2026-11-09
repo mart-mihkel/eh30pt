@@ -46,13 +46,17 @@ def single_run(tracking_uri: str, experiment: str) -> Run:
 def _small_test_split(monkeypatch: pytest.MonkeyPatch) -> None:
     """Truncate registry test splits to keep end to end evaluation cheap."""
     from eh30pt.datasets import registry
+    from eh30pt.datasets.multinerd import Multinerd
 
     real_obl = registry.load_obl
     real_multinerd = registry.load_multinerd
 
     def truncate(splits: DataSplits) -> DataSplits:
         test = splits.test
-        test._data = test._data.select(range(_test_rows))  # ty: ignore[unresolved-attribute, invalid-assignment]
+        test._data = test._data.select(range(_test_rows))  # ty: ignore[unresolved-attribute]
+        if isinstance(test, Multinerd):
+            test._rows = list(test._unpack_row())
+
         return splits
 
     def small_obl(

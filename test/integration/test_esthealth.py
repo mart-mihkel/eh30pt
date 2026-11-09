@@ -86,76 +86,23 @@ def test_discontinuation_seed_matches_query_pattern(session: Session) -> None:
     )
 
 
-def test_select_trigger_events_pages_in_primary_key_order(
-    session: Session,
-) -> None:
-    events = list(select_trigger_events(session, page_size=100))
-
-    assert events
-    assert [event.id for event in events] == sorted(event.id for event in events)
-
-
-def test_select_trigger_events_paging_is_consistent(session: Session) -> None:
-    wide = [event.id for event in select_trigger_events(session, page_size=100)]
-    narrow = [event.id for event in select_trigger_events(session, page_size=7)]
-
-    assert wide == narrow
+def test_event_queries_are_bounded_and_ordered(session: Session) -> None:
+    for query in (select_trigger_events, select_observed_events):
+        events = query(session, limit=100)
+        assert events
+        assert [event.id for event in events] == sorted(event.id for event in events)
+        assert query(session, limit=3) == events[:3]
 
 
-def test_select_sampled_events_pages_in_primary_key_order(
-    session: Session,
-) -> None:
-    events = list(select_observed_events(session, page_size=100))
-
-    assert events
-    assert [event.id for event in events] == sorted(event.id for event in events)
-
-
-def test_select_sampled_events_paging_is_consistent(session: Session) -> None:
-    wide = [event.id for event in select_observed_events(session, page_size=100)]
-    narrow = [event.id for event in select_observed_events(session, page_size=7)]
-
-    assert wide == narrow
-
-
-def test_select_rejects_non_positive_page_size(session: Session) -> None:
+def test_select_rejects_non_positive_limit(session: Session) -> None:
     import pytest
 
-    with pytest.raises(ValueError, match="page_size must be positive"):
-        list(select_trigger_events(session, page_size=0))
+    for query in (select_trigger_events, select_observed_events):
+        with pytest.raises(ValueError, match="limit must be positive"):
+            query(session, limit=0)
 
-    with pytest.raises(ValueError, match="page_size must be positive"):
-        list(select_observed_events(session, page_size=0))
-
-
-def test_select_respects_limit_and_start_after(session: Session) -> None:
-    all_ids = [event.id for event in select_trigger_events(session, page_size=100)]
-
-    assert all_ids
-    limited = list(select_trigger_events(session, page_size=100, limit=5))
-
-    assert [event.id for event in limited] == all_ids[:5]
-
-    restarted = list(
-        select_trigger_events(session, page_size=100, start_after=all_ids[0])
-    )
-
-    assert [event.id for event in restarted] == all_ids[1:]
-
-    observed_ids = [
-        event.id for event in select_observed_events(session, page_size=100)
-    ]
-
-    assert observed_ids
-    assert [
-        event.id for event in select_observed_events(session, page_size=100, limit=3)
-    ] == observed_ids[:3]
-    assert [
-        event.id
-        for event in select_observed_events(
-            session, page_size=100, start_after=observed_ids[0]
-        )
-    ] == observed_ids[1:]
+    with pytest.raises(ValueError, match="limit must be positive"):
+        select_dg_events(session, event_type="switch", limit=0)
 
 
 def test_select_dg_events_returns_rows(session: Session) -> None:
@@ -172,6 +119,7 @@ def test_select_dg_events_returns_rows(session: Session) -> None:
 
         assert rows
         assert [row.id for row in rows] == sorted(row.id for row in rows)
+        assert select_dg_events(session, event_type=event_type, limit=1) == rows[:1]
 
         stored = session.scalars(
             select(CdaDgEvent.event_type).where(

@@ -11214,13 +11214,13 @@ interactions:
       Cross-Origin-Resource-Policy:
       - cross-origin
       Date:
-      - Mon, 09 Nov 2026 12:39:13 GMT
+      - Mon, 09 Nov 2026 13:33:16 GMT
       Etag:
       - '"1b301f0fe2db52a0d32f28fcb7f1611c9dd8467ed5d4d7df8113b15618a27b09"'
       Expires:
-      - Mon, 09 Nov 2026 12:44:13 GMT
+      - Mon, 09 Nov 2026 13:38:16 GMT
       Source-Age:
-      - '61'
+      - '230'
       Strict-Transport-Security:
       - max-age=31536000
       Vary:
@@ -11234,15 +11234,15 @@ interactions:
       X-Content-Type-Options:
       - nosniff
       X-Fastly-Request-ID:
-      - 7cfb804e309432e9c8b6261a6464dc33e931ec4b
+      - 2744984b46e318bea4900147bcb48ec7ec93608d
       X-Frame-Options:
       - deny
       X-GitHub-Request-Id:
-      - FEDE:3D9757:11460B:11E81A:6AF1BEB3
+      - 92D8:1B7672:1930DD:1A21CC:6AF1C601
       X-Served-By:
-      - cache-hel1410020-HEL
+      - cache-hel1410031-HEL
       X-Timer:
-      - S1794227953.098928,VS0,VE0
+      - S1794231196.401347,VS0,VE0
       X-XSS-Protection:
       - 1; mode=block
       x-github-edge-region:
@@ -11278,13 +11278,13 @@ interactions:
       Cross-Origin-Resource-Policy:
       - cross-origin
       Date:
-      - Mon, 09 Nov 2026 12:39:13 GMT
+      - Mon, 09 Nov 2026 13:33:16 GMT
       Etag:
       - '"1b301f0fe2db52a0d32f28fcb7f1611c9dd8467ed5d4d7df8113b15618a27b09"'
       Expires:
-      - Mon, 09 Nov 2026 12:44:13 GMT
+      - Mon, 09 Nov 2026 13:38:16 GMT
       Source-Age:
-      - '61'
+      - '230'
       Strict-Transport-Security:
       - max-age=31536000
       Vary:
@@ -11298,15 +11298,15 @@ interactions:
       X-Content-Type-Options:
       - nosniff
       X-Fastly-Request-ID:
-      - e558ded6efa72427d277d68ebbd9c03488c9e328
+      - b38d694484575c49262651c02c8cbacd3689d308
       X-Frame-Options:
       - deny
       X-GitHub-Request-Id:
-      - FEDE:3D9757:11460B:11E81A:6AF1BEB3
+      - 92D8:1B7672:1930DD:1A21CC:6AF1C601
       X-Served-By:
-      - cache-hel1410020-HEL
+      - cache-hel1410031-HEL
       X-Timer:
-      - S1794227953.129026,VS0,VE0
+      - S1794231196.431355,VS0,VE0
       X-XSS-Protection:
       - 1; mode=block
       x-github-edge-region:
@@ -11342,13 +11342,13 @@ interactions:
       Cross-Origin-Resource-Policy:
       - cross-origin
       Date:
-      - Mon, 09 Nov 2026 12:39:13 GMT
+      - Mon, 09 Nov 2026 13:33:16 GMT
       Etag:
       - '"1b301f0fe2db52a0d32f28fcb7f1611c9dd8467ed5d4d7df8113b15618a27b09"'
       Expires:
-      - Mon, 09 Nov 2026 12:44:13 GMT
+      - Mon, 09 Nov 2026 13:38:16 GMT
       Source-Age:
-      - '61'
+      - '230'
       Strict-Transport-Security:
       - max-age=31536000
       Vary:
@@ -11362,15 +11362,15 @@ interactions:
       X-Content-Type-Options:
       - nosniff
       X-Fastly-Request-ID:
-      - 5f34f9c5ee4c00e122c51142a1f96a244b3380da
+      - 5d489f5010eec70f36bed9098a46f67bef95fc4c
       X-Frame-Options:
       - deny
       X-GitHub-Request-Id:
-      - FEDE:3D9757:11460B:11E81A:6AF1BEB3
+      - 92D8:1B7672:1930DD:1A21CC:6AF1C601
       X-Served-By:
-      - cache-hel1410020-HEL
+      - cache-hel1410031-HEL
       X-Timer:
-      - S1794227953.141013,VS0,VE0
+      - S1794231196.442951,VS0,VE0
       X-XSS-Protection:
       - 1; mode=block
       x-github-edge-region:
@@ -11382,38 +11382,20 @@ interactions:
     body: ''
     headers:
       accept:
-      - application/json
+      - '*/*'
       accept-encoding:
-      - gzip, deflate, zstd
+      - gzip, deflate
       connection:
       - keep-alive
       host:
       - localhost:9932
       user-agent:
-      - AsyncOpenAI/Python 3.10.0
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - async:asyncio
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 3.10.0
-      x-stainless-read-timeout:
-      - '300'
-      x-stainless-retry-count:
-      - '0'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.14.7
+      - python-httpx/0.28.1
     method: GET
-    uri: http://localhost:9932/models
+    uri: http://localhost:9932/v1/models
   response:
     body:
-      string: '{"models":[{"name":"ggml-org/Julia-1-GGUF:Q8_0","model":"ggml-org/Julia-1-GGUF:Q8_0","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"ggml-org/Julia-1-GGUF:Q8_0","aliases":["ggml-org/Julia-1-GGUF:Q8_0"],"tags":[],"object":"model","architecture":{"input_modalities":["text"],"output_modalities":["decisions"]},"created":1794227953,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":256000,"n_ctx":8192,"n_ctx_train":8192,"n_embd":384,"n_params":144192769,"size":153292036,"ftype":"Q8_0"}}]}'
+      string: '{"models":[{"name":"ggml-org/Julia-1-GGUF:Q8_0","model":"ggml-org/Julia-1-GGUF:Q8_0","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"ggml-org/Julia-1-GGUF:Q8_0","aliases":["ggml-org/Julia-1-GGUF:Q8_0"],"tags":[],"object":"model","architecture":{"input_modalities":["text"],"output_modalities":["decisions"]},"created":1794231196,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":256000,"n_ctx":8192,"n_ctx_train":8192,"n_embd":384,"n_params":144192769,"size":153292036,"ftype":"Q8_0"}}]}'
     headers:
       access-control-allow-origin:
       - ''

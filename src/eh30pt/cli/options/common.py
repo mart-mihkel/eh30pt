@@ -22,7 +22,7 @@ dataset_option = click.option(
     "dataset",
     required=True,
     type=click.Choice(get_args(DatasetName.__value__)),
-    help="Dataset name, suffixed with the Est-Health query it streams from",
+    help="Dataset name, suffixed with the Est-Health query it loads from",
 )
 
 inferred_dataset_option = click.option(
@@ -41,16 +41,6 @@ n_shot_option = click.option(
     "n_shot",
     type=click.IntRange(min=0),
     default=0,
-    show_default=True,
-    help="Number of examples in system prompt",
-)
-
-lang_extract_n_shot_option = click.option(
-    "--n-shot",
-    "-n",
-    "n_shot",
-    type=click.IntRange(min=1),
-    default=1,
     show_default=True,
     help="Number of examples in system prompt",
 )

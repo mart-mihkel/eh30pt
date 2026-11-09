@@ -19,15 +19,15 @@ if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
     from tqdm import tqdm
 
-    from eh30pt.openai.complete import CompletionClient
+    from eh30pt.openai.complete import OpenaiClient
     from eh30pt.types import ArtifactLogger
 
 
 @dataclass(frozen=True)
-class CompletionPredictor(Predictor[FewShot, str | None]):
+class OpenaiPredictor(Predictor[FewShot, str | None]):
     """Bind a completion client to its base conversation for streaming."""
 
-    client: CompletionClient
+    client: OpenaiClient
     conversation: list[ChatCompletionMessageParam]
 
     async def predict(self, sample: FewShot) -> str | None:

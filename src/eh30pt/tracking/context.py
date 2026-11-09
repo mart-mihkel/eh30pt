@@ -79,17 +79,6 @@ def logged_model_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]", "-", short)
 
 
-def _count_train(data: DataSplits) -> int:
-    """Count train examples through prompts, avoiding tokenization."""
-    samples = getattr(data.train, "samples", None)
-    stream = samples() if callable(samples) else iter(data.train)
-    total = 0
-    for _ in stream:
-        total += 1
-
-    return total
-
-
 def _steps_for_epochs(
     data: DataSplits,
     *,
@@ -97,7 +86,7 @@ def _steps_for_epochs(
     batch_size: int,
 ) -> int:
     """Convert epochs over the train split into optimizer steps."""
-    n_train = _count_train(data)
+    n_train = len(data.train)
     if n_train == 0:
         msg = "train split is empty, cannot derive training steps"
         raise ValueError(msg)

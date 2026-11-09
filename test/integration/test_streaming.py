@@ -7,21 +7,21 @@ import io
 import json
 from typing import TYPE_CHECKING, cast
 
+import httpx
 import mlflow
 import pytest
-from langextract.data import AnnotatedDocument, Extraction
 from returns.result import Failure, Success
 from tqdm import tqdm
 
-import eh30pt.cli.scripts.langextract as langextract_mod
 from eh30pt.cli.scripts.create_task import run_labeling
 from eh30pt.datasets.discont.extract import DiscontExtract
-from eh30pt.datasets.registry import get_extract_fields, get_sys_prompt
+from eh30pt.datasets.registry import get_sys_prompt
 from eh30pt.modeling.metrics import StreamingClassificationMetrics
-from eh30pt.openai.complete import CompletionClient
-from eh30pt.openai.stream import CompletionPredictor
-from eh30pt.openai.systemone import SystemOnePredictor
+from eh30pt.openai.complete import OpenaiClient
+from eh30pt.openai.stream import OpenaiPredictor
 from eh30pt.settings import MlflowSettings, ServerSettings
+from eh30pt.systemone.client import SystemOneClient
+from eh30pt.systemone.stream import SystemOnePredictor
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.shards import log_shard
 from eh30pt.types import FewShot, GenerateRecord, Predictor
@@ -30,29 +30,63 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
     from pathlib import Path
 
-    from langextract.core.types import JsonSchema
     from mlflow.tracking import MlflowClient
     from openai.types.chat import ChatCompletionMessageParam
     from returns.result import Result
 
     from eh30pt.labeling.studio import StudioTask
     from eh30pt.labeling.types import ChoiceResult, ChoiceValue, SpanResult, SpanValue
-    from eh30pt.types import ExtractShot, RunConfig
+    from eh30pt.types import RunConfig
 
 
 @pytest.mark.vcr(match_on=["method", "scheme", "host", "port", "path", "query", "body"])
 def test_systemone_predictor_posts_choice_question() -> None:
-    predictor = SystemOnePredictor(
-        ServerSettings(port=9932),
-        "Choose the category of the customer message.",
-        ("billing", "shipping"),
-        [FewShot("My package is late.", "shipping")],
-    )
+    async def run() -> str | None:
+        client = SystemOneClient(ServerSettings(port=9932))
+        predictor = SystemOnePredictor(
+            client,
+            "Choose the category of the customer message.",
+            ("billing", "shipping"),
+            [FewShot("My package is late.", "shipping")],
+        )
+        return await predictor.predict(FewShot("I was charged twice.", "billing"))
 
-    prediction = asyncio.run(
-        predictor.predict(FewShot("I was charged twice.", "billing"))
-    )
+    prediction = asyncio.run(run())
     assert prediction in ("billing", "shipping")
+
+
+@pytest.mark.vcr(match_on=["method", "scheme", "host", "port", "path", "query", "body"])
+def test_systemone_client_reuses_connections() -> None:
+    async def run() -> None:
+        client = SystemOneClient(ServerSettings(port=9932))
+        model = (await client.model()).unwrap()
+        assert model
+        assert (await client.model()).unwrap() == model
+
+        for state in ("I was charged twice.", "My package is late."):
+            result = await client.choose(
+                state=state,
+                instructions="Choose the category of the customer message.",
+                labels=("billing", "shipping"),
+            )
+            assert result.unwrap() in ("billing", "shipping")
+
+    asyncio.run(run())
+
+
+@pytest.mark.vcr(match_on=["method", "scheme", "host", "port", "path", "query", "body"])
+def test_systemone_client_returns_failure_for_rejected_question() -> None:
+    async def run() -> None:
+        client = SystemOneClient(ServerSettings(port=9932))
+        result = await client.choose(
+            state="I was charged twice.",
+            instructions="Choose the category.",
+            labels=(),
+        )
+        assert isinstance(result, Failure)
+        assert isinstance(result.failure(), httpx.HTTPStatusError)
+
+    asyncio.run(run())
 
 
 @pytest.fixture
@@ -78,7 +112,6 @@ def mlflow_client(
 @pytest.fixture
 def run_config() -> RunConfig:
     """Return a minimal few-shot run config."""
-    from eh30pt.datasets.registry import get_sys_prompt
     from test.conftest import models
 
     return {
@@ -92,7 +125,7 @@ def run_config() -> RunConfig:
     }
 
 
-class _FailingClient(CompletionClient):
+class _FailingClient(OpenaiClient):
     """Completion client stub whose complete always fails."""
 
     def __init__(self) -> None:
@@ -105,7 +138,7 @@ class _FailingClient(CompletionClient):
         return Failure(RuntimeError("no server"))
 
 
-class _EchoClient(CompletionClient):
+class _EchoClient(OpenaiClient):
     """Completion client stub echoing the last user message."""
 
     def __init__(self) -> None:
@@ -123,7 +156,7 @@ def test_completion_predictor_returns_none_on_failure() -> None:
     from eh30pt.datasets.registry import get_few_shots
 
     sample = get_few_shots("oblique", 1)[0]
-    predictor = CompletionPredictor(client=_FailingClient(), conversation=[])
+    predictor = OpenaiPredictor(client=_FailingClient(), conversation=[])
     result = asyncio.run(predictor.predict(sample))
 
     assert result is None
@@ -133,7 +166,7 @@ def test_completion_predictor_returns_content_on_success() -> None:
     from eh30pt.datasets.registry import get_few_shots
 
     sample = get_few_shots("oblique", 1)[0]
-    predictor = CompletionPredictor(client=_EchoClient(), conversation=[])
+    predictor = OpenaiPredictor(client=_EchoClient(), conversation=[])
     result = asyncio.run(predictor.predict(sample))
 
     assert result == sample.user
@@ -143,11 +176,11 @@ def test_silver_labels_predict_existing_label_studio_tasks(
     monkeypatch: pytest.MonkeyPatch,
     mlflow_client: MlflowClient,
 ) -> None:
-    import eh30pt.cli.scripts.silver_labels as silver_labels_mod
+    import eh30pt.cli.scripts.silver as silver_mod
     from eh30pt.labeling.studio import StudioClient
     from eh30pt.settings import LabelStudioSettings, ServerSettings
 
-    shot = DiscontExtract.extract_shots[0]
+    shot = DiscontExtract.examples[0]
     project_id = 7
     task_id = 11
     predicted_task_id = 12
@@ -174,7 +207,7 @@ def test_silver_labels_predict_existing_label_studio_tasks(
         conversation: list[ChatCompletionMessageParam],
     ) -> Success[str]:
         prompts.append(conversation)
-        return Success(json.dumps(shot.extractions))
+        return Success(shot.label)
 
     def read_tasks(
         _self: object,
@@ -195,8 +228,8 @@ def test_silver_labels_predict_existing_label_studio_tasks(
         predictions.append((task, list(result), model_version))
         return Success(1)
 
-    monkeypatch.setattr(silver_labels_mod.CompletionClient, "model", model)
-    monkeypatch.setattr(silver_labels_mod.CompletionClient, "complete", complete)
+    monkeypatch.setattr(silver_mod.OpenaiClient, "model", model)
+    monkeypatch.setattr(silver_mod.OpenaiClient, "complete", complete)
     monkeypatch.setattr(StudioClient, "tasks", read_tasks)
     monkeypatch.setattr(StudioClient, "predict", predict)
 
@@ -206,7 +239,7 @@ def test_silver_labels_predict_existing_label_studio_tasks(
     )
 
     asyncio.run(
-        silver_labels_mod.main(
+        silver_mod.main(
             dataset="discont-extract/trigger",
             system_prompt=None,
             n_shot=0,
@@ -242,7 +275,7 @@ def test_silver_labels_classify_existing_extraction_tasks(
     monkeypatch: pytest.MonkeyPatch,
     mlflow_client: MlflowClient,
 ) -> None:
-    import eh30pt.cli.scripts.silver_labels as silver_labels_mod
+    import eh30pt.cli.scripts.silver as silver_mod
     from eh30pt.labeling.studio import StudioClient
     from eh30pt.settings import LabelStudioSettings, ServerSettings
 
@@ -290,8 +323,8 @@ def test_silver_labels_classify_existing_extraction_tasks(
         predictions.append((task, list(result), model_version))
         return Success(1)
 
-    monkeypatch.setattr(silver_labels_mod.CompletionClient, "model", model)
-    monkeypatch.setattr(silver_labels_mod.CompletionClient, "complete", complete)
+    monkeypatch.setattr(silver_mod.OpenaiClient, "model", model)
+    monkeypatch.setattr(silver_mod.OpenaiClient, "complete", complete)
     monkeypatch.setattr(StudioClient, "tasks", read_tasks)
     monkeypatch.setattr(StudioClient, "predict", predict)
 
@@ -301,7 +334,7 @@ def test_silver_labels_classify_existing_extraction_tasks(
     )
 
     asyncio.run(
-        silver_labels_mod.main(
+        silver_mod.main(
             dataset="discont-classify/extract-labels",
             system_prompt=None,
             n_shot=0,
@@ -333,167 +366,6 @@ def test_silver_labels_classify_existing_extraction_tasks(
     assert model_version == "test-model"
     assert [result["from_name"] for result in results] == ["discont"]
     assert results[0]["value"] == {"choices": ["Adverse reactions"]}
-
-
-def test_completion_script_logs_success_and_failure(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    import eh30pt.cli.scripts.completion as completion_mod
-    from eh30pt.datasets.registry import get_few_shots, get_sys_prompt
-    from eh30pt.settings import ServerSettings
-
-    sample = get_few_shots("oblique", 1)[0]
-    system = get_sys_prompt("oblique")
-
-    async def _ok(self: object, conversation: object) -> Success[str]:
-        _ = self, conversation
-        return Success(sample.label)
-
-    monkeypatch.setattr(completion_mod.CompletionClient, "complete", _ok)
-    with caplog.at_level("INFO", logger="eh30pt"):
-        asyncio.run(
-            completion_mod.main(
-                user_prompt=sample.user,
-                system_prompt=system,
-                server=ServerSettings(),
-            )
-        )
-
-    assert f"completion: {sample.label}" in caplog.text
-    caplog.clear()
-
-    async def _boom(self: object, conversation: object) -> Result[str, Exception]:
-        _ = self, conversation
-        return Failure(RuntimeError("boom"))
-
-    monkeypatch.setattr(completion_mod.CompletionClient, "complete", _boom)
-    with caplog.at_level("ERROR", logger="eh30pt"):
-        asyncio.run(
-            completion_mod.main(
-                user_prompt=sample.user,
-                system_prompt=system,
-                server=ServerSettings(),
-            )
-        )
-
-    assert "completion failed" in caplog.text
-
-
-def test_predict_one_assembles_and_handles_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    shot = DiscontExtract.extract_shots[0]
-    fields = get_extract_fields("discont-extract/trigger")
-    system = get_sys_prompt("discont-extract/trigger")
-    doc = AnnotatedDocument(
-        text=shot.user,
-        extractions=[
-            Extraction(
-                extraction_class="drug", extraction_text=shot.extractions["drug"]
-            )
-        ],
-    )
-    model_config = langextract_mod.build_model_config("m", "http://x", "k")
-    output_schema = cast("JsonSchema", DiscontExtract.response_format())
-
-    async def _ok(
-        *args: object, **kwargs: object
-    ) -> Result[AnnotatedDocument, Exception]:
-        _ = args, kwargs
-        return Success(doc)
-
-    monkeypatch.setattr(langextract_mod, "_extract_one", _ok)
-    result = asyncio.run(
-        langextract_mod._predict_one(
-            shot.user,
-            system_prompt=system,
-            examples=[],
-            model_config=model_config,
-            fields=fields,
-            output_schema=output_schema,
-            seed=None,
-        )
-    )
-
-    assert result is not None
-    assert json.loads(result) == {
-        "phrase": "",
-        "reason": "",
-        "drug": shot.extractions["drug"],
-    }
-
-    async def _boom(
-        *args: object, **kwargs: object
-    ) -> Result[AnnotatedDocument, Exception]:
-        _ = args, kwargs
-        return Failure(RuntimeError("boom"))
-
-    monkeypatch.setattr(langextract_mod, "_extract_one", _boom)
-    result = asyncio.run(
-        langextract_mod._predict_one(
-            shot.user,
-            system_prompt=system,
-            examples=[],
-            model_config=model_config,
-            fields=(fields[0],),
-            output_schema=output_schema,
-            seed=None,
-        )
-    )
-
-    assert result is None
-
-
-def test_extract_predictor_predicts_and_marks_invalid(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    shot = DiscontExtract.extract_shots[0]
-    fields = get_extract_fields("discont-extract/trigger")
-    system = get_sys_prompt("discont-extract/trigger")
-    sample = FewShot(user=shot.user, label="")
-    doc = AnnotatedDocument(
-        text=shot.user,
-        extractions=[
-            Extraction(
-                extraction_class="drug", extraction_text=shot.extractions["drug"]
-            )
-        ],
-    )
-    model_config = langextract_mod.build_model_config("m", "http://x", "k")
-    output_schema = cast("JsonSchema", DiscontExtract.response_format())
-
-    async def _ok(
-        *args: object, **kwargs: object
-    ) -> Result[AnnotatedDocument, Exception]:
-        _ = args, kwargs
-        return Success(doc)
-
-    monkeypatch.setattr(langextract_mod, "_extract_one", _ok)
-    predictor = langextract_mod.ExtractPredictor(
-        system_prompt=system,
-        examples=[],
-        model_config=model_config,
-        fields=(fields[0],),
-        output_schema=output_schema,
-        seed=None,
-    )
-    result = asyncio.run(predictor.predict(sample))
-
-    assert result is not None
-
-    async def _boom(
-        *args: object, **kwargs: object
-    ) -> Result[AnnotatedDocument, Exception]:
-        _ = args, kwargs
-        return Failure(RuntimeError("boom"))
-
-    monkeypatch.setattr(langextract_mod, "_extract_one", _boom)
-    with caplog.at_level("DEBUG", logger="eh30pt"):
-        result = asyncio.run(predictor.predict(sample))
-
-    assert result is None
 
 
 class _MapPredictor(Predictor[FewShot, str | None]):
@@ -591,19 +463,17 @@ def test_stream_evaluate_consumes_windows(
         assert (n_seen, invalid) == (3, 1)
 
 
-def _span_batch() -> tuple[ExtractShot, ExtractShot, list[GenerateRecord]]:
-    valid = DiscontExtract.extract_shots[0]
-    empty_user = DiscontExtract.extract_shots[4].user
-    other = DiscontExtract.extract_shots[1]
-    third = DiscontExtract.extract_shots[3]
-    phrase = valid.extractions["phrase"]
+def _span_batch() -> tuple[FewShot, FewShot, list[GenerateRecord]]:
+    valid = DiscontExtract.examples[0]
+    empty_user = DiscontExtract.examples[4].user
+    other = DiscontExtract.examples[1]
+    third = DiscontExtract.examples[3]
+    phrase = json.loads(valid.label)["phrase"]
     batch = [
         GenerateRecord(
             id=0,
             user=valid.user,
-            prediction=json.dumps(
-                valid.extractions, ensure_ascii=False, sort_keys=True
-            ),
+            prediction=valid.label,
         ),
         GenerateRecord(
             id=1,
@@ -618,16 +488,12 @@ def _span_batch() -> tuple[ExtractShot, ExtractShot, list[GenerateRecord]]:
         GenerateRecord(
             id=3,
             user=third.user,
-            prediction=json.dumps(
-                third.extractions, ensure_ascii=False, sort_keys=True
-            ),
+            prediction=third.label,
         ),
         GenerateRecord(
             id=4,
             user=other.user,
-            prediction=json.dumps(
-                {"phrase": valid.extractions["phrase"], "reason": "r", "drug": "d"}
-            ),
+            prediction=json.dumps({"phrase": phrase, "reason": "r", "drug": "d"}),
         ),
     ]
     return valid, other, batch
@@ -646,9 +512,10 @@ def test_run_labeling_builds_span_tasks(
     )
     valid, other, batch = _span_batch()
     user = valid.user
-    phrase = valid.extractions["phrase"]
-    reason = valid.extractions["reason"]
-    drug = valid.extractions["drug"]
+    fields = json.loads(valid.label)
+    phrase = fields["phrase"]
+    reason = fields["reason"]
+    drug = fields["drug"]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         log_shard(ctx, tmp_path, MlflowSettings.predictions_path, 0, batch)
@@ -848,9 +715,9 @@ def test_run_labeling_reads_struct_predictions(
     settings = MlflowSettings(
         tracking_uri=mlflow_client.tracking_uri, experiment="export-struct-exp"
     )
-    shot = DiscontExtract.extract_shots[1]
+    shot = DiscontExtract.examples[1]
     user = shot.user
-    phrase = shot.extractions["phrase"]
+    phrase = json.loads(shot.label)["phrase"]
     with RunContext(settings, config=run_config) as ctx:
         run_id = ctx.run_id
         log_shard(
@@ -862,11 +729,11 @@ def test_run_labeling_reads_struct_predictions(
                 {
                     "id": 0,
                     "user": user,
-                    "prediction": dict(shot.extractions),
+                    "prediction": json.loads(shot.label),
                 },
                 {
                     "id": 1,
-                    "user": DiscontExtract.extract_shots[4].user,
+                    "user": DiscontExtract.examples[4].user,
                     "prediction": {"phrase": "", "reason": "", "drug": ""},
                 },
             ],
@@ -1062,13 +929,13 @@ def test_model_raises_when_server_serves_nothing(
 ) -> None:
     from types import SimpleNamespace
 
-    from eh30pt.openai.complete import CompletionClient
+    from eh30pt.openai.complete import OpenaiClient
     from eh30pt.settings import ServerSettings
 
     async def _empty() -> object:
         return SimpleNamespace(data=[])
 
-    client = CompletionClient(ServerSettings())
+    client = OpenaiClient(ServerSettings())
     monkeypatch.setattr(
         client,
         "_client",
@@ -1087,7 +954,7 @@ def test_model_caches_first_resolution(
 
     from openai.types import Model
 
-    from eh30pt.openai.complete import CompletionClient
+    from eh30pt.openai.complete import OpenaiClient
     from eh30pt.settings import ServerSettings
 
     calls = 0
@@ -1099,7 +966,7 @@ def test_model_caches_first_resolution(
             data=[Model(id="org/llama", created=0, object="model", owned_by="org")]
         )
 
-    client = CompletionClient(ServerSettings())
+    client = OpenaiClient(ServerSettings())
     monkeypatch.setattr(
         client,
         "_client",
@@ -1109,21 +976,3 @@ def test_model_caches_first_resolution(
     assert asyncio.run(client.model()).unwrap() == "llama"
     assert asyncio.run(client.model()).unwrap() == "llama"
     assert calls == 1
-
-
-def test_langextract_main_rejects_classification_dataset() -> None:
-    import eh30pt.cli.scripts.langextract as langextract_mod
-    from eh30pt.settings import MlflowSettings, ServerSettings, StreamSettings
-
-    with pytest.raises(ValueError, match="classification dataset"):
-        asyncio.run(
-            langextract_mod.main(
-                system_prompt=None,
-                server=ServerSettings(),
-                dataset="oblique",
-                n_shot=1,
-                stream=StreamSettings(),
-                mlflow=MlflowSettings(),
-                seed=None,
-            )
-        )

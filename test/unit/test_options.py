@@ -13,10 +13,7 @@ from eh30pt.cli.options.common import (
     inferred_dataset_option,
     log_level_option,
 )
-from eh30pt.cli.options.server import (
-    completion_dataset_option,
-    provider_option,
-)
+from eh30pt.cli.options.server import provider_option
 from eh30pt.cli.options.training import eval_steps_option, prefix_init_option
 from eh30pt.types import (
     Architecture,
@@ -53,7 +50,6 @@ def _choice_values(option: Callable[..., object]) -> frozenset[str]:
 _options = [
     ("dataset_option", dataset_option, DatasetName),
     ("inferred_dataset_option", inferred_dataset_option, DatasetName),
-    ("completion_dataset_option", completion_dataset_option, DatasetName),
     ("log_level_option", log_level_option, LogLevel),
     ("arch_option", arch_option, Architecture),
     ("provider_option", provider_option, Provider),

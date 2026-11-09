@@ -19,7 +19,7 @@ from eh30pt.datasets.registry import (
 from eh30pt.modeling.arch import infer_architecture
 from eh30pt.modeling.collator import get_collator
 from eh30pt.modeling.loader import load_model
-from eh30pt.openai.complete import CompletionClient
+from eh30pt.openai.complete import OpenaiClient
 from eh30pt.settings import ServerSettings
 from test.conftest import models
 
@@ -214,12 +214,12 @@ def test_sequence_classification_forward(
 @pytest.mark.vcr
 def test_extract_constrained_forward() -> None:
     """Constrained decoding forward yields parsed JSON, plain forward text."""
-    user = DiscontExtract.extract_shots[0].user
-    conversation = CompletionClient.build_conversation(
+    user = DiscontExtract.examples[0].user
+    conversation = OpenaiClient.build_conversation(
         user, system=get_sys_prompt("discont-extract/trigger")
     )
 
-    constrained = CompletionClient(
+    constrained = OpenaiClient(
         ServerSettings(
             provider="llama",
             format=get_response_schema("discont-extract/trigger"),
@@ -231,7 +231,7 @@ def test_extract_constrained_forward() -> None:
     assert isinstance(parsed, dict)
     assert set(parsed) == set(get_extract_fields("discont-extract/trigger"))
 
-    plain = CompletionClient(ServerSettings(provider="llama"), seed=0)
+    plain = OpenaiClient(ServerSettings(provider="llama"), seed=0)
     text = asyncio.run(plain.complete(conversation)).unwrap()
 
     assert isinstance(text, str)

@@ -9,7 +9,6 @@ from eh30pt.cli.options.common import (
     arch_option,
     dataset_option,
     inferred_dataset_option,
-    lang_extract_n_shot_option,
     log_level_option,
     model_option,
     n_shot_option,
@@ -37,11 +36,9 @@ from eh30pt.cli.options.mlflow import (
     tracking_uri_option,
 )
 from eh30pt.cli.options.server import (
-    completion_dataset_option,
     concurrency_option,
     log_interval_option,
     port_option,
-    prompt_argument,
     provider_option,
     shard_size_option,
     systemone_option,
@@ -112,20 +109,11 @@ if TYPE_CHECKING:
                 },
                 {
                     "name": "OpenAI",
-                    "commands": [
-                        "completion",
-                        "evaluate",
-                        "generate",
-                        "langextract",
-                    ],
+                    "commands": ["evaluate", "generate"],
                 },
                 {
                     "name": "Label-Studio",
-                    "commands": [
-                        "create-task",
-                        "export-labels",
-                        "silver-labels",
-                    ],
+                    "commands": ["create-task", "export-labels", "silver-labels"],
                 },
                 {"name": "Meta", "commands": ["slurm"]},
             ]
@@ -667,53 +655,6 @@ def slurm(
     )
 
 
-@app.command("completion", help="Query a server and print the completion")
-@prompt_argument
-@system_prompt_option
-@provider_option
-@port_option
-@completion_dataset_option
-@log_level_option
-@seed_option
-def completion(
-    *,
-    user_prompt: str,
-    system_prompt: str | None,
-    provider: Provider,
-    port: int | None,
-    dataset: DatasetName | None,
-    log_level: LogLevel,
-    seed: int | None,
-) -> None:
-    """Query a server and print the completion."""
-    from eh30pt.cli.scripts.completion import main
-    from eh30pt.datasets.registry import get_response_schema, get_sys_prompt
-
-    logger.setLevel(log_level.upper())
-    if seed is None:
-        logger.warning("randomness is not fixed")
-
-    if system_prompt is None and dataset is not None:
-        logger.debug("using '%s' system prompt", dataset)
-        system_prompt = get_sys_prompt(dataset)
-
-    if system_prompt is None:
-        msg = "system prompt is required when --dataset is not given"
-        raise click.BadParameter(msg, param_hint="--system")
-
-    fmt = get_response_schema(dataset) if dataset is not None else None
-    server = ServerSettings(provider=provider, format=fmt, port=port)
-
-    coroutine = main(
-        user_prompt=user_prompt,
-        system_prompt=system_prompt,
-        server=server,
-        seed=seed,
-    )
-
-    asyncio.run(coroutine)
-
-
 @app.command("evaluate", help="Run few-shot test evaluation on a server")
 @dataset_option
 @provider_option
@@ -895,7 +836,7 @@ def silver_labels(
     seed: int | None,
 ) -> None:
     """Attach model predictions to existing Label Studio tasks."""
-    from eh30pt.cli.scripts.silver_labels import main
+    from eh30pt.cli.scripts.silver import main
     from eh30pt.datasets.registry import get_response_schema
     from eh30pt.settings import LabelStudioSettings
 
@@ -921,66 +862,6 @@ def silver_labels(
         project=project,
         n_shot=n_shot,
         concurrency=concurrency,
-        mlflow=mlflow,
-        seed=seed,
-    )
-
-    asyncio.run(coroutine)
-
-
-@app.command("langextract", help="Generate predictions with langextract on a server")
-@dataset_option
-@provider_option
-@port_option
-@lang_extract_n_shot_option
-@system_prompt_option
-@run_name_option
-@run_id_option
-@experiment_option
-@tracking_uri_option
-@log_level_option
-@shard_size_option
-@concurrency_option
-@seed_option
-def langextract(
-    *,
-    dataset: DatasetName,
-    provider: Provider,
-    n_shot: int,
-    system_prompt: str | None,
-    mlflow_run_name: str | None,
-    mlflow_run_id: str | None,
-    mlflow_experiment: str,
-    mlflow_tracking_uri: str | None,
-    log_level: LogLevel,
-    shard_size: int,
-    concurrency: int,
-    seed: int | None,
-    port: int | None,
-) -> None:
-    """Generate predictions with langextract and log them as an artifact."""
-    from eh30pt.cli.scripts.langextract import main
-
-    logger.setLevel(log_level.upper())
-    if seed is None:
-        logger.warning("randomness is not fixed")
-
-    server = ServerSettings(provider=provider, port=port)
-    mlflow = MlflowSettings(
-        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
-        experiment=mlflow_experiment,
-        run_name=mlflow_run_name,
-        run_id=mlflow_run_id,
-    )
-
-    stream = StreamSettings(shard_size=shard_size, concurrency=concurrency)
-
-    coroutine = main(
-        system_prompt=system_prompt,
-        server=server,
-        dataset=dataset,
-        n_shot=n_shot,
-        stream=stream,
         mlflow=mlflow,
         seed=seed,
     )

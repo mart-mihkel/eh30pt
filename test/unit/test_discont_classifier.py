@@ -45,7 +45,7 @@ def test_extraction_frame_schema_matches_classifier_labels() -> None:
 
 
 def test_few_shots_cover_every_label() -> None:
-    assert {shot.label for shot in DiscontClassifier.few_shots} == set(
+    assert {shot.label for shot in DiscontClassifier.examples} == set(
         DiscontClassifier.id2label.values()
     )
 

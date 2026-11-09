@@ -3,10 +3,8 @@
 from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
-from datasets.iterable_dataset import IterableDataset
 from datasets.load import load_dataset
 from datasets.utils.info_utils import VerificationMode
-from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.logging import logger
@@ -18,7 +16,7 @@ if TYPE_CHECKING:
     from datasets.arrow_dataset import Dataset
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture
+    from eh30pt.types import Architecture, TokenizedSample
 
 
 type MultinerdTag = Literal[
@@ -67,7 +65,7 @@ class MultinerdRow(TypedDict):
     label: MultinerdTag
 
 
-class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
+class Multinerd(DatasetMixin[MultinerdRow]):
     """MultiNERD NER tag classification."""
 
     id2label: ClassVar[Mapping[int, str]] = {
@@ -158,7 +156,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
             Tag:
         """).strip()
 
-    few_shots: ClassVar[list[FewShot]] = [
+    examples: ClassVar[list[FewShot]] = [
         FewShot(
             user=_format_user_prompt(
                 "Chris LaCivita .",
@@ -281,30 +279,36 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
     ) -> None:
         """Store one split with its tokenization settings."""
         self._data = data
+        self._rows = list(self._unpack_row())
         self._tokenizer = tokenizer
         self._arch = arch
         self._n_shot = n_shot
         self._n_virtual = n_virtual
         self._sequence_classification = sequence_classification
 
-    def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
-        """Yield tokenized samples for the split."""
-        for row in self._unpack_row():
-            encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
-            yield cast("dict[str, list[int] | bool | int]", dict(encoded))
+    def __len__(self) -> int:
+        """Return the number of entities in the split."""
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Tokenize the indexed entity."""
+        encoded = self.tokenize(
+            self._rows[index], self._tokenizer, self._n_shot, self._n_virtual
+        )
+        return cast("TokenizedSample", dict(encoded))
 
     def samples(self) -> Iterator[FewShot]:
         """Yield one decoder prompt and label pair per entity."""
-        for idx, row in enumerate(self._unpack_row()):
+        for idx, row in enumerate(self._rows):
             yield FewShot(
                 user=self._format_user_prompt(row["sentence"], row["entity"]),
                 label=row["label"],
                 id=idx,
             )
 
-    def total(self) -> None:
-        """Return None because a row yields one sample per entity."""
-        return
+    def total(self) -> int:
+        """Return the number of entities in the split."""
+        return len(self._rows)
 
     def tokenize(
         self,
@@ -314,7 +318,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         n_virtual: int = 0,
     ) -> BatchEncoding[list[int]]:
         """Tokenize one sample with few-shot context."""
-        if n_shot > len(self.few_shots):
+        if n_shot > len(self.examples):
             msg = "requested more few shot examples than defined"
             raise ValueError(msg)
 
@@ -324,7 +328,7 @@ class Multinerd(DatasetMixin, IterableDataset, TorchIterableDataset):
         else:
             user_prompt = self._format_user_prompt(row["sentence"], row["entity"])
 
-        few_shots = self.few_shots[:n_shot]
+        few_shots = self.examples[:n_shot]
         label = row["label"]
 
         return self._encode_example(
@@ -394,7 +398,7 @@ def load_multinerd(
     *,
     sequence_classification: bool = False,
 ) -> DataSplits:
-    """Load english MultiNERD splits as per-split tokenized streaming datasets."""
+    """Load English MultiNERD splits as indexable entity datasets."""
     logger.debug("loading raw multinerd dataset")
     data = load_dataset(
         "Babelscape/multinerd",

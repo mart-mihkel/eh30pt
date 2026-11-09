@@ -1,14 +1,12 @@
 """Drug discontinuation reason extraction dataset."""
 
 import json
-from functools import partial
 from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, TypedDict, cast
 
-from datasets.iterable_dataset import IterableDataset
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from torch.utils.data import IterableDataset as TorchIterableDataset
+from tqdm import tqdm
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.esthealth.queries import (
@@ -19,15 +17,15 @@ from eh30pt.esthealth.queries import (
 )
 from eh30pt.logging import logger
 from eh30pt.settings import PostgresSettings
-from eh30pt.types import DataSplits, ExtractShot, FewShot
+from eh30pt.types import DataSplits, FewShot
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator, Sequence
 
     from openai.types.shared_params import ResponseFormatJSONSchema
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, DatasetTask, DataSource
+    from eh30pt.types import Architecture, DatasetTask, DataSource, TokenizedSample
 
 
 class DiscontExtractRow(TypedDict):
@@ -37,7 +35,7 @@ class DiscontExtractRow(TypedDict):
     text: str
 
 
-class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
+class DiscontExtract(DatasetMixin[DiscontExtractRow]):
     """Drug discontinuation reason extraction."""
 
     task: ClassVar[DatasetTask] = "extraction"
@@ -111,62 +109,62 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         "Eralda tekstist ravimi kasutamise lõpetamise fraas, põhjus ja ravim."
     )
 
-    extract_shots: ClassVar[list[ExtractShot]] = [
-        ExtractShot(
-            user="katkestas Nebileti tarvitamise, vererõhk normaliseerus",
-            extractions={
-                "phrase": "katkestas Nebileti tarvitamise, vererõhk normaliseerus",
-                "reason": "vererõhk normaliseerus",
-                "drug": "Nebilet",
-            },
-        ),
-        ExtractShot(
-            user="tekkis köha, enalapriil ära jäeti",
-            extractions={
-                "phrase": "tekkis köha, enalapriil ära jäeti",
-                "reason": "tekkis köha",
-                "drug": "enalapriil",
-            },
-        ),
-        ExtractShot(
-            user="diclopramist südameplõksumine, jätab ära",
-            extractions={
-                "phrase": "diclopramist südameplõksumine, jätab ära",
-                "reason": "diclopramist südameplõksumine",
-                "drug": "diclopramis",
-            },
-        ),
-        ExtractShot(
-            user="liigeste pool kaebusteta. pole võtnud 3 kuud MTX",
-            extractions={
-                "phrase": "pole võtnud 3 kuud MTX",
-                "reason": "liigeste poolt kaebusteta",
-                "drug": "MTX",
-            },
-        ),
-        ExtractShot(
-            user="kaebusi ei ole, TVL (töö võimetus leht) lõpetada",
-            extractions={"phrase": "", "reason": "", "drug": ""},
-        ),
-    ]
-
-    few_shots: ClassVar[list[FewShot]] = [
+    examples: ClassVar[list[FewShot]] = [
         FewShot(
-            user=shot.user,
-            label=json.dumps(shot.extractions, ensure_ascii=False, sort_keys=True),
-        )
-        for shot in extract_shots
+            user="katkestas Nebileti tarvitamise, vererõhk normaliseerus",
+            label=json.dumps(
+                {
+                    "phrase": "katkestas Nebileti tarvitamise, vererõhk normaliseerus",
+                    "reason": "vererõhk normaliseerus",
+                    "drug": "Nebilet",
+                }
+            ),
+        ),
+        FewShot(
+            user="tekkis köha, enalapriil ära jäeti",
+            label=json.dumps(
+                {
+                    "phrase": "tekkis köha, enalapriil ära jäeti",
+                    "reason": "tekkis köha",
+                    "drug": "enalapriil",
+                }
+            ),
+        ),
+        FewShot(
+            user="diclopramist südameplõksumine, jätab ära",
+            label=json.dumps(
+                {
+                    "phrase": "diclopramist südameplõksumine, jätab ära",
+                    "reason": "diclopramist südameplõksumine",
+                    "drug": "diclopramis",
+                }
+            ),
+        ),
+        FewShot(
+            user="liigeste pool kaebusteta. pole võtnud 3 kuud MTX",
+            label=json.dumps(
+                {
+                    "phrase": "pole võtnud 3 kuud MTX",
+                    "reason": "liigeste poolt kaebusteta",
+                    "drug": "MTX",
+                }
+            ),
+        ),
+        FewShot(
+            user="kaebusi ei ole, TVL (töö võimetus leht) lõpetada",
+            label=json.dumps({"phrase": "", "reason": "", "drug": ""}),
+        ),
     ]
 
     def __init__(
         self,
-        rows: Callable[[], Iterator[DiscontExtractRow]],
+        rows: Sequence[DiscontExtractRow],
         tokenizer: PreTrainedTokenizerFast,
         arch: Architecture,
         n_shot: int = 0,
         n_virtual: int = 0,
     ) -> None:
-        """Store the row factory with its tokenization settings."""
+        """Store the loaded rows and tokenization settings."""
         self._rows = rows
         self._tokenizer = tokenizer
         self._arch = arch
@@ -174,11 +172,16 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._n_virtual = n_virtual
         self._warned = False
 
-    def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
-        """Yield tokenized rows for the split."""
-        for row in self._rows():
-            encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
-            yield cast("dict[str, list[int] | bool | int]", dict(encoded))
+    def __len__(self) -> int:
+        """Return the number of loaded rows."""
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Tokenize the indexed row."""
+        encoded = self.tokenize(
+            self._rows[index], self._tokenizer, self._n_shot, self._n_virtual
+        )
+        return cast("TokenizedSample", dict(encoded))
 
     @classmethod
     def response_format(cls) -> ResponseFormatJSONSchema:
@@ -205,12 +208,8 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
             logger.warning("discontinuation extract dataset has no labels")
             self._warned = True
 
-        for row in self._rows():
+        for row in self._rows:
             yield FewShot(user=row["text"], label="", id=row["id"])
-
-    def total(self) -> None:
-        """Return None because rows stream from Est-Health in batches."""
-        return
 
     def tokenize(
         self,
@@ -224,12 +223,12 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
             logger.warning("discontinuation extract dataset has no labels")
             self._warned = True
 
-        if n_shot > len(self.few_shots):
+        if n_shot > len(self.examples):
             msg = "requested more few shot examples than defined"
             raise ValueError(msg)
 
         user_prompt = row["text"]
-        few_shots = self.few_shots[:n_shot]
+        few_shots = self.examples[:n_shot]
         label = ""
 
         return self._encode_example(
@@ -242,16 +241,16 @@ class DiscontExtract(DatasetMixin, IterableDataset, TorchIterableDataset):
         )
 
 
-def _select(source: DataSource, session: Session) -> Iterator[EventTextRow]:
-    """Yield (id, text) rows from a dg event type, trigger filter, or sample."""
+def _select(source: DataSource, session: Session) -> list[EventTextRow]:
+    """Load rows from a dg event type, trigger filter, or sample."""
     if source == "discont":
-        return iter(select_dg_events(session, event_type="discontinuation"))
+        return select_dg_events(session, event_type="discontinuation")
 
     if source == "switch":
-        return iter(select_dg_events(session, event_type="switch"))
+        return select_dg_events(session, event_type="switch")
 
     if source == "usage-gap":
-        return iter(select_dg_events(session, event_type="usage_gap"))
+        return select_dg_events(session, event_type="usage_gap")
 
     if source == "observed":
         return select_observed_events(session)
@@ -263,25 +262,26 @@ def _select(source: DataSource, session: Session) -> Iterator[EventTextRow]:
     raise ValueError(msg)
 
 
-def _no_rows() -> Iterator[DiscontExtractRow]:
-    """Yield no rows for the empty train and eval splits."""
-    return iter(())
-
-
-def _stream_rows(url: str, source: DataSource) -> Iterator[DiscontExtractRow]:
-    """Stream (id, text) rows with id above start_after, connecting lazily."""
+def _load_rows(url: str, source: DataSource) -> list[DiscontExtractRow]:
+    """Load bounded event rows, excluding events without text."""
     engine = create_engine(url)
-    with Session(engine) as session:
-        skipped = 0
-        for row in _select(source, session):
-            if row.text is None:
-                skipped += 1
-                continue
+    try:
+        with Session(engine) as session:
+            events = _select(source, session)
+    finally:
+        engine.dispose()
 
-            yield {"id": row.id, "text": row.text}
+    rows: list[DiscontExtractRow] = [
+        {"id": row.id, "text": row.text}
+        for row in tqdm(events, desc="Loading events")
+        if row.text is not None
+    ]
 
-        if skipped:
-            logger.debug("skipped %d textless events", skipped)
+    skipped = len(events) - len(rows)
+    if skipped:
+        logger.debug("skipped %d textless events", skipped)
+
+    return rows
 
 
 def load_discont_extract(
@@ -297,12 +297,11 @@ def load_discont_extract(
         msg = f"discont-extract is an extraction dataset, '{arch}' is not supported"
         raise ValueError(msg)
 
-    logger.debug("extract rows stream from Est-Health on first iteration")
     url = PostgresSettings().connection_url
-    test_rows = partial(_stream_rows, url, source=source)
+    test_rows = _load_rows(url, source=source)
 
     return DataSplits(
-        train=DiscontExtract(_no_rows, tokenizer, arch, n_shot, n_virtual),
-        eval=DiscontExtract(_no_rows, tokenizer, arch, n_shot, n_virtual),
+        train=DiscontExtract([], tokenizer, arch, n_shot, n_virtual),
+        eval=DiscontExtract([], tokenizer, arch, n_shot, n_virtual),
         test=DiscontExtract(test_rows, tokenizer, arch, n_shot, n_virtual),
     )

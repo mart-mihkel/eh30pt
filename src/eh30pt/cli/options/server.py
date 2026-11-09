@@ -1,12 +1,6 @@
 """Live model server querying and streaming options."""
 
-from typing import get_args
-
 import rich_click as click
-
-from eh30pt.types import DatasetName
-
-prompt_argument = click.argument("user_prompt", type=str)
 
 port_option = click.option(
     "--port",
@@ -19,15 +13,6 @@ systemone_option = click.option(
     "--systemone",
     is_flag=True,
     help="Use llama.cpp's System One decision endpoint for classification",
-)
-
-completion_dataset_option = click.option(
-    "--dataset",
-    "-d",
-    "dataset",
-    type=click.Choice(get_args(DatasetName.__value__)),
-    default=None,
-    help="Constrain output to the dataset label set",
 )
 
 shard_size_option = click.option(

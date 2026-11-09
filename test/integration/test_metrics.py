@@ -19,10 +19,10 @@ if TYPE_CHECKING:
 
     from transformers import PreTrainedModel, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture, DataSplits
+    from eh30pt.types import Architecture, DataSplits, TokenizedSample
 
 
-def _first_rows(split: Iterable[dict], n: int) -> list[dict]:
+def _first_rows(split: Iterable[TokenizedSample], n: int) -> list[TokenizedSample]:
     from itertools import islice
 
     return list(islice(split, n))
@@ -37,7 +37,7 @@ def _forward_logits(
 ) -> EvalPrediction:
     rows = _first_rows(splits.train, n)
     assert rows
-    collated = get_collator(tokenizer, arch)(rows)
+    collated = get_collator(tokenizer, arch)([dict(row) for row in rows])
     device = next(model.parameters()).device
     batch = {
         k: v.to(device) if isinstance(v, torch.Tensor) else v

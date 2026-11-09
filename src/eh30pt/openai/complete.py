@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from eh30pt.types import FewShot
 
 
-class CompletionClient:
+class OpenaiClient:
     """Stateful chat completion client for an OpenAI API server."""
 
     def __init__(

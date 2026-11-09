@@ -12,7 +12,6 @@ from eh30pt.datasets.discont.classify import DiscontClassifier
 from eh30pt.datasets.discont.extract import (
     DiscontExtract,
     DiscontExtractRow,
-    _no_rows,
 )
 from eh30pt.datasets.multinerd import Multinerd
 from eh30pt.datasets.oblique import Obl
@@ -20,7 +19,6 @@ from eh30pt.datasets.registry import (
     assert_classification,
     assert_extraction,
     get_extract_fields,
-    get_extract_shots,
     get_few_shots,
     get_labels,
     get_positive_label,
@@ -31,7 +29,6 @@ from eh30pt.datasets.registry import (
 )
 
 if TYPE_CHECKING:
-    from datasets.arrow_dataset import Dataset
     from transformers import PreTrainedTokenizerFast
 
     from eh30pt.types import Architecture, DatasetName
@@ -52,14 +49,14 @@ def test_multinerd_format_user_prompt() -> None:
 
 
 def test_few_shots_cover_labels() -> None:
-    assert {shot.label for shot in Obl.few_shots} == set(Obl.id2label.values())
-    assert len(Obl.few_shots) == 2 * len(Obl.id2label)
+    assert {shot.label for shot in Obl.examples} == set(Obl.id2label.values())
+    assert len(Obl.examples) == 2 * len(Obl.id2label)
 
-    assert {shot.label for shot in Multinerd.few_shots} == set(
+    assert {shot.label for shot in Multinerd.examples} == set(
         Multinerd.id2label.values()
     )
 
-    assert {shot.label for shot in DiscontClassifier.few_shots} == set(
+    assert {shot.label for shot in DiscontClassifier.examples} == set(
         DiscontClassifier.id2label.values()
     )
 
@@ -90,21 +87,6 @@ def test_discont_extract_few_shots_are_extraction_objects() -> None:
 
     with pytest.raises(ValueError, match="only 5 defined"):
         get_few_shots("discont-extract/trigger", _defined + 1)
-
-
-def test_few_shots_derive_from_extract_shots() -> None:
-    pairs = list(
-        zip(
-            DiscontExtract.few_shots,
-            DiscontExtract.extract_shots,
-            strict=True,
-        )
-    )
-
-    assert len(pairs) == len(DiscontExtract.extract_shots)
-    for few, extract in pairs:
-        assert few.user == extract.user
-        assert json.loads(few.label) == extract.extractions
 
 
 def test_registry() -> None:
@@ -223,27 +205,10 @@ def test_require_classification_rejects_extraction_dataset() -> None:
 
 
 def test_require_extraction_rejects_classification_dataset() -> None:
-    assert_extraction("discont-extract/trigger", "langextract needs extraction fields")
+    assert_extraction("discont-extract/trigger", "operation needs extraction fields")
 
     with pytest.raises(ValueError, match="classification dataset"):
-        assert_extraction("oblique", "langextract needs extraction fields")
-
-
-def test_get_extract_shots() -> None:
-    _defined = 5
-    shots = get_extract_shots("discont-extract/trigger", _defined)
-
-    assert len(shots) == _defined
-    assert all(
-        set(shot.extractions) == set(get_extract_fields("discont-extract/trigger"))
-        for shot in shots
-    )
-
-    with pytest.raises(ValueError, match="only 5 defined"):
-        get_extract_shots("discont-extract/trigger", _defined + 1)
-
-    with pytest.raises(ValueError, match="has no extraction examples"):
-        get_extract_shots("oblique", 1)
+        assert_extraction("oblique", "operation needs extraction fields")
 
 
 def test_get_extract_fields() -> None:
@@ -295,14 +260,6 @@ def test_load_data_requires_a_data_path_for_the_classifier() -> None:
         load_data(tokenizer, "discont-classify/extract-labels", "decoder")
 
 
-def test_load_data_streams_the_test_split_only() -> None:
-    tokenizer = cast("PreTrainedTokenizerFast", None)
-    data = load_data(tokenizer, "discont-extract/trigger", "decoder")
-
-    assert list(data.train) == []
-    assert list(data.eval) == []
-
-
 def test_discont_samples_carry_row_id() -> None:
 
     rows: list[DiscontExtractRow] = [
@@ -310,7 +267,7 @@ def test_discont_samples_carry_row_id() -> None:
         {"id": 7, "text": "lõpetas"},
     ]
     tokenizer = cast("PreTrainedTokenizerFast", None)
-    extract = DiscontExtract(lambda: iter(rows), tokenizer, "decoder")
+    extract = DiscontExtract(rows, tokenizer, "decoder")
 
     assert [(sample.id, sample.user) for sample in extract.samples()] == [
         (42, "katkestas"),
@@ -350,7 +307,7 @@ def test_get_few_shots_covers_datasets() -> None:
     with pytest.raises(ValueError, match="only 9 defined"):
         get_few_shots(
             "discont-classify/extract-labels",
-            len(DiscontClassifier.few_shots) + 1,
+            len(DiscontClassifier.examples) + 1,
         )
 
 
@@ -400,17 +357,17 @@ def test_mixin_base_methods_raise() -> None:
     with pytest.raises(NotImplementedError):
         list(mixin.samples())
 
-    with pytest.raises(TypeError, match="iterate instead"):
-        mixin["train"]
+    with pytest.raises(NotImplementedError):
+        mixin[0]
 
-    assert mixin.set_epoch(3) is None
-    assert mixin.total() is None
+    with pytest.raises(NotImplementedError):
+        len(mixin)
 
 
-def test_extract_total_is_unknown() -> None:
+def test_extract_total_is_known() -> None:
     tokenizer = cast("PreTrainedTokenizerFast", None)
 
-    assert DiscontExtract(_no_rows, tokenizer, "decoder").total() is None
+    assert DiscontExtract([], tokenizer, "decoder").total() == 0
 
 
 def test_discont_tokenize_rejects_too_many_shots() -> None:
@@ -425,24 +382,6 @@ def test_discont_tokenize_rejects_too_many_shots() -> None:
         )
 
     with pytest.raises(ValueError, match="more few shot examples"):
-        DiscontExtract(lambda: iter([]), tokenizer, "decoder").tokenize(
+        DiscontExtract([], tokenizer, "decoder").tokenize(
             {"id": 1, "text": "x"}, tokenizer, n_shot=100
         )
-
-
-def test_multinerd_tokenize_rejects_too_many_shots() -> None:
-    from eh30pt.datasets.multinerd import Multinerd
-
-    tokenizer = cast("PreTrainedTokenizerFast", None)
-    split = Multinerd(cast("Dataset", None), tokenizer, "decoder")
-
-    with pytest.raises(ValueError, match="more few shot examples"):
-        split.tokenize(
-            {"sentence": "Hi", "entity": "Hi", "label": "PER"},
-            tokenizer,
-            n_shot=1000,
-        )
-
-
-def test_no_extract_row_factory_is_empty() -> None:
-    assert list(_no_rows()) == []

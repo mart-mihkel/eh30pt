@@ -1,4 +1,4 @@
-"""Est-Health queries."""
+"""Bounded Est-Health queries."""
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
@@ -8,8 +8,6 @@ from eh30pt.esthealth.models import CdaDgEvent, CdaObservedEvent, CdaTriggerEven
 from eh30pt.logging import logger
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from sqlalchemy.orm import Session
 
     from eh30pt.types import DgEventType
@@ -22,110 +20,63 @@ class EventTextRow(NamedTuple):
     text: str | None
 
 
-def _assert_page_size(page_size: int) -> None:
-    """Raise ValueError when the page size is not positive."""
-    if page_size < 1:
-        msg = f"page_size must be positive, got {page_size}"
+def _assert_limit(limit: int) -> None:
+    if limit < 1:
+        msg = f"limit must be positive, got {limit}"
         raise ValueError(msg)
 
 
 def select_observed_events(
     session: Session,
-    page_size: int = 100_000,
-    limit: int | None = None,
-    start_after: int | None = None,
-) -> Iterator[EventTextRow]:
-    """Yield random sample (id, text) rows with id above start_after."""
-    _assert_page_size(page_size)
+    limit: int = 100_000,
+) -> list[EventTextRow]:
+    """Return a bounded set of observed events ordered by id."""
+    _assert_limit(limit)
+    logger.debug("querying up to %d observed events", limit)
+    stmt = (
+        select(CdaObservedEvent.id, CdaObservedEvent.text)
+        .order_by(CdaObservedEvent.id)
+        .limit(limit)
+    )
 
-    yielded = 0
-    while True:
-        if limit is not None and yielded >= limit:
-            return
-
-        batch_size = page_size if limit is None else min(page_size, limit - yielded)
-        logger.debug("querying next page (%d events)", batch_size)
-
-        stmt = (
-            select(CdaObservedEvent.id, CdaObservedEvent.text)
-            .order_by(CdaObservedEvent.id)
-            .limit(batch_size)
-        )
-        if start_after is not None:
-            stmt = stmt.where(CdaObservedEvent.id > start_after)
-
-        page = session.execute(stmt).all()
-
-        if not page:
-            return
-
-        for row in page:
-            row_id = cast("int", row[0])
-            row_text = cast("str | None", row[1])
-            yielded += 1
-            start_after = row_id
-
-            yield EventTextRow(id=row_id, text=row_text)
-
-        if len(page) < batch_size:
-            return
+    return [
+        EventTextRow(cast("int", row[0]), cast("str | None", row[1]))
+        for row in session.execute(stmt)
+    ]
 
 
-def select_dg_events(session: Session, event_type: DgEventType) -> list[EventTextRow]:
-    """Return (id, text) rows of one dg event type with id above start_after."""
-    logger.debug("querying %s dg events", event_type)
-
+def select_dg_events(
+    session: Session,
+    event_type: DgEventType,
+    limit: int = 100_000,
+) -> list[EventTextRow]:
+    """Return a bounded set of events of the specified type ordered by id."""
+    _assert_limit(limit)
+    logger.debug("querying up to %d %s events", limit, event_type)
     stmt = (
         select(CdaDgEvent.id, CdaDgEvent.text)
         .where(CdaDgEvent.event_type == event_type)
         .order_by(CdaDgEvent.id)
+        .limit(limit)
     )
 
-    page = session.execute(stmt).all()
-
     return [
-        EventTextRow(id=cast("int", row[0]), text=cast("str | None", row[1]))
-        for row in page
+        EventTextRow(cast("int", row[0]), cast("str | None", row[1]))
+        for row in session.execute(stmt)
     ]
 
 
-def select_trigger_events(
-    session: Session,
-    page_size: int = 100_000,
-    limit: int | None = None,
-    start_after: int | None = None,
-) -> Iterator[EventTextRow]:
-    """Yield high-recall candidate (id, text) rows with id above start_after."""
-    _assert_page_size(page_size)
+def select_trigger_events(session: Session, limit: int = 100_000) -> list[EventTextRow]:
+    """Return a bounded set of trigger events ordered by id."""
+    _assert_limit(limit)
+    logger.debug("querying up to %d trigger events", limit)
+    stmt = (
+        select(CdaTriggerEvent.id, CdaTriggerEvent.text)
+        .order_by(CdaTriggerEvent.id)
+        .limit(limit)
+    )
 
-    yielded = 0
-    while True:
-        if limit is not None and yielded >= limit:
-            return
-
-        batch_size = page_size if limit is None else min(page_size, limit - yielded)
-        logger.debug("querying next page (%d events)", batch_size)
-
-        stmt = (
-            select(CdaTriggerEvent.id, CdaTriggerEvent.text)
-            .order_by(CdaTriggerEvent.id)
-            .limit(batch_size)
-        )
-        if start_after is not None:
-            stmt = stmt.where(CdaTriggerEvent.id > start_after)
-
-        page = session.execute(stmt).all()
-
-        if not page:
-            return
-
-        for row in page:
-            row_id = cast("int", row[0])
-            row_text = cast("str | None", row[1])
-            yielded += 1
-            start_after = row_id
-
-            yield EventTextRow(id=row_id, text=row_text)
-
-        if len(page) < batch_size:
-            return
+    return [
+        EventTextRow(cast("int", row[0]), cast("str | None", row[1]))
+        for row in session.execute(stmt)
+    ]

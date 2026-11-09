@@ -1,10 +1,7 @@
-"""Dataset registry: map dataset names to streaming loaders."""
+"""Dataset registry mapping dataset names to loaders."""
 
 from itertools import islice
 from typing import TYPE_CHECKING, Any
-
-from datasets.iterable_dataset import IterableDataset as HFIterableDataset
-from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.discont.binary import DiscontBinary, load_discont_binary
 from eh30pt.datasets.discont.classify import (
@@ -33,22 +30,29 @@ if TYPE_CHECKING:
         DatasetName,
         DatasetTask,
         DataSource,
-        ExtractShot,
         FewShot,
+        TokenizedSample,
     )
 
 
-class _LimitedTrain(DatasetMixin[Any], HFIterableDataset, TorchIterableDataset):
-    """First-N view over a train split, streaming rows in split order."""
+class _LimitedTrain(DatasetMixin[Any]):
+    """Indexable first-N view over a loaded training split."""
 
-    def __init__(self, base: TorchIterableDataset, limit: int) -> None:
+    def __init__(self, base: DatasetMixin[Any], limit: int) -> None:
         """Store the wrapped split with its example limit."""
         self._base = base
         self._limit = limit
 
-    def __iter__(self) -> Iterator[dict[str, Any]]:
-        """Yield at most the first `limit` tokenized rows."""
-        yield from islice(self._base, self._limit)
+    def __len__(self) -> int:
+        """Return the number of retained samples."""
+        return min(len(self._base), self._limit)
+
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Return a retained tokenized sample."""
+        if index < -len(self) or index >= len(self):
+            raise IndexError(index)
+
+        return self._base[index if index >= 0 else len(self) + index]
 
     def samples(self) -> Iterator[FewShot]:
         """Yield at most the first `limit` prompt and label pairs."""
@@ -238,35 +242,21 @@ def get_response_schema(dataset: DatasetName) -> ResponseFormatJSONSchema:
 def get_few_shots(dataset: DatasetName, n_shot: int) -> list[FewShot]:
     """Return the first `n_shot` hardcoded examples for `dataset`."""
     if dataset == "multinerd":
-        shots = Multinerd.few_shots
+        shots = Multinerd.examples
     elif dataset == "discont-classify/extract-labels":
-        shots = DiscontClassifier.few_shots
+        shots = DiscontClassifier.examples
     elif dataset == "discont-binary/extract-labels":
-        shots = DiscontBinary.few_shots
+        shots = DiscontBinary.examples
     elif _is_extract(dataset):
-        shots = DiscontExtract.few_shots
+        shots = DiscontExtract.examples
     elif dataset == "oblique":
-        shots = Obl.few_shots
+        shots = Obl.examples
     else:
         msg = f"invalid dataset {dataset}"
         raise ValueError(msg)
 
     if n_shot > len(shots):
         msg = f"requested {n_shot} few shot examples, only {len(shots)} defined"
-        raise ValueError(msg)
-
-    return shots[:n_shot]
-
-
-def get_extract_shots(dataset: DatasetName, n_shot: int) -> list[ExtractShot]:
-    """Return the first `n_shot` extraction examples for `dataset`."""
-    if not _is_extract(dataset):
-        msg = f"dataset '{dataset}' has no extraction examples"
-        raise ValueError(msg)
-
-    shots = DiscontExtract.extract_shots
-    if n_shot > len(shots):
-        msg = f"requested {n_shot} extraction examples, only {len(shots)} defined"
         raise ValueError(msg)
 
     return shots[:n_shot]
@@ -349,7 +339,7 @@ def load_data(
     train_size: int | None = None,
     sequence_classification: bool = False,
 ) -> DataSplits:
-    """Load dataset splits, streaming only rows with id above start_after."""
+    """Load dataset splits and optionally limit the training split."""
     if train_size is not None and train_size < 1:
         msg = f"train size must be at least 1, got {train_size}"
         raise ValueError(msg)

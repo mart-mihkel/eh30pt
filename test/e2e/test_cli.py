@@ -33,7 +33,6 @@ def test_help_lists_commands() -> None:
     assert "qlora" in result.output
     assert "slurm" in result.output
     assert "few-shot" in result.output
-    assert "completion" in result.output
     assert "evaluate" in result.output
     assert "generate" in result.output
     assert "silver-labels" in result.output
@@ -76,19 +75,6 @@ def test_rejects_extraction_dataset_for_training() -> None:
 
     assert result.exit_code != 0
     assert "extraction dataset" in str(result.exception)
-
-
-def test_rejects_classification_dataset_for_langextract() -> None:
-    result = _invoke(
-        [
-            "langextract",
-            "--dataset",
-            "multinerd",
-        ],
-    )
-
-    assert result.exit_code != 0
-    assert "classification dataset" in str(result.exception)
 
 
 def test_rejects_unknown_provider() -> None:

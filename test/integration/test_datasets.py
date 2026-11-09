@@ -1,6 +1,7 @@
 """Dataset loading and streaming integration tests."""
 
 import asyncio
+import json
 from itertools import islice
 from typing import TYPE_CHECKING, Final, cast
 
@@ -24,7 +25,7 @@ from eh30pt.datasets.registry import (
     load_data,
 )
 from eh30pt.modeling.arch import infer_architecture
-from eh30pt.openai.complete import CompletionClient
+from eh30pt.openai.complete import OpenaiClient
 from eh30pt.settings import ServerSettings
 
 if TYPE_CHECKING:
@@ -43,7 +44,9 @@ _epochs_one: Final = 1
 _epochs_two_half: Final = 2.5
 
 
-def test_splits_stream_tokenized_rows(model_setup: ModelSetup) -> None:
+def test_loaded_splits_are_indexable(model_setup: ModelSetup) -> None:
+    from torch.utils.data import IterableDataset
+
     expected = {"input_ids", "attention_mask", "labels", "truncated"}
     splits = (
         model_setup.splits.train,
@@ -52,9 +55,12 @@ def test_splits_stream_tokenized_rows(model_setup: ModelSetup) -> None:
     )
 
     for split in splits:
+        assert not isinstance(split, IterableDataset)
+        assert len(split) == len(list(split.samples()))
         rows = list(islice(split, 4))
 
         assert rows
+        assert split[0] == rows[0]
         assert all(expected <= set(row) for row in rows)
 
 
@@ -65,10 +71,16 @@ def test_labels_match_architecture(model_setup: ModelSetup) -> None:
     assert rows
     if arch == "encoder":
         assert all(isinstance(row["labels"], int) for row in rows)
-        assert all(0 <= row["labels"] < len(model_setup.labels) for row in rows)
+        assert all(
+            0 <= cast("int", row["labels"]) < len(model_setup.labels) for row in rows
+        )
     else:
         assert all(isinstance(row["labels"], list) for row in rows)
-        assert any(label != SENTINEL_TOKEN for row in rows for label in row["labels"])
+        assert any(
+            label != SENTINEL_TOKEN
+            for row in rows
+            for label in cast("list[int]", row["labels"])
+        )
 
 
 def test_truncation_flags(model_setup: ModelSetup) -> None:
@@ -91,13 +103,14 @@ def test_samples_have_valid_labels(model_setup: ModelSetup) -> None:
         assert sample.label in model_setup.labels
 
 
-def test_discont_extract_streams_seeded_rows(database: None) -> None:
-    """Extract candidates stream from seeded postgres with row ids."""
+def test_discont_extract_loads_seeded_rows(database: None) -> None:
+    """Extract candidates load from seeded postgres with row ids."""
     _ = database
     tokenizer = cast("PreTrainedTokenizerFast", None)
     data = load_discont_extract(tokenizer, "decoder", source="trigger")
     samples = list(islice(data.test.samples(), 5))
 
+    assert len(data.test) == len(list(data.test.samples()))
     assert samples
     for sample in samples:
         assert isinstance(sample.user, str)
@@ -122,15 +135,16 @@ def test_discont_splits_iterate_tokenized_rows(
     """Classifier and extract splits tokenize rows from registry examples."""
     from eh30pt.datasets.registry import get_labels
 
-    real_shot = DiscontExtract.extract_shots[0]
+    real_shot = DiscontExtract.examples[0]
+    fields = cast("dict[str, str]", json.loads(real_shot.label))
     real_label = get_labels("discont-classify/extract-labels")[0]
     classifier = DiscontClassifier(
         [
             {
                 "id": 1,
                 "text": real_shot.user,
-                "phrase": real_shot.extractions["phrase"],
-                "drug": real_shot.extractions["drug"],
+                "phrase": fields["phrase"],
+                "drug": fields["drug"],
                 "label": real_label,
             }
         ],
@@ -140,11 +154,11 @@ def test_discont_splits_iterate_tokenized_rows(
 
     extract_rows: list[DiscontExtractRow] = [
         {"id": idx, "text": shot.user}
-        for idx, shot in enumerate(DiscontExtract.extract_shots[:1])
+        for idx, shot in enumerate(DiscontExtract.examples[:1])
     ]
 
     extract = DiscontExtract(
-        lambda: iter(extract_rows),
+        extract_rows,
         gpt2_tokenizer,
         "decoder",
     )
@@ -165,8 +179,8 @@ def test_discont_splits_iterate_tokenized_rows(
     cls_row: DiscontClassifierRow = {
         "id": 1,
         "text": real_shot.user,
-        "phrase": real_shot.extractions["phrase"],
-        "drug": real_shot.extractions["drug"],
+        "phrase": fields["phrase"],
+        "drug": fields["drug"],
         "label": real_label,
     }
 
@@ -287,8 +301,8 @@ def test_extract_constrained_completion_matches_registry_schema(
     assert isinstance(sample.id, int)
 
     schema = get_response_schema("discont-extract/trigger")
-    client = CompletionClient(ServerSettings(provider="llama", format=schema), seed=0)
-    conversation = CompletionClient.build_conversation(
+    client = OpenaiClient(ServerSettings(provider="llama", format=schema), seed=0)
+    conversation = OpenaiClient.build_conversation(
         sample.user,
         system=get_sys_prompt("discont-extract/trigger"),
     )

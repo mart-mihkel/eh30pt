@@ -7,20 +7,22 @@ from tqdm import tqdm
 
 from eh30pt.datasets.registry import (
     assert_classification,
+    get_few_shots,
     get_labels,
     get_sys_prompt,
     load_data,
 )
 from eh30pt.logging import logger
-from eh30pt.openai.complete import CompletionClient
+from eh30pt.openai.complete import OpenaiClient
 from eh30pt.openai.stream import (
-    CompletionPredictor,
+    OpenaiPredictor,
     log_summary,
     maybe_log_invalid,
     stream_predictions,
 )
-from eh30pt.openai.systemone import SystemOnePredictor
 from eh30pt.settings import MlflowSettings
+from eh30pt.systemone.client import SystemOneClient
+from eh30pt.systemone.stream import SystemOnePredictor
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import (
     build_run_name,
@@ -68,8 +70,19 @@ async def main(
         logger.debug("using '%s' system prompt", dataset)
         system_prompt = get_sys_prompt(dataset)
 
-    client = CompletionClient(server, seed)
-    model = (await client.model()).unwrap()
+    predictor: Predictor[FewShot, str | None]
+    if systemone:
+        client = SystemOneClient(server)
+        model = (await client.model()).unwrap()
+        labels = get_labels(dataset)
+        examples = get_few_shots(dataset, n_shot)
+        predictor = SystemOnePredictor(client, system_prompt, labels, examples)
+    else:
+        client = OpenaiClient(server, seed)
+        model = (await client.model()).unwrap()
+        examples = data.test.examples
+        conv = client.build_conversation(system=system_prompt, examples=examples)
+        predictor = OpenaiPredictor(client=client, conversation=conv)
 
     method: Method = "systemone" if systemone else "few-shot"
     if mlflow.run_name is None:
@@ -90,15 +103,6 @@ async def main(
         "batch_size": 1,
         "system_prompt": system_prompt,
     }
-
-    predictor: Predictor[FewShot, str | None]
-    examples = data.test.few_shots
-    if systemone:
-        labs = get_labels(dataset)
-        predictor = SystemOnePredictor(server, system_prompt, labs, examples)
-    else:
-        conv = client.build_conversation(system=system_prompt, examples=examples)
-        predictor = CompletionPredictor(client=client, conversation=conv)
 
     with TemporaryDirectory() as tmp, RunContext(mlflow, config) as ctx:
         ctx.log_prompt_version(dataset, "decoder", system_prompt)

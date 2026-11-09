@@ -11,8 +11,6 @@ from typing import (
 )
 
 import polars as pl
-from datasets.iterable_dataset import IterableDataset
-from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.labeling.export.extract import ExtractionFrameSchema, stratify
@@ -25,7 +23,7 @@ if TYPE_CHECKING:
 
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture
+    from eh30pt.types import Architecture, TokenizedSample
 
 
 type DiscontClassifierLabelEst = Literal[
@@ -51,7 +49,7 @@ class DiscontClassifierRow(TypedDict):
     label: str
 
 
-class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
+class DiscontClassifier(DatasetMixin[DiscontClassifierRow]):
     """Drug discontinuation reason classification."""
 
     id2label: ClassVar[Mapping[int, str]] = {
@@ -133,7 +131,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
             Ravim: {drug}
         """).strip()
 
-    few_shots: ClassVar[list[FewShot]] = [
+    examples: ClassVar[list[FewShot]] = [
         FewShot(
             user=format_user_prompt(
                 "Patsient lõpetas enalapriili kasutamise, kuna ei talunud ravimit, tekkis kuiv köha ja lööve.",  # noqa: E501
@@ -226,11 +224,16 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._n_virtual = n_virtual
         self._sequence_classification = sequence_classification
 
-    def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
-        """Yield tokenized rows for the split."""
-        for row in self._rows:
-            encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
-            yield cast("dict[str, list[int] | bool | int]", dict(encoded))
+    def __len__(self) -> int:
+        """Return the number of rows in the split."""
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Tokenize the indexed row."""
+        encoded = self.tokenize(
+            self._rows[index], self._tokenizer, self._n_shot, self._n_virtual
+        )
+        return cast("TokenizedSample", dict(encoded))
 
     def samples(self) -> Iterator[FewShot]:
         """Yield prompt and label pairs for the split."""
@@ -253,11 +256,11 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         n_virtual: int = 0,
     ) -> BatchEncoding[list[int]]:
         """Tokenize one row with few-shot context."""
-        if n_shot > len(self.few_shots):
+        if n_shot > len(self.examples):
             msg = "requested more few shot examples than defined"
             raise ValueError(msg)
 
-        few_shots = self.few_shots[:n_shot]
+        few_shots = self.examples[:n_shot]
 
         return self._encode_example(
             arch=self._arch,
@@ -274,7 +277,7 @@ class DiscontClassifier(DatasetMixin, IterableDataset, TorchIterableDataset):
         """
         Format a row, falling back to bare text without extracted fields.
 
-        Event rows streamed for evaluation predate phrase and drug extraction,
+        Event rows loaded for evaluation predate phrase and drug extraction,
         so only labeled rows carry them.
         """
         phrase = row.get("phrase", "")

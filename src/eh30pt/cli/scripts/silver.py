@@ -6,8 +6,8 @@ from eh30pt.datasets.registry import get_few_shots, get_sys_prompt
 from eh30pt.labeling.registry import predict_silver_tasks
 from eh30pt.labeling.studio import StudioClient, project_tasks
 from eh30pt.logging import logger
-from eh30pt.openai.complete import CompletionClient
-from eh30pt.openai.stream import CompletionPredictor
+from eh30pt.openai.complete import OpenaiClient
+from eh30pt.openai.stream import OpenaiPredictor
 from eh30pt.tracking.context import RunContext
 from eh30pt.tracking.resume import build_run_name
 
@@ -33,9 +33,9 @@ async def main(
         logger.debug("using '%s' system prompt", dataset)
         system_prompt = get_sys_prompt(dataset)
 
-    compc = CompletionClient(server, seed)
+    client = OpenaiClient(server, seed)
     examples = get_few_shots(dataset, n_shot)
-    model = (await compc.model()).unwrap()
+    model = (await client.model()).unwrap()
 
     method: Method = "silver-labels"
     if mlflow.run_name is None:
@@ -57,8 +57,8 @@ async def main(
         "system_prompt": system_prompt,
     }
 
-    conv = compc.build_conversation(system=system_prompt, examples=examples)
-    predictor = CompletionPredictor(client=compc, conversation=conv)
+    conv = client.build_conversation(system=system_prompt, examples=examples)
+    predictor = OpenaiPredictor(client=client, conversation=conv)
 
     with RunContext(mlflow, config) as ctx, StudioClient(studio) as studioc:
         ctx.log_prompt_version(dataset, "decoder", system_prompt)

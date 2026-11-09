@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from eh30pt.datasets.registry import get_few_shots, get_sys_prompt
-from eh30pt.openai.complete import CompletionClient
+from eh30pt.openai.complete import OpenaiClient
 from eh30pt.settings import ServerSettings
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 def _conversation() -> list[ChatCompletionMessageParam]:
     """Build a real multinerd conversation from registry prompts and shots."""
     shots = get_few_shots("multinerd", 2)
-    return CompletionClient.build_conversation(
+    return OpenaiClient.build_conversation(
         shots[1].user,
         system=get_sys_prompt("multinerd"),
         examples=shots[:1],
@@ -27,7 +27,7 @@ def _conversation() -> list[ChatCompletionMessageParam]:
 
 async def _real_completion() -> ChatCompletion:
     """Fetch a real completion from the served model."""
-    client = CompletionClient(ServerSettings(provider="llama"), seed=0)
+    client = OpenaiClient(ServerSettings(provider="llama"), seed=0)
     model = (await client.model()).unwrap()
     return await client._client.chat.completions.create(
         model=model,
@@ -37,7 +37,7 @@ async def _real_completion() -> ChatCompletion:
 
 @pytest.mark.vcr
 def test_complete_returns_content() -> None:
-    client = CompletionClient(ServerSettings(provider="llama"), seed=0)
+    client = OpenaiClient(ServerSettings(provider="llama"), seed=0)
     content = asyncio.run(client.complete(_conversation())).unwrap()
 
     assert isinstance(content, str)
@@ -50,7 +50,7 @@ def test_extract_content_reads_first_choice() -> None:
 
     assert completion.choices
     assert (
-        CompletionClient._extract_content(completion)
+        OpenaiClient._extract_content(completion)
         == completion.choices[0].message.content
     )
 
@@ -61,7 +61,7 @@ def test_extract_content_rejects_empty_choices() -> None:
     completion.choices.clear()
 
     with pytest.raises(ValueError, match="no choices"):
-        CompletionClient._extract_content(completion)
+        OpenaiClient._extract_content(completion)
 
 
 @pytest.mark.vcr
@@ -70,4 +70,4 @@ def test_extract_content_rejects_missing_content() -> None:
     completion.choices[0].message.content = None
 
     with pytest.raises(ValueError, match="no content"):
-        CompletionClient._extract_content(completion)
+        OpenaiClient._extract_content(completion)

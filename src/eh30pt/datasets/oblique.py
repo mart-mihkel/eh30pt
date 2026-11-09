@@ -4,8 +4,6 @@ from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, cast
 
 from datasets.arrow_dataset import Dataset
-from datasets.iterable_dataset import IterableDataset
-from torch.utils.data import IterableDataset as TorchIterableDataset
 
 from eh30pt.datasets.mixin import DatasetMixin
 from eh30pt.datasets.multinerd import DataSplits
@@ -17,7 +15,7 @@ if TYPE_CHECKING:
 
     from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-    from eh30pt.types import Architecture
+    from eh30pt.types import Architecture, TokenizedSample
 
 
 type OblLabel = Literal["seotud", "vaba", "ebaloomulik", "liigne koma", "kaheldav"]
@@ -39,7 +37,7 @@ class OblRow(TypedDict):
     la: float
 
 
-class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
+class Obl(DatasetMixin[OblRow]):
     """Estonian oblique-phrase removal."""
 
     id2label: ClassVar[Mapping[int, str]] = {
@@ -96,7 +94,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
             Kategooria:
         """).strip()
 
-    few_shots: ClassVar[list[FewShot]] = [
+    examples: ClassVar[list[FewShot]] = [
         FewShot(
             user=_format_user_prompt(
                 "Ligi kuus kuud kestnud võitluses elu eest "
@@ -209,11 +207,15 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         self._n_virtual = n_virtual
         self._sequence_classification = sequence_classification
 
-    def __iter__(self) -> Iterator[dict[str, list[int] | bool | int]]:
-        """Yield tokenized rows for the split."""
-        for row in self._data:
-            encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
-            yield cast("dict[str, list[int] | bool | int]", dict(encoded))
+    def __len__(self) -> int:
+        """Return the number of rows in the split."""
+        return len(self._data)
+
+    def __getitem__(self, index: int) -> TokenizedSample:
+        """Tokenize the indexed row."""
+        row = cast("OblRow", self._data[index])
+        encoded = self.tokenize(row, self._tokenizer, self._n_shot, self._n_virtual)
+        return cast("TokenizedSample", dict(encoded))
 
     def samples(self) -> Iterator[FewShot]:
         """Yield decoder prompt and label pairs for the split."""
@@ -236,7 +238,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         n_virtual: int = 0,
     ) -> BatchEncoding[list[int]]:
         """Tokenize one row with few-shot context."""
-        if n_shot > len(self.few_shots):
+        if n_shot > len(self.examples):
             msg = "requested more few shot examples than defined"
             raise ValueError(msg)
 
@@ -246,7 +248,7 @@ class Obl(DatasetMixin, IterableDataset, TorchIterableDataset):
         else:
             user_prompt = self._format_user_prompt(row["sentence"], row["removed"])
 
-        few_shots = self.few_shots[:n_shot]
+        few_shots = self.examples[:n_shot]
         label = row["label"]
 
         return self._encode_example(
@@ -268,7 +270,7 @@ def load_obl(
     *,
     sequence_classification: bool = False,
 ) -> DataSplits:
-    """Load OBL splits as per-split tokenized streaming datasets."""
+    """Load OBL splits as indexable datasets."""
     logger.debug("loading obl csv from github permalink")
     raw = Dataset.from_csv(Obl.data_permalink, sep=";")
 

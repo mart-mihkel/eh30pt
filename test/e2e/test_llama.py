@@ -1,6 +1,5 @@
 """End to end llama-server CLI tests backed by recorded cassettes."""
 
-import re
 from typing import TYPE_CHECKING, Final
 
 import mlflow
@@ -40,21 +39,6 @@ def _invoke(args: list[str]) -> Result:
     return CliRunner().invoke(app, args)
 
 
-def test_rejects_unknown_dataset() -> None:
-    result = _invoke(
-        [
-            "completion",
-            "hello",
-            "--system",
-            "You are terse.",
-            "--dataset",
-            "unknown",
-        ],
-    )
-
-    assert result.exit_code != 0
-
-
 @pytest.mark.parametrize("command", ["evaluate", "generate"])
 def test_systemone_flag_rejects_vllm(command: str) -> None:
     result = _invoke([command, "-d", "oblique", "--provider", "vllm", "--systemone"])
@@ -64,50 +48,13 @@ def test_systemone_flag_rejects_vllm(command: str) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    ["completion", "evaluate", "generate", "silver-labels", "langextract"],
+    ["evaluate", "generate", "silver-labels"],
 )
 @pytest.mark.parametrize("port", ["0", "65536"])
 def test_server_commands_reject_invalid_port(command: str, port: str) -> None:
     result = _invoke([command, "--port", port])
     assert result.exit_code != 0
     assert "--port" in result.output
-
-
-@pytest.mark.vcr
-def test_completion_prints_completion(caplog: pytest.LogCaptureFixture) -> None:
-    result = _invoke(
-        [
-            "completion",
-            "What is 2+2? Answer in one word.",
-            "--system",
-            "You are a terse calculator, answer with the number.",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert "4" in caplog.text
-
-
-@pytest.mark.vcr
-def test_completion_dataset_prints_label(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    result = _invoke(
-        [
-            "completion",
-            "Sentence: Barack Obama was president.\nEntity: Barack Obama\nTag:",
-            "--system",
-            "You are a NER tagger.",
-            "--dataset",
-            "multinerd",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-
-    match = re.search(r"completion: (\w+)", caplog.text)
-    assert match is not None
-    assert match.group(1) in get_labels("multinerd")
 
 
 @pytest.mark.vcr
