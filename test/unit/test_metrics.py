@@ -42,7 +42,7 @@ def test_batch_to_numpy_handles_tensors_and_tuples() -> None:
 
 
 def test_filter_other_maps_unseen_predictions() -> None:
-    assert _filter_other(["a", "b"], ["a", "c"]) == ["a", "other"]
+    assert _filter_other(["a", "b"], ["a", "c"]) == ["a", "..."]
 
 
 def test_compute_classification_metrics_on_perfect_predictions() -> None:

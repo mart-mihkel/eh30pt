@@ -235,7 +235,7 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 def _filter_other(references: list[str], predictions: list[str]) -> list[str]:
     refset = set(references)
-    return [pred if pred in refset else "other" for pred in predictions]
+    return [pred if pred in refset else "..." for pred in predictions]
 
 
 def _safe_rate(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
