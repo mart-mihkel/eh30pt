@@ -218,6 +218,7 @@ def test_decoder_trainer_trains_on_loaded_splits(
     assert len(trainer.train_dataset) == len(oblique_splits.train)
     trainer.args.dataloader_pin_memory = False
     assert trainer.train().global_step == 1
+    assert trainer.evaluate()["eval_accuracy"] == 1.0
 
 
 def test_get_trainer_builds_per_architecture(

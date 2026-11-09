@@ -1,7 +1,8 @@
 """SFT Trainer for causal models."""
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast, override
 
+import torch
 from datasets import Dataset
 from tqdm import tqdm
 from trl import SFTConfig, SFTTrainer
@@ -15,6 +16,31 @@ if TYPE_CHECKING:
     from transformers import PreTrainedModel, Trainer
 
     from eh30pt.modeling.training.spec import _Spec
+
+
+class _DecoderTrainer(SFTTrainer):
+    @override
+    def prediction_step(
+        self,
+        model: torch.nn.Module,
+        inputs: dict[str, Any],
+        prediction_loss_only: bool,
+        ignore_keys: list[str] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+        del ignore_keys
+        inputs = self._prepare_inputs(inputs)
+        with torch.no_grad(), self.compute_loss_context_manager():
+            loss = self.compute_loss(model, inputs, return_outputs=False)
+            if prediction_loss_only:
+                return loss, None, None
+
+            labels = inputs.get("labels")
+            logits_inputs = {
+                key: value for key, value in inputs.items() if key != "labels"
+            }
+
+            logits = model(**logits_inputs).logits
+            return loss, logits, labels
 
 
 def _decoder_trainer(spec: _Spec) -> Trainer:
@@ -70,7 +96,7 @@ def _decoder_trainer(spec: _Spec) -> Trainer:
         ]
     )
 
-    trainer = SFTTrainer(
+    trainer = _DecoderTrainer(
         model=cast("PreTrainedModel | PeftModel", spec.model),
         args=args,
         data_collator=spec.collate_fn,

@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-settings~=2.15.0",
     "nvidia-ml-py~=13.615.71",
     "psycopg[binary]~=3.2",
-    "transformers~=5.17.0",
+    "transformers~=5.22.2",
     "bitsandbytes~=0.50.2",
     "scikit-learn~=1.9.1",
     "accelerate~=1.15.0",
@@ -18,19 +18,19 @@ dependencies = [
     "sqlalchemy~=2.0.0",
     "pydantic~=2.13.5",
     "tiktoken~=0.14.0",
-    "datasets~=5.0.1",
+    "datasets~=5.1.0",
     "pandera~=0.34.1",
     "returns~=0.29.0",
     "estnltk~=1.7.5",
     "openai~=3.10.0",
     "mlflow~=3.17.0",
     "polars~=1.44.2",
-    "torch~=2.14.0",
+    "torch~=2.15.0",
     "httpx~=0.28.1",
     "rich~=15.0.0",
     "tqdm~=4.70.1",
-    "peft~=0.20.0",
-    "trl~=1.13.0",
+    "peft~=0.21.2",
+    "trl~=1.17.1",
 ]
 
 [dependency-groups]
@@ -83,7 +83,6 @@ filterwarnings = [
     "ignore:.*inferred as AnyType.*:UserWarning",                # MLflow infers an Any type schema from its own ResponsesAgentRequest model
     "ignore:.*codecs.open.*is deprecated.*:DeprecationWarning",  # MLflow still uses codecs.open() internally, deprecated in Python 3.14.
     "ignore:.*use_reentrant.*:UserWarning",                      # PEFT enables gradient checkpointing without an explicit use_reentrant flag.
-    "ignore:.*return_outputs=True.*deprecated and will be removed in v2.0.0.*fused LM head.*:FutureWarning",  # TRL recomputes the logits that compute_metrics needs, and deprecates that whole path for v2.
 ]
 
 [tool.ruff.lint]
