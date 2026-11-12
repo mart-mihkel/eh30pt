@@ -22,6 +22,7 @@ test/                 # tests, lint-relaxed
   unit/                 # pure-logic tests, no models, no network, no fakes, no mocks
   integration/          # integrations tests using real models and objects
   e2e/                  # tests which invoke the cli
+tex/                  # article submitted to medical informatics europe
 justfile              # development commands
 pyproject.toml        # project metadata and tool configs
 prek.toml             # pre-commit hooks

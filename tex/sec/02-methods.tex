@@ -1,0 +1,95 @@
+\section{Methods}
+
+Information extraction typically consists of two stages: identifying
+candidate phrases and determining their meaning through
+classification. In this study, we focus on the phrase classification
+task and study how different adaptations of LLMs cope with it.
+
+\subsection{Model Benchmarking and Data Scaling}
+
+Fair evaluation of LLM-based methods in this context is challenging.
+Meaningful and reproducible evaluation requires a large, consistently
+annotated public dataset. Because such medical datasets are rarely
+available, we first evaluate model families on a well-established
+non-medical benchmark dataset
+MultiNERD~\cite{tedeschi-navigli-2022-multinerd} to understand
+general properties and trends. This dataset contains named entity
+annotations for Wikipedia and Wikinews sentences. Its diverse
+annotation scheme includes 16 entity classes across more than 160,000
+sentences, providing substantial variability for model evaluation.
+Our main interest is how performance scales with the amount of
+annotated training data and which adaptation method performs best
+when ample training data are available. We report performance using
+the F1 score, which balances precision and recall.
+
+\subsection{Creation of the Target Clinical Dataset}
+
+Following \v{S}uvalov \emph{et al.}, we consider only patient
+anamnesis notes. We use MedGemma with system prompts adapted from
+\cite{suvalov-2026-extract} to extract candidate drug discontinuation
+events for manual review. Although originally designed for a narrower
+extraction task, these prompts achieved over 90\% recall, making them
+suitable for candidate generation.
+
+The event cohort was assembled from Est-Health 30, which contains
+centrally collected electronic health records from 2012--2024 for a
+random 30\% sample of the Estonian
+population~\cite{reisberg2026eh30}. To capture rare drug
+discontinuation events, we selected records based on drug purchases
+and grouped them into four subcohorts: potentially incompatible drug
+combinations, prolonged treatment gaps ($\geq$ 6 months), drug
+discontinuations and switches. For each cohort, we collected all
+anamnesis notes recorded within six months of the index event. After
+phrase extraction with MedGemma (27B), we randomly sampled 1,000
+potential discontinuation phrases from each cohort, yielding a
+dataset of 4,000 notes. Three experts annotated 3,300 candidate
+phrases. Each anamnesis note was annotated with one or more event
+labels. The labels \emph{adverse reaction}, \emph{treatment success},
+\emph{treatment inefficacy}, \emph{contraindication or unsafe co-use}
+and \emph{other} represent reasons for drug discontinuation, whereas
+\emph{adverse reaction without discontinuation}, \emph{dosage change}
+and \emph{other non-discontinuation} describe medication-related
+phrases without discontinuation. Unsuitable phrases were labelled
+\emph{incorrect phrase}.
+
+\subsection{Experimental Setup and Performance Metrics}
+
+For the MultiNERD benchmark, we evaluated model performance using
+training sets of 10, 100, 1,000 and 20,000 labelled examples. For the
+clinical dataset, we repeated the analysis with training-set sizes
+ranging from 100 to 2,500 annotations. In all experiments, the test
+set remained fixed. For the clinical task, we also collapsed the nine
+event labels into a binary outcome indicating a drug discontinuation event.
+
+The main experimental factors were model family and size, learning
+method, training-set size, and prompt initialisation. For prompt
+tuning, we compared how random initialisation compares with a
+user-selected starting prompt describing the task. We recorded test
+F1, predictions, model checkpoints, and learned prompt embeddings.
+
+Experiments were run on a single GPU using BF16 precision and 8-bit
+AdamW optimiser. We used a batch size of 8 and trained models with
+early stopping based on validation F1, using learning rates of $5
+\times 10^{-5}$ for fine-tuning and $10^{-2}$/$10^{-3}$ for prompt
+tuning of decoder/encoder models.
+
+\subsection{Context-Aware Phrase Classification}
+
+The objective of context-aware phrase classification is to assign a
+binary or multiclass label to a candidate phrase using both the
+surrounding text and task instructions (\emph{prompt}). Annotated
+examples are used to further adapt the model to the target
+classification task. For autoregressive LLMs, context-aware
+classification can be framed as a question-answering task in which
+the model's output represents the target class. For encoder models
+such as \textsc{BERT}, the task must be reduced to standard text
+classification. The prompt and context can be encoded as part of the
+input sequence using \textsc{[sep]} tokens for explicit structuring.
+The output is passed to a linear classification head.
+
+Prompting itself can be done by asking questions in natural language.
+Supervised learning allows us to move beyond manual prompt
+engineering. Parameter-efficient fine-tuning (PEFT) updates only a
+small subset of model parameters. For example prompt tuning learns a
+virtual (\emph{soft}) prompt prepended to the input, leaving the base
+model unchanged~\cite{lester2021power}.

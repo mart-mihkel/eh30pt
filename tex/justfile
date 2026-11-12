@@ -1,0 +1,27 @@
+outdir := "build"
+
+[doc('list recipes')]
+[private]
+@help:
+    just --list --unsorted
+
+[doc('compile main')]
+compile:
+    latexmk -pdf -cd -outdir={{outdir}} main.tex
+
+[doc('export docx')]
+docx: compile
+    ./scripts/ios-docx.py --outdir {{outdir}}
+
+[doc('watch main')]
+watch:
+    latexmk -pdf -pvc -cd -outdir={{outdir}} main.tex
+
+[doc('run formatter')]
+format:
+    find . -name "*.tex" -exec tex-fmt --format-tables {} +
+
+[doc('clear build cache')]
+clean:
+    latexmk -c -cd -outdir=../{{outdir}} main.tex
+    rm -rfv {{outdir}}

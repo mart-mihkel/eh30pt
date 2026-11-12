@@ -1,0 +1,16 @@
+Large language models can be used to extract candidate clinical
+events from free-text electronic health records, but their outputs
+require validation. Such a manual review produces labelled examples
+that can subsequently be used to improve model performance. We
+compare few-shot prompting, fine-tuning, and prompt tuning for
+context-aware phrase classification, focusing on the identification
+of drug discontinuation events in Estonian clinical notes. To gain
+insights, we first examine how performance scales with training-set
+size on a well-established public benchmark. We then validate the
+methods on manually annotated candidate events from the Est-Health 30
+dataset. We show that, in a low-data setting, prompt tuning matches
+or outperforms full fine-tuning for instruction-tuned models while
+training up to 10,000 times fewer parameters. These findings suggest
+that soft prompts can effectively use limited clinical annotations
+while requiring far fewer trainable parameters, although their
+effectiveness depends on the underlying model.

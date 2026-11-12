@@ -1,0 +1,30 @@
+\section{Introduction}
+
+Most medical studies rely on structured data, which often lacks
+important clinical details~\cite{kho2011,Seinen2025}. For Estonian
+data, free-text clinical notes have enabled the extraction of adverse
+drug events for pharmacogenetic research~\cite{sarg2025} and detailed
+descriptions of drug discontinuation
+events~\cite{suvalov-2026-extract}. Both studies used large language
+models (LLMs) for limited-scope extraction of information related to
+specific medication groups. In contrast, we investigate whether LLMs
+can be applied to the entire free-text EHR corpus without relying on
+structured data to preselect or filter relevant records. Our
+experiments are conducted on a large-scale real-world clinical
+dataset, Est-Health~30~\cite{reisberg2026eh30}.
+
+In this study, we extend the work of \v{S}uvalov \emph{et
+al.}~\cite{suvalov-2026-extract} by creating a heterogeneous dataset
+of drug discontinuation events and by assessing the number of
+annotations required to train different LLM-based methods. As manual
+prompt engineering with carefully selected few-shot examples is often
+brittle and sensitive to wording~\cite{brown2020language,liu2024gpt},
+we try alternatives. Fine-tuning can improve performance, but may
+suffer from catastrophic forgetting when only a few hundred
+annotations are available. Also, the resulting models are often
+gigabytes in size. Prompt tuning offers a lightweight alternative and
+has been shown to improve performance in multilingual transfer on
+low-resource languages
+\cite{philippy-etal-2024-soft,lester2021power}. Moreover, the
+resulting soft prompts are interpretable and only a few kilobytes in
+size, making them easy to share and publish with minimal privacy risk.

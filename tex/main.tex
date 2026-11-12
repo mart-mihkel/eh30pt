@@ -1,0 +1,54 @@
+\documentclass{sty/IOS-Book-Article}
+
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{csquotes}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage{todonotes}
+
+\begin{document}
+
+\begin{frontmatter}
+  \title{How to Adapt LLMs for Free-Text Medical Event Processing}
+  \runningtitle{How to Adapt LLMs for Free-Text Medical Event Processing}
+
+  \author[A]{\fnms{Mart-Mihkel} \snm{Aun} \thanks{Corresponding
+      Author: Mart-Mihkel Aun, Institute of Computer Science, University
+  of Tartu, Estonia; E-mail: mart-mihkel.aun@ut.ee.}}
+  \author[A]{\fnms{Maria} \snm{Malk}}
+  \author[A,B]{\fnms{Sulev} \snm{Reisberg}}
+  \author[A]{\fnms{Kerli} \snm{Mooses}}
+  \author[A,B]{\fnms{Jaak} \snm{Vilo}}
+  \author[A]{\fnms{Raivo} \snm{Kolde}}
+  \author[A]{\fnms{Sven} \snm{Laur}}
+
+  \runningauthor{M.-M. Aun et al.}
+  \address[A]{Institute of Computer Science, University of Tartu, Estonia}
+  \address[B]{STACC, Estonia}
+
+  \begin{abstract}
+    \input{sec/00-abstract.tex}
+  \end{abstract}
+
+  \begin{keyword}
+    prompt tuning\sep phrase classification\sep clinical natural
+    language processing\sep Estonian\sep parameter-efficient fine-tuning
+  \end{keyword}
+\end{frontmatter}
+
+\input{sec/01-introduction.tex}
+\input{sec/02-methods.tex}
+\input{sec/03-results.tex}
+\input{sec/04-discussion.tex}
+\input{sec/05-conclusions.tex}
+
+\bibliographystyle{sty/vancouver}
+\bibliography{ref}
+
+\end{document}
