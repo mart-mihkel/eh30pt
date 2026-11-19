@@ -33,7 +33,7 @@ class OpenaiClient:
             timeout=settings.timeout,
         )
 
-        self._model: str | None = None
+        self._model: str | None = settings.model
         self._fmt = settings.format or omit
         self._seed = seed
 

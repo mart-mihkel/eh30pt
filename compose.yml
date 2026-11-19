@@ -19,45 +19,26 @@ services:
       timeout: 3s
       retries: 10
 
-  llama-causal:
+  llama:
     image: ghcr.io/ggml-org/llama.cpp:server
-    container_name: llama-causal
+    container_name: llama
     restart: unless-stopped
     ports:
       - "${LLAMA_PORT:-9931}:9931"
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
-      - llama-models:/root/.cache/llama.cpp
+      - llama-models:/root/.cache
+      - ./deploy/llama/models.ini:/models.ini:ro
     command:
-      - -hf
-      - unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M
+      - --models-preset
+      - /models.ini
+      - --models-max
+      - "1"
       - --port
       - "9931"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9931/health || exit 1"]
-      start_period: 30s
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  llama-decision:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    container_name: llama-decision
-    restart: unless-stopped
-    ports:
-      - "${LLAMA_DECISION_PORT:-9932}:9932"
-    environment:
-      HF_TOKEN: ${HF_TOKEN:-}
-    volumes:
-      - llama-models:/root/.cache/llama.cpp
-    command:
-      - -hf
-      - ${LLAMA_DECISION_MODEL:-ggml-org/Julia-1-GGUF:Q8_0}
-      - --port
-      - "9932"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9932/health || exit 1"]
       start_period: 30s
       interval: 10s
       timeout: 5s

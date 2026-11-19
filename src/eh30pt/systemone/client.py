@@ -1,9 +1,10 @@
 """Choice decisions against a System One API."""
 
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING
 
 import httpx
 from pydantic import BaseModel
+from typesafe_sdk import Choice, SystemOneResponse
 
 from eh30pt.types import asafe
 
@@ -11,26 +12,12 @@ if TYPE_CHECKING:
     from eh30pt.settings import ServerSettings
 
 
-class ChoiceQuestion(TypedDict):
-    """One choice question with named criteria."""
-
-    type: Literal["choice"]
-    instructions: str
-    criteria: dict[str, None]
-
-
-class DecisionRequest(TypedDict):
-    """System One decision request."""
+class DecisionRequest(BaseModel):
+    """System One choice request."""
 
     state: str
-    questions: dict[str, ChoiceQuestion]
-
-
-class ChoiceAnswer(BaseModel):
-    """Choice returned by the decision model."""
-
-    type: Literal["choice"]
-    choice: str
+    questions: dict[str, Choice]
+    model: str
 
 
 class ModelInfo(BaseModel):
@@ -45,23 +32,17 @@ class ModelList(BaseModel):
     data: list[ModelInfo]
 
 
-class DecisionResponse(BaseModel):
-    """Decision model response containing named answers."""
-
-    answers: dict[str, ChoiceAnswer]
-
-
 class SystemOneClient:
     """Stateful client for System One choice decisions."""
 
     def __init__(self, settings: ServerSettings) -> None:
         """Configure a reusable HTTP connection pool."""
+        self._model: str | None = settings.model
         self._client = httpx.AsyncClient(
             base_url=settings.base_url,
             headers={"Authorization": f"Bearer {settings.api_key}"},
             timeout=settings.timeout,
         )
-        self._model: str | None = None
 
     @asafe
     async def model(self) -> str:
@@ -79,6 +60,26 @@ class SystemOneClient:
         self._model = models[0].id.split("/")[-1]
         return self._model
 
+    @staticmethod
+    def build_payload(
+        *,
+        state: str,
+        instructions: str,
+        labels: tuple[str, ...],
+        model: str,
+    ) -> DecisionRequest:
+        """Build a choice request for a model served by the endpoint."""
+        question = Choice(
+            instructions=instructions,
+            criteria=dict.fromkeys(labels),
+        )
+
+        return DecisionRequest(
+            state=state,
+            questions={"label": question},
+            model=model,
+        )
+
     @asafe
     async def choose(
         self,
@@ -88,19 +89,24 @@ class SystemOneClient:
         labels: tuple[str, ...],
     ) -> str:
         """Return the selected label or a failure for an invalid response."""
-        payload: DecisionRequest = {
-            "state": state,
-            "questions": {
-                "label": {
-                    "type": "choice",
-                    "instructions": instructions,
-                    "criteria": dict.fromkeys(labels),
-                },
-            },
-        }
-        response = await self._client.post("/v1/systemone", json=payload)
+        model = (await self.model()).unwrap()
+        payload = self.build_payload(
+            state=state,
+            instructions=instructions,
+            labels=labels,
+            model=model,
+        )
+
+        response = await self._client.post(
+            "/v1/systemone",
+            content=payload.model_dump_json(exclude_none=True),
+            headers={"content-type": "application/json"},
+        )
+
         response.raise_for_status()
-        answer = DecisionResponse.model_validate_json(response.content).answers["label"]
+        response = SystemOneResponse.model_validate_json(response.content)
+
+        answer = response.choices["label"]
         if answer.choice not in labels:
             msg = "System One returned an invalid choice"
             raise ValueError(msg)

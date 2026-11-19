@@ -40,6 +40,7 @@ from eh30pt.cli.options.server import (
     log_interval_option,
     port_option,
     provider_option,
+    served_model_option,
     shard_size_option,
     systemone_option,
 )
@@ -659,6 +660,7 @@ def slurm(
 @dataset_option
 @provider_option
 @port_option
+@served_model_option
 @systemone_option
 @n_shot_option
 @system_prompt_option
@@ -685,6 +687,7 @@ def evaluate(
     log_interval: int,
     seed: int | None,
     systemone: bool,
+    served_model: str | None,
     port: int | None,
 ) -> None:
     """Run few-shot test evaluation on a server."""
@@ -703,7 +706,8 @@ def evaluate(
     server = ServerSettings(
         provider=provider,
         format=fmt,
-        port=port if port is not None else (9932 if systemone else None),
+        port=port,
+        model=served_model,
     )
 
     mlflow = MlflowSettings(
@@ -733,6 +737,7 @@ def evaluate(
 @dataset_option
 @provider_option
 @port_option
+@served_model_option
 @systemone_option
 @n_shot_option
 @system_prompt_option
@@ -759,6 +764,7 @@ def generate(
     shard_size: int,
     seed: int | None,
     systemone: bool,
+    served_model: str | None,
     port: int | None,
 ) -> None:
     """Generate predictions on a server and log them as an MLflow artifact."""
@@ -777,7 +783,8 @@ def generate(
     server = ServerSettings(
         provider=provider,
         format=fmt,
-        port=port if port is not None else (9932 if systemone else None),
+        port=port,
+        model=served_model,
     )
 
     mlflow = MlflowSettings(
@@ -807,6 +814,7 @@ def generate(
 @dataset_option
 @provider_option
 @port_option
+@served_model_option
 @n_shot_option
 @system_prompt_option
 @concurrency_option
@@ -828,6 +836,7 @@ def silver_labels(
     project: int,
     label_studio_url: str,
     port: int | None,
+    served_model: str | None,
     mlflow_run_name: str | None,
     mlflow_run_id: str | None,
     mlflow_experiment: str,
@@ -846,7 +855,13 @@ def silver_labels(
 
     fmt = get_response_schema(dataset)
     studio = LabelStudioSettings(url=label_studio_url)
-    server = ServerSettings(provider=provider, format=fmt, port=port)
+    server = ServerSettings(
+        provider=provider,
+        format=fmt,
+        port=port,
+        model=served_model,
+    )
+
     mlflow = MlflowSettings(
         tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
         experiment=mlflow_experiment,

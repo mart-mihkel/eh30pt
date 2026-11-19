@@ -53,7 +53,7 @@ def _small_test_split(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def truncate(splits: DataSplits) -> DataSplits:
         test = splits.test
-        test._data = test._data.select(range(_test_rows))  # ty: ignore[unresolved-attribute]
+        test._data = test._data.select(range(_test_rows))  # ty: ignore[missing-attribute]
         if isinstance(test, Multinerd):
             test._rows = list(test._unpack_row())
 

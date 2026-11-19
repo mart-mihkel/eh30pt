@@ -11424,7 +11424,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11433,7 +11433,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1070'
+      - '1098'
       content-type:
       - application/json
       host:
@@ -11473,7 +11473,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11482,7 +11482,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1010'
+      - '1038'
       content-type:
       - application/json
       host:
@@ -11521,7 +11521,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11530,7 +11530,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '940'
+      - '968'
       content-type:
       - application/json
       host:
@@ -11569,7 +11569,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11578,7 +11578,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '912'
+      - '940'
       content-type:
       - application/json
       host:
@@ -11616,7 +11616,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11625,7 +11625,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '893'
+      - '921'
       content-type:
       - application/json
       host:
@@ -11666,7 +11666,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11675,7 +11675,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1053'
+      - '1081'
       content-type:
       - application/json
       host:
@@ -11714,7 +11714,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11723,7 +11723,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '931'
+      - '959'
       content-type:
       - application/json
       host:
@@ -11761,7 +11761,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11770,7 +11770,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '853'
+      - '881'
       content-type:
       - application/json
       host:
@@ -11809,7 +11809,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11818,7 +11818,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '951'
+      - '979'
       content-type:
       - application/json
       host:
@@ -11855,7 +11855,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11864,7 +11864,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '802'
+      - '830'
       content-type:
       - application/json
       host:
@@ -11902,7 +11902,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11911,7 +11911,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '874'
+      - '902'
       content-type:
       - application/json
       host:
@@ -11948,7 +11948,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -11957,7 +11957,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '798'
+      - '826'
       content-type:
       - application/json
       host:
@@ -11996,7 +11996,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12005,7 +12005,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '832'
+      - '860'
       content-type:
       - application/json
       host:
@@ -12045,7 +12045,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12054,7 +12054,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1048'
+      - '1076'
       content-type:
       - application/json
       host:
@@ -12092,7 +12092,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12101,7 +12101,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '879'
+      - '907'
       content-type:
       - application/json
       host:
@@ -12139,7 +12139,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12148,7 +12148,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '841'
+      - '869'
       content-type:
       - application/json
       host:
@@ -12186,7 +12186,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12195,7 +12195,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '885'
+      - '913'
       content-type:
       - application/json
       host:
@@ -12235,7 +12235,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12244,7 +12244,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '977'
+      - '1005'
       content-type:
       - application/json
       host:
@@ -12282,7 +12282,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12291,7 +12291,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '833'
+      - '861'
       content-type:
       - application/json
       host:
@@ -12329,7 +12329,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12338,7 +12338,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '842'
+      - '870'
       content-type:
       - application/json
       host:
@@ -12378,7 +12378,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12387,7 +12387,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1002'
+      - '1030'
       content-type:
       - application/json
       host:
@@ -12426,7 +12426,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12435,7 +12435,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '905'
+      - '933'
       content-type:
       - application/json
       host:
@@ -12472,7 +12472,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12481,7 +12481,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '793'
+      - '821'
       content-type:
       - application/json
       host:
@@ -12519,7 +12519,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12528,7 +12528,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '852'
+      - '880'
       content-type:
       - application/json
       host:
@@ -12567,7 +12567,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12576,7 +12576,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '926'
+      - '954'
       content-type:
       - application/json
       host:
@@ -12613,7 +12613,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12622,7 +12622,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '800'
+      - '828'
       content-type:
       - application/json
       host:
@@ -12662,7 +12662,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12671,7 +12671,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '989'
+      - '1017'
       content-type:
       - application/json
       host:
@@ -12711,7 +12711,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12720,7 +12720,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '997'
+      - '1025'
       content-type:
       - application/json
       host:
@@ -12759,7 +12759,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12768,7 +12768,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '934'
+      - '962'
       content-type:
       - application/json
       host:
@@ -12807,7 +12807,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12816,7 +12816,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '960'
+      - '988'
       content-type:
       - application/json
       host:
@@ -12854,7 +12854,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12863,7 +12863,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '853'
+      - '881'
       content-type:
       - application/json
       host:
@@ -12901,7 +12901,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12910,7 +12910,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '830'
+      - '858'
       content-type:
       - application/json
       host:
@@ -12950,7 +12950,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -12959,7 +12959,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '962'
+      - '990'
       content-type:
       - application/json
       host:
@@ -12997,7 +12997,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13006,7 +13006,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '884'
+      - '912'
       content-type:
       - application/json
       host:
@@ -13044,7 +13044,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13053,7 +13053,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '899'
+      - '927'
       content-type:
       - application/json
       host:
@@ -13090,7 +13090,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13099,7 +13099,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '794'
+      - '822'
       content-type:
       - application/json
       host:
@@ -13136,7 +13136,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13145,7 +13145,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '798'
+      - '826'
       content-type:
       - application/json
       host:
@@ -13185,7 +13185,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13194,7 +13194,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1007'
+      - '1035'
       content-type:
       - application/json
       host:
@@ -13232,7 +13232,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13241,7 +13241,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '839'
+      - '867'
       content-type:
       - application/json
       host:
@@ -13279,7 +13279,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13288,7 +13288,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '874'
+      - '902'
       content-type:
       - application/json
       host:
@@ -13328,7 +13328,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13337,7 +13337,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '989'
+      - '1017'
       content-type:
       - application/json
       host:
@@ -13376,7 +13376,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13385,7 +13385,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '933'
+      - '961'
       content-type:
       - application/json
       host:
@@ -13423,7 +13423,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13432,7 +13432,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '888'
+      - '916'
       content-type:
       - application/json
       host:
@@ -13470,7 +13470,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13479,7 +13479,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '833'
+      - '861'
       content-type:
       - application/json
       host:
@@ -13517,7 +13517,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13526,7 +13526,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '836'
+      - '864'
       content-type:
       - application/json
       host:
@@ -13566,7 +13566,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13575,7 +13575,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '994'
+      - '1022'
       content-type:
       - application/json
       host:
@@ -13614,7 +13614,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13623,7 +13623,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '918'
+      - '946'
       content-type:
       - application/json
       host:
@@ -13661,7 +13661,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13670,7 +13670,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '874'
+      - '902'
       content-type:
       - application/json
       host:
@@ -13707,7 +13707,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13716,7 +13716,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '786'
+      - '814'
       content-type:
       - application/json
       host:
@@ -13753,7 +13753,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13762,7 +13762,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '815'
+      - '843'
       content-type:
       - application/json
       host:
@@ -13800,7 +13800,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13809,7 +13809,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '833'
+      - '861'
       content-type:
       - application/json
       host:
@@ -13848,7 +13848,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13857,7 +13857,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '899'
+      - '927'
       content-type:
       - application/json
       host:
@@ -13895,7 +13895,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13904,7 +13904,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '886'
+      - '914'
       content-type:
       - application/json
       host:
@@ -13942,7 +13942,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13951,7 +13951,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '847'
+      - '875'
       content-type:
       - application/json
       host:
@@ -13989,7 +13989,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -13998,7 +13998,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '891'
+      - '919'
       content-type:
       - application/json
       host:
@@ -14037,7 +14037,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14046,7 +14046,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '940'
+      - '968'
       content-type:
       - application/json
       host:
@@ -14085,7 +14085,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14094,7 +14094,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '932'
+      - '960'
       content-type:
       - application/json
       host:
@@ -14133,7 +14133,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14142,7 +14142,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '936'
+      - '964'
       content-type:
       - application/json
       host:
@@ -14181,7 +14181,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14190,7 +14190,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '907'
+      - '935'
       content-type:
       - application/json
       host:
@@ -14227,7 +14227,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14236,7 +14236,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '791'
+      - '819'
       content-type:
       - application/json
       host:
@@ -14274,7 +14274,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14283,7 +14283,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '870'
+      - '898'
       content-type:
       - application/json
       host:
@@ -14322,7 +14322,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14331,7 +14331,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '943'
+      - '971'
       content-type:
       - application/json
       host:
@@ -14373,7 +14373,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14382,7 +14382,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1138'
+      - '1166'
       content-type:
       - application/json
       host:
@@ -14420,7 +14420,7 @@ interactions:
       ebaselge v\xF5i piiripealne juhtum\\n- seotud: vajalik grammatilise struktuuri
       jaoks, eemaldamine rikub grammatika\\n- vaba: eemaldatav ilma t\xE4hendust v\xF5i
       grammatikat muutmata\\n\\nV\xE4ljasta ainult kategooria.\",\"criteria\":{\"seotud\":null,\"ebaloomulik\":null,\"liigne
-      koma\":null,\"vaba\":null,\"kaheldav\":null}}}}"
+      koma\":null,\"vaba\":null,\"kaheldav\":null}}},\"model\":\"Julia-1-GGUF:Q8_0\"}"
     headers:
       accept:
       - '*/*'
@@ -14429,7 +14429,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '872'
+      - '900'
       content-type:
       - application/json
       host:

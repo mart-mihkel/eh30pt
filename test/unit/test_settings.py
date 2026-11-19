@@ -199,6 +199,14 @@ def test_server_port_override() -> None:
         ServerSettings(port=65536)
 
 
+def test_server_accepts_served_model() -> None:
+    assert ServerSettings().model is None
+    assert ServerSettings(model="kev").model == "kev"
+
+    with pytest.raises(ValidationError, match="model"):
+        ServerSettings(model="")
+
+
 def test_server_rejects_invalid_provider() -> None:
     settings = ServerSettings(provider="llama")
     settings.provider = "unknown"  # ty: ignore[invalid-assignment]

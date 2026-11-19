@@ -110,6 +110,15 @@ def test_log_invalid_warns_with_counts(
     assert "2/10 invalid responses" in caplog.text
 
 
+def test_client_uses_configured_model_without_listing() -> None:
+    from eh30pt.openai.complete import OpenaiClient
+    from eh30pt.settings import ServerSettings
+
+    client = OpenaiClient(ServerSettings(model="qwen"))
+
+    assert asyncio.run(client.model()).unwrap() == "qwen"
+
+
 def test_append_prediction_window() -> None:
     batch: list[GenerateRecord] = []
     window = [

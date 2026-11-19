@@ -124,6 +124,7 @@ class ServerSettings(BaseSettings):
     timeout: int = Field(default=300, ge=0)
     format: ResponseFormatJSONSchema | None = None
     port: int | None = Field(default=None, ge=1, le=65535)
+    model: str | None = Field(default=None, min_length=1)
 
     @property
     def base_url(self) -> str:

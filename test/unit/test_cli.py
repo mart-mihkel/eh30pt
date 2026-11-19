@@ -58,6 +58,16 @@ def test_all_commands_render_help() -> None:
         assert result.exit_code == 0, name
 
 
+def test_server_commands_expose_served_model() -> None:
+    """Server commands can select a preset when the server routes by model."""
+    runner = CliRunner()
+    for name in ("evaluate", "generate", "silver-labels"):
+        result = runner.invoke(app, [name, "--help"])
+
+        assert result.exit_code == 0, name
+        assert "--model" in result.output, name
+
+
 def test_training_commands_expose_epochs_and_train_size() -> None:
     """Fine-tune, prompt-tune and qlora take --epochs and --train-size."""
     runner = CliRunner()

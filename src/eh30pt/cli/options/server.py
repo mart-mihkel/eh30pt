@@ -6,7 +6,16 @@ port_option = click.option(
     "--port",
     type=click.IntRange(min=1, max=65535),
     default=None,
-    help="Local port: 9931 for llama, 9932 for System One, 8000 for vLLM by default",
+    help="Local port: 9931 for llama, 8000 for vLLM by default",
+)
+
+served_model_option = click.option(
+    "--model",
+    "-m",
+    "served_model",
+    type=str,
+    default=None,
+    help="Served model id or preset, required when the server routes by model",
 )
 
 systemone_option = click.option(

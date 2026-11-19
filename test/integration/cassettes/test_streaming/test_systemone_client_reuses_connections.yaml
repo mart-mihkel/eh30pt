@@ -33,7 +33,7 @@ interactions:
       message: OK
 - request:
     body: '{"state":"I was charged twice.","questions":{"label":{"type":"choice","instructions":"Choose
-      the category of the customer message.","criteria":{"billing":null,"shipping":null}}}}'
+      the category of the customer message.","criteria":{"billing":null,"shipping":null}}},"model":"Julia-1-GGUF:Q8_0"}'
     headers:
       accept:
       - '*/*'
@@ -42,7 +42,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '178'
+      - '206'
       content-type:
       - application/json
       host:
@@ -70,7 +70,7 @@ interactions:
       message: OK
 - request:
     body: '{"state":"My package is late.","questions":{"label":{"type":"choice","instructions":"Choose
-      the category of the customer message.","criteria":{"billing":null,"shipping":null}}}}'
+      the category of the customer message.","criteria":{"billing":null,"shipping":null}}},"model":"Julia-1-GGUF:Q8_0"}'
     headers:
       accept:
       - '*/*'
@@ -79,7 +79,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '177'
+      - '205'
       content-type:
       - application/json
       host:
