@@ -439,16 +439,16 @@ def test_run_context_writes_log_file_and_artifact(
     finally:
         logger.setLevel(previous)
 
-    lines = (tmp_path / "log" / run_id / "run.log").read_text(encoding="utf-8")
-    assert "hello run log" in lines
-    assert "\x1b" not in lines
+    assert not (tmp_path / "log" / run_id).exists()
 
     downloaded = mlflow.artifacts.download_artifacts(
         run_id=run_id,
         artifact_path="logs/run.log",
         dst_path=str(tmp_path / "download"),
     )
-    assert "hello run log" in Path(downloaded).read_text(encoding="utf-8")
+    lines = Path(downloaded).read_text(encoding="utf-8")
+    assert "hello run log" in lines
+    assert "\x1b" not in lines
 
 
 def test_run_context_continuation_appends_to_log(
@@ -486,6 +486,7 @@ def test_run_context_continuation_appends_to_log(
     text = Path(downloaded).read_text(encoding="utf-8")
 
     assert text.index("first chunk") < text.index("second chunk")
+    assert not (tmp_path / "log" / run_id).exists()
 
 
 def test_failed_run_log_captures_traceback(
@@ -512,7 +513,13 @@ def test_failed_run_log_captures_traceback(
     ):
         _record_and_boom(ctx.run_id)
 
-    text = (tmp_path / "log" / seen[0] / "run.log").read_text(encoding="utf-8")
+    downloaded = mlflow.artifacts.download_artifacts(
+        run_id=seen[0],
+        artifact_path="logs/run.log",
+        dst_path=str(tmp_path / "download"),
+    )
+    text = Path(downloaded).read_text(encoding="utf-8")
+    assert not (tmp_path / "log" / seen[0]).exists()
 
     assert "Traceback" in text
     assert "boom" in text

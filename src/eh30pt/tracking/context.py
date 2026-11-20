@@ -66,6 +66,7 @@ class _RunLog(NamedTuple):
 
     handler: logging.Handler
     file: TextIO
+    directory: TemporaryDirectory[str]
 
 
 def registry_name(*parts: str) -> str:
@@ -176,11 +177,9 @@ class RunContext:
             msg = "no run name after starting run"
             raise RuntimeError(msg)
 
-        if self.resumed:
-            self._restore_run_log()
-            logger.info("reattached to run '%s'", self.run_id)
-
         self._attach_run_log()
+        if self.resumed:
+            logger.info("reattached to run '%s'", self.run_id)
         try:
             if not self.resumed:
                 logger.info("opened mlflow run '%s'", self.run_id)
@@ -231,15 +230,23 @@ class RunContext:
         logger.removeHandler(self._run_log.handler)
         self._run_log.handler.close()
         self._run_log.file.close()
+        self._run_log.directory.cleanup()
 
     def _attach_run_log(self) -> None:
-        """Capture the project log to the run directory, mirroring the console."""
-        path = self.dir / "run.log"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        file = path.open("a", encoding="utf-8")
-        handler = rich_handler(file)
-        logger.addHandler(handler)
-        self._run_log = _RunLog(handler=handler, file=file)
+        """Capture the project log in a temporary file, mirroring the console."""
+        directory = TemporaryDirectory()
+        try:
+            if self.resumed:
+                self._restore_run_log(directory.name)
+
+            path = Path(directory.name) / "run.log"
+            file = path.open("a", encoding="utf-8")
+            handler = rich_handler(file)
+            logger.addHandler(handler)
+            self._run_log = _RunLog(handler=handler, file=file, directory=directory)
+        except BaseException:
+            directory.cleanup()
+            raise
 
     def _persist_run_log(self) -> None:
         """Upload the run log as an artifact without ever raising."""
@@ -249,11 +256,10 @@ class RunContext:
         except Exception:  # noqa: BLE001
             logger.warning("could not upload run log for run '%s'", self.run_id)
 
-    def _restore_run_log(self) -> None:
+    def _restore_run_log(self, directory: str) -> None:
         """Download a previously uploaded run log so continuation appends to it."""
-        self.dir.mkdir(parents=True, exist_ok=True)
         try:
-            self.download_artifacts("logs/run.log", str(self.dir))
+            self.download_artifacts("logs/run.log", directory)
         except MlflowException:
             logger.debug("no previous run log for run '%s'", self.run_id)
 
@@ -430,6 +436,10 @@ class RunContext:
     ) -> None:
         """Log a local file as a run artifact."""
         mlflow.log_artifact(str(local_path), artifact_path=artifact_path)
+
+    def log_artifacts(self, local_dir: str | Path, artifact_path: str) -> None:
+        """Log every file of a local directory as run artifacts."""
+        mlflow.log_artifacts(str(local_dir), artifact_path=artifact_path)
 
     def download_artifacts(self, artifact_path: str, dst_path: str) -> str:
         """Download run artifacts, raising MlflowException when missing."""

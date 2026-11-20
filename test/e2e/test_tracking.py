@@ -144,6 +144,5 @@ def test_checkpoints_sync_and_restore(tracking_uri: str) -> None:
 def test_missing_checkpoints_resolve_to_scratch(tracking_uri: str) -> None:
     mlflow_settings = MlflowSettings(tracking_uri=tracking_uri, experiment="experiment")
     with RunContext(mlflow_settings, config=_config()) as ctx:
-        assert (ctx.dir / "run.log").exists()
         assert ctx.find_checkpoint() is None
         ctx.sync_checkpoints()
