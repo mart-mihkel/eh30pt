@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from eh30pt.systemone.client import SystemOneClient
 
 
+def format_state(examples: Sequence[FewShot], user: str) -> str:
+    """Build the state a decision request sends for one sample."""
+    rendered = "\n\n".join(f"{example.user}\n{example.label}" for example in examples)
+    return f"{rendered}\n\n{user}" if rendered else user
+
+
 @dataclass(frozen=True)
 class SystemOnePredictor(Predictor[FewShot, str | None]):
     """Bind a decision client to a classification question and examples."""
@@ -25,12 +31,8 @@ class SystemOnePredictor(Predictor[FewShot, str | None]):
 
     async def predict(self, sample: FewShot) -> str | None:
         """Return the selected label, or None for a failed request."""
-        examples = "\n\n".join(
-            f"{example.user}\n{example.label}" for example in self.examples
-        )
-        state = f"{examples}\n\n{sample.user}" if examples else sample.user
         result = await self.client.choose(
-            state=state,
+            state=format_state(self.examples, sample.user),
             instructions=self.instructions,
             labels=self.labels,
         )

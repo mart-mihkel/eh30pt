@@ -1,7 +1,7 @@
 """Command line interface."""
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import rich_click as click
 
@@ -15,6 +15,14 @@ from eh30pt.cli.options.common import (
     output_option,
     seed_option,
     system_prompt_option,
+)
+from eh30pt.cli.options.kev import (
+    head_dim_option,
+    init_from_option,
+    kev_device_option,
+    max_branch_option,
+    max_state_option,
+    weight_decay_option,
 )
 from eh30pt.cli.options.labeling import (
     data_path_option,
@@ -73,6 +81,7 @@ from eh30pt.cli.options.training import (
 from eh30pt.logging import logger, setup_logging
 from eh30pt.settings import (
     CommonSettings,
+    KevSettings,
     LoRASettings,
     MlflowSettings,
     ServerSettings,
@@ -86,6 +95,7 @@ if TYPE_CHECKING:
     from eh30pt.types import (
         Architecture,
         DatasetName,
+        Device,
         EvalSteps,
         LogLevel,
         PrefixInit,
@@ -106,7 +116,13 @@ if TYPE_CHECKING:
             "ehpt": [
                 {
                     "name": "Hugging Face",
-                    "commands": ["fine-tune", "prompt-tune", "qlora", "few-shot"],
+                    "commands": [
+                        "fine-tune",
+                        "prompt-tune",
+                        "qlora",
+                        "few-shot",
+                        "kev-tune",
+                    ],
                 },
                 {
                     "name": "OpenAI",
@@ -539,6 +555,124 @@ def qlora(
     )
 
 
+@app.command("kev-tune", help="Train a Kev-style decision model")
+@model_option
+@dataset_option
+@n_shot_option
+@system_prompt_option
+@epochs_option
+@train_size_option
+@save_model_option
+@batch_size_option
+@learning_rate_option(2e-5)
+@warmup_ratio_option
+@patience_option
+@tolerance_option
+@lora_rank_option
+@lora_alpha_option
+@lora_dropout_option
+@init_from_option
+@head_dim_option
+@max_state_option
+@max_branch_option
+@kev_device_option
+@weight_decay_option
+@data_path_option
+@experiment_option
+@run_name_option
+@run_id_option
+@tracking_uri_option
+@log_level_option
+@seed_option
+def kev_tune(
+    *,
+    model: str,
+    dataset: DatasetName,
+    n_shot: int,
+    system_prompt: str | None,
+    epochs: float,
+    train_size: int | None,
+    save_model: bool,
+    batch_size: int,
+    learning_rate: float,
+    warmup_ratio: float,
+    patience: int,
+    tolerance: float,
+    lora_rank: int,
+    lora_alpha: int,
+    lora_dropout: float,
+    init_from: str | None,
+    head_dim: int,
+    max_state: int,
+    max_branch: int,
+    device: str,
+    weight_decay: float,
+    data_path: Path | None,
+    mlflow_experiment: str,
+    mlflow_run_name: str | None,
+    mlflow_run_id: str | None,
+    mlflow_tracking_uri: str | None,
+    log_level: LogLevel,
+    seed: int | None,
+) -> None:
+    """Train a Kev-style decision model and evaluate its test split."""
+    from eh30pt.cli.scripts.kev_tune import main
+
+    logger.setLevel(log_level.upper())
+    set_seed(seed)
+    log_accelerator()
+
+    common = CommonSettings(
+        model=model,
+        dataset=dataset,
+        n_shot=n_shot,
+        system_prompt=system_prompt,
+        data_path=data_path,
+        seed=seed,
+    )
+
+    kev = KevSettings(
+        head_dim=head_dim,
+        max_state=max_state,
+        max_branch=max_branch,
+        init_from=init_from,
+        device=cast("Device", device),
+    )
+
+    lora = LoRASettings(
+        rank=lora_rank,
+        alpha=lora_alpha,
+        dropout=lora_dropout,
+    )
+
+    training = TrainingSettings(
+        epochs=epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        warmup_ratio=warmup_ratio,
+        patience=patience,
+        tolerance=tolerance,
+        train_size=train_size,
+        save_model=save_model,
+    )
+
+    mlflow = MlflowSettings(
+        tracking_uri=mlflow_tracking_uri or MlflowSettings().tracking_uri,
+        experiment=mlflow_experiment,
+        run_name=mlflow_run_name,
+        run_id=mlflow_run_id,
+    )
+
+    main(
+        common=common,
+        kev=kev,
+        lora=lora,
+        training=training,
+        mlflow=mlflow,
+    )
+
+
 @app.command("few-shot", help="Run test evaluation with few-shot learning")
 @model_option
 @dataset_option
@@ -638,7 +772,13 @@ def slurm(
 
     logger.setLevel(log_level.upper())
 
-    if command not in ("fine-tune", "prompt-tune", "qlora", "few-shot"):
+    if command not in (
+        "fine-tune",
+        "prompt-tune",
+        "qlora",
+        "kev-tune",
+        "few-shot",
+    ):
         msg = f"cannot submit '{command}', expected a training command"
         raise click.BadParameter(msg)
 

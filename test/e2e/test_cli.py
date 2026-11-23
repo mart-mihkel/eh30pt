@@ -31,6 +31,7 @@ def test_help_lists_commands() -> None:
     assert "fine-tune" in result.output
     assert "prompt-tune" in result.output
     assert "qlora" in result.output
+    assert "kev-tune" in result.output
     assert "slurm" in result.output
     assert "few-shot" in result.output
     assert "evaluate" in result.output
@@ -279,3 +280,61 @@ def test_prompt_tune_obl(
     assert run.data.params["method"] == "prompt-tune"
     assert run.data.params["n_virtual"] == "4"
     assert "test_f1" in run.data.metrics
+
+
+@pytest.mark.slow
+def test_kev_tune_obl(tmp_path: Path, tracking_uri: str) -> None:
+    experiment: Final = "e2e-kev-tune"
+    result = _invoke(
+        [
+            "kev-tune",
+            "--model",
+            models["qwen"],
+            "--dataset",
+            "oblique",
+            "--epochs",
+            "1",
+            "--train-size",
+            "8",
+            "--batch-size",
+            "2",
+            "--lora-rank",
+            "4",
+            "--lora-alpha",
+            "4",
+            "--head-dim",
+            "16",
+            "--save-model",
+            "--seed",
+            "0",
+            "--mlflow-experiment",
+            experiment,
+            "--mlflow-tracking-uri",
+            tracking_uri,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    run = single_run(tracking_uri, experiment)
+    assert run.data.params["method"] == "kev-tune"
+    assert "test_accuracy" in run.data.metrics
+    assert "temperature" in run.data.metrics
+
+    artifacts = Path(
+        mlflow.artifacts.download_artifacts(
+            run_id=run.info.run_id,
+            artifact_path="kev-model",
+            tracking_uri=tracking_uri,
+        ),
+    )
+    for name in (
+        "adapter_config.json",
+        "adapter_model.safetensors",
+        "head.pt",
+        "training_config.json",
+    ):
+        assert (artifacts / name).is_file(), name
+
+    run_dir = tmp_path / "log" / run.info.run_id
+    assert (run_dir / "kev_metrics.json").is_file()

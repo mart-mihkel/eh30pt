@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from eh30pt.settings import (
     CommonSettings,
+    KevSettings,
     LabelStudioSettings,
     LoRASettings,
     MlflowSettings,
@@ -23,6 +24,9 @@ _port_custom: Final = 5433
 _epochs_custom: Final = 3.0
 _train_size_custom: Final = 100
 _learning_rate_custom: Final = 5e-5
+_default_head_dim: Final = 256
+_default_max_state: Final = 384
+_default_max_branch: Final = 1024
 
 
 @pytest.fixture(autouse=True)
@@ -180,6 +184,38 @@ def test_lora_rejects_out_of_range() -> None:
 
     with pytest.raises(ValidationError, match="dropout"):
         LoRASettings(dropout=1.5)
+
+
+def test_decision_defaults_match_the_kev_recipe() -> None:
+    settings = KevSettings()
+
+    assert settings.head_dim == _default_head_dim
+    assert settings.max_state == _default_max_state
+    assert settings.max_branch == _default_max_branch
+    assert settings.init_from is None
+    assert settings.device == "auto"
+
+
+def test_decision_rejects_out_of_range() -> None:
+    with pytest.raises(ValidationError, match="head_dim"):
+        KevSettings(head_dim=0)
+
+    with pytest.raises(ValidationError, match="max_state"):
+        KevSettings(max_state=0)
+
+    with pytest.raises(ValidationError, match="max_branch"):
+        KevSettings(max_branch=0)
+
+
+def test_decision_training_rejects_out_of_range() -> None:
+    with pytest.raises(ValidationError, match="epochs"):
+        TrainingSettings(epochs=0, learning_rate=5e-5)
+
+    with pytest.raises(ValidationError, match="batch_size"):
+        TrainingSettings(epochs=1, batch_size=0, learning_rate=5e-5)
+
+    with pytest.raises(ValidationError, match="weight_decay"):
+        TrainingSettings(epochs=1, learning_rate=5e-5, weight_decay=-1)
 
 
 def test_server_resolves_provider_default() -> None:

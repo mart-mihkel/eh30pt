@@ -8,7 +8,7 @@ from openai.types.shared_params import ResponseFormatJSONSchema
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from eh30pt.types import Architecture, DatasetName, EvalSteps, Provider
+from eh30pt.types import Architecture, DatasetName, Device, EvalSteps, Provider
 
 
 class PostgresSettings(BaseSettings):
@@ -69,6 +69,17 @@ class TrainingSettings(BaseModel):
     learning_rate: float = Field(ge=0)
     warmup_ratio: float = Field(default=0.06, ge=0)
     save_model: bool = False
+    weight_decay: float = Field(default=0.01, ge=0)
+
+
+class KevSettings(BaseModel):
+    """Kev-style decision model architecture and budget."""
+
+    head_dim: int = Field(default=256, ge=1)
+    max_state: int = Field(default=384, ge=1)
+    max_branch: int = Field(default=1024, ge=1)
+    init_from: str | None = None
+    device: Device = "auto"
 
 
 class LoRASettings(BaseModel):

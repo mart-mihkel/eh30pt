@@ -53,6 +53,7 @@ type Method = Literal[
     "cls-head",
     "prompt-tune",
     "qlora",
+    "kev-tune",
     "few-shot",
     "systemone",
     "silver-labels",
@@ -99,6 +100,13 @@ type PipelineTask = Literal[
 type Provider = Literal[
     "llama",
     "vllm",
+]
+
+type Device = Literal[
+    "auto",
+    "cpu",
+    "cuda",
+    "mps",
 ]
 
 type PrefixInit = Literal[
@@ -158,6 +166,16 @@ class QLoRaRunConfig(TrainingRunConfig):
     lora_r: int
     lora_alpha: int
     lora_dropout: float
+
+
+class KevRunConfig(TrainingRunConfig):
+    """Run configuration for Kev-style decision training."""
+
+    head_dim: int
+    lora_rank: int
+    init_from: str | None
+    max_state: int
+    max_branch: int
 
 
 class FewShotRunConfig(RunConfig):

@@ -301,27 +301,32 @@ def _label_scores(
     labels: np.ndarray | list,
     preds: np.ndarray | list,
     positive_label: str | int | None,
+    classes: list[int] | None = None,
 ) -> dict[str, float]:
     """Score the positive class one-vs-rest, or all classes as macro."""
     if positive_label is None:
         return {
             "precision": precision_score(
-                labels, preds, average="macro", zero_division=0
+                labels, preds, labels=classes, average="macro", zero_division=0
             ),
-            "recall": recall_score(labels, preds, average="macro", zero_division=0),
-            "f1": f1_score(labels, preds, average="macro", zero_division=0),
+            "recall": recall_score(
+                labels, preds, labels=classes, average="macro", zero_division=0
+            ),
+            "f1": f1_score(
+                labels, preds, labels=classes, average="macro", zero_division=0
+            ),
         }
 
-    classes = np.union1d(np.asarray(labels), np.asarray(preds))
+    present_classes = np.union1d(np.asarray(labels), np.asarray(preds))
     precision, recall, f1, _ = precision_recall_fscore_support(
         labels,
         preds,
-        labels=classes,
+        labels=present_classes,
         average=None,
         zero_division=0,
     )
 
-    index = int(np.flatnonzero(classes == positive_label)[0])
+    index = int(np.flatnonzero(present_classes == positive_label)[0])
 
     return {
         "precision": float(precision[index]),
@@ -356,6 +361,7 @@ def compute_classification_metrics(
     preds: np.ndarray | list,
     scores: np.ndarray | None = None,
     positive_label: str | int | None = None,
+    classes: list[int] | None = None,
 ) -> dict[str, float]:
     """Compute hard-label metrics plus AUC when class scores are given."""
     logger.debug("computing classification metrics")
@@ -365,7 +371,7 @@ def compute_classification_metrics(
 
     metrics = {
         "accuracy": accuracy_score(labels, preds),
-        **_label_scores(labels, preds, positive),
+        **_label_scores(labels, preds, positive, classes),
         **_hard_rates(label_values, pred_values, positive),
     }
 

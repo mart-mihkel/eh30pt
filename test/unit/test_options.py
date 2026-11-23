@@ -13,11 +13,13 @@ from eh30pt.cli.options.common import (
     inferred_dataset_option,
     log_level_option,
 )
+from eh30pt.cli.options.kev import kev_device_option
 from eh30pt.cli.options.server import provider_option
 from eh30pt.cli.options.training import eval_steps_option, prefix_init_option
 from eh30pt.types import (
     Architecture,
     DatasetName,
+    Device,
     LogLevel,
     PrefixInit,
     Provider,
@@ -54,6 +56,7 @@ _options = [
     ("arch_option", arch_option, Architecture),
     ("provider_option", provider_option, Provider),
     ("prefix_init_option", prefix_init_option, PrefixInit),
+    ("kev_device_option", kev_device_option, Device),
 ]
 
 
